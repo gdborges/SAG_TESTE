@@ -1,0 +1,170 @@
+/* CSS para o renderizador de formulários dinâmicos */
+/* POC SAG - Migração Delphi → ASP.NET Core */
+
+/* Container principal do formulário */
+.form-container {
+    max-width: 800px;
+}
+
+/* Bevel Groups (Fieldsets) */
+.bevel-group {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    background-color: #fafafa;
+    margin-bottom: 1rem;
+}
+
+.bevel-group legend {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+    padding: 0 0.5rem;
+    width: auto;
+    float: none;
+    margin-bottom: 0.5rem;
+}
+
+/* Conteúdo dentro do bevel - usa grid para layout flexível */
+.bevel-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1rem;
+}
+
+/* Campos órfãos */
+.orphan-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1rem;
+    padding: 1rem 0;
+}
+
+/* Labels dos campos */
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+/* Inputs e selects */
+.form-control,
+.form-select {
+    font-size: 0.9rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* Campos desabilitados */
+.form-control:disabled,
+.form-select:disabled {
+    background-color: #f8f9fa;
+    opacity: 0.8;
+}
+
+/* Checkboxes */
+.form-check {
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    padding-left: 1.75em;
+}
+
+.form-check-input {
+    margin-top: 0;
+    width: 1.15em;
+    height: 1.15em;
+    flex-shrink: 0;
+}
+
+.form-check-label {
+    font-size: 0.9rem;
+    color: #495057;
+    padding-left: 0.35em;
+    cursor: pointer;
+}
+
+/* Labels estáticos */
+.field-static-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Grid placeholders */
+.field-grid {
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Campos obrigatórios */
+.text-danger {
+    font-weight: bold;
+}
+
+/* Estados de validação */
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid {
+    border-color: #dc3545;
+}
+
+.was-validated .form-control:valid,
+.was-validated .form-select:valid {
+    border-color: #198754;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .form-container {
+        padding: 0.5rem;
+    }
+
+    .bevel-group {
+        padding: 0.75rem;
+    }
+
+    .bevel-content,
+    .orphan-fields {
+        gap: 0;
+    }
+
+    /* Em mobile, campos ocupam linha inteira */
+    .bevel-content > div,
+    .orphan-fields > div {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* Tooltips */
+[title]:not([title=""]) {
+    cursor: help;
+}
+
+/* Badge de contagem */
+.badge {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* Botões do formulário */
+.btn-primary {
+    min-width: 100px;
+}
+
+.btn-outline-secondary {
+    min-width: 100px;
+}
+
+/* Hover suave nos fieldsets */
+.bevel-group:hover {
+    background-color: #f5f5f5;
+    transition: background-color 0.2s ease;
+}

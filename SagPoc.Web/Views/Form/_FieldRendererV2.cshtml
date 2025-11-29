@@ -1,0 +1,218 @@
+@model SagPoc.Web.Models.FieldMetadata
+@using SagPoc.Web.Models
+
+@{
+    var componentType = Model.GetComponentType();
+    var fieldId = $"field_{Model.CodiCamp}";
+    var fieldName = Model.NomeCamp;
+    var label = string.IsNullOrEmpty(Model.LabeCamp) ? Model.NomeCamp : Model.LabeCamp;
+    var isRequired = Model.IsRequired;
+    var isDisabled = Model.IsDisabled;
+    var hint = Model.HintCamp;
+
+    // Calcular tamanho relativo baseado na largura do campo
+    // Delphi usa ~340px de largura total, vamos mapear para colunas Bootstrap
+    var width = Model.TamaCamp > 0 ? Model.TamaCamp : 150;
+    var colClass = width switch
+    {
+        >= 300 => "col-12",        // Campo largo - linha inteira
+        >= 200 => "col-md-8",      // Campo médio-grande
+        >= 150 => "col-md-6",      // Campo médio
+        >= 100 => "col-md-4",      // Campo pequeno
+        _ => "col-md-3"            // Campo muito pequeno
+    };
+
+    // Checkboxes são menores
+    if (componentType == ComponentType.Checkbox)
+    {
+        colClass = "col-md-6 col-lg-4";
+    }
+}
+
+@switch (componentType)
+{
+    case ComponentType.Label:
+        // LBL - Label estático
+        <div class="@colClass mb-2">
+            <span class="field-static-label" title="@hint">@label</span>
+        </div>
+        break;
+
+    case ComponentType.TextInput:
+        // E - Input de texto
+        <div class="@colClass mb-3">
+            <label for="@fieldId" class="form-label">
+                @label
+                @if (isRequired)
+                {
+                    <span class="text-danger">*</span>
+                }
+            </label>
+            <input type="text"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   placeholder="@hint"
+                   @(isRequired ? "required" : "")
+                   @(isDisabled ? "disabled" : "")
+                   data-mask="@Model.MascCamp" />
+        </div>
+        break;
+
+    case ComponentType.NumberInput:
+        // N - Input numérico
+        <div class="@colClass mb-3">
+            <label for="@fieldId" class="form-label">
+                @label
+                @if (isRequired)
+                {
+                    <span class="text-danger">*</span>
+                }
+            </label>
+            <input type="number"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   placeholder="@hint"
+                   @(Model.MiniCamp.HasValue ? $"min=\"{Model.MiniCamp}\"" : "")
+                   @(Model.MaxiCamp.HasValue ? $"max=\"{Model.MaxiCamp}\"" : "")
+                   step="@(Model.DeciCamp > 0 ? $"0.{"".PadRight(Model.DeciCamp - 1, '0')}1" : "1")"
+                   @(isRequired ? "required" : "")
+                   @(isDisabled ? "disabled" : "") />
+        </div>
+        break;
+
+    case ComponentType.DateInput:
+        // D - Input de data
+        <div class="@colClass mb-3">
+            <label for="@fieldId" class="form-label">
+                @label
+                @if (isRequired)
+                {
+                    <span class="text-danger">*</span>
+                }
+            </label>
+            <input type="date"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   @(isRequired ? "required" : "")
+                   @(isDisabled ? "disabled" : "") />
+        </div>
+        break;
+
+    case ComponentType.Checkbox:
+        // S - Checkbox
+        <div class="@colClass mb-3">
+            <div class="form-check pt-4">
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="@fieldId"
+                       name="@fieldName"
+                       title="@hint"
+                       @(isDisabled ? "disabled" : "") />
+                <label for="@fieldId" class="form-check-label">
+                    @label
+                </label>
+            </div>
+        </div>
+        break;
+
+    case ComponentType.ComboBox:
+    case ComponentType.LookupCombo:
+        // C, T, IT - ComboBox/Select
+        <div class="@colClass mb-3">
+            <label for="@fieldId" class="form-label">
+                @label
+                @if (isRequired)
+                {
+                    <span class="text-danger">*</span>
+                }
+            </label>
+            <select class="form-select"
+                    id="@fieldId"
+                    name="@fieldName"
+                    title="@hint"
+                    @(isRequired ? "required" : "")
+                    @(isDisabled ? "disabled" : "")>
+                <option value="">Selecione...</option>
+                @if (!string.IsNullOrEmpty(Model.VareCamp))
+                {
+                    var options = Model.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var opt in options)
+                    {
+                        <option value="@opt.Trim()">@opt.Trim()</option>
+                    }
+                }
+            </select>
+            @if (componentType == ComponentType.LookupCombo && !string.IsNullOrEmpty(Model.SqlCamp))
+            {
+                <small class="text-muted">(Lookup)</small>
+            }
+        </div>
+        break;
+
+    case ComponentType.TextArea:
+        // M, BM - TextArea/Memo
+        var rows = Model.AltuCamp > 50 ? Model.AltuCamp / 25 : 3;
+        <div class="col-12 mb-3">
+            <label for="@fieldId" class="form-label">
+                @label
+                @if (isRequired)
+                {
+                    <span class="text-danger">*</span>
+                }
+            </label>
+            <textarea class="form-control"
+                      id="@fieldId"
+                      name="@fieldName"
+                      title="@hint"
+                      placeholder="@hint"
+                      rows="@rows"
+                      @(isRequired ? "required" : "")
+                      @(isDisabled ? "disabled" : "")></textarea>
+        </div>
+        break;
+
+    case ComponentType.Button:
+        // BTN - Botão
+        <div class="@colClass mb-3 d-flex align-items-end">
+            <button type="button"
+                    class="btn btn-secondary"
+                    id="@fieldId"
+                    title="@hint"
+                    @(isDisabled ? "disabled" : "")>
+                @label
+            </button>
+        </div>
+        break;
+
+    case ComponentType.DataGrid:
+        // DBG - Grid (placeholder)
+        <div class="col-12 mb-3">
+            <div class="field-grid border rounded p-3 bg-light">
+                <small class="text-muted">[Grid: @fieldName - @label]</small>
+            </div>
+        </div>
+        break;
+
+    case ComponentType.Bevel:
+        // BVL - Não renderiza aqui, já é tratado no Render.cshtml
+        break;
+
+    default:
+        // Fallback para input text
+        <div class="@colClass mb-3">
+            <label for="@fieldId" class="form-label">@label</label>
+            <input type="text"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   @(isDisabled ? "disabled" : "") />
+        </div>
+        break;
+}
