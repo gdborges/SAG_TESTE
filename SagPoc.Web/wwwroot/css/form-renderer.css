@@ -1,70 +1,160 @@
-/* CSS para o renderizador de formulários dinâmicos */
-/* POC SAG - Migração Delphi → ASP.NET Core */
+/* ===========================================
+   CSS para o renderizador de formulários dinâmicos
+   POC SAG - Design baseado em GUIA_VISUAL_INCLUSAO_RAPIDA
+   =========================================== */
+
+/* Variáveis de cores (baseadas no GUIA_VISUAL) */
+:root {
+    /* Cores Primárias */
+    --color-success: #5cb85c;
+    --color-success-hover: #4cae4c;
+    --color-success-active: #449d44;
+    --color-danger: #FF0000;
+    --color-danger-light: #d96f6f;
+    --color-info: #78acff;
+    --color-warning: #f0ad4e;
+
+    /* Cores de Background */
+    --bg-white: #ffffff;
+    --bg-readonly: #f5f5f5;
+    --bg-gray-light: #f9f9f9;
+    --bg-gray-ultra-light: #fafafa;
+    --bg-disabled: #f0f0f0;
+
+    /* Cores de Borda */
+    --border-default: #ddd;
+    --border-light: #e0e0e0;
+    --border-focus: #007bff;
+
+    /* Cores de Texto */
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --text-muted: #797979;
+    --text-disabled: #cccccc;
+    --text-placeholder: #999999;
+
+    /* Botões */
+    --btn-default-bg: #e0e0e0;
+    --btn-default-hover: #d0d0d0;
+    --btn-default-active: #c0c0c0;
+}
 
 /* Container principal do formulário */
 .form-container {
     max-width: 800px;
+    background-color: var(--bg-white);
+    padding: 1rem;
+    border-radius: 8px;
 }
 
 /* Bevel Groups (Fieldsets) */
 .bevel-group {
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--border-default);
     border-radius: 8px;
-    padding: 1rem 1.25rem;
-    background-color: #fafafa;
-    margin-bottom: 1rem;
+    padding: 1.25rem 1.5rem;
+    background-color: var(--bg-gray-ultra-light);
+    margin-bottom: 1.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.bevel-group:hover {
+    background-color: var(--bg-gray-light);
 }
 
 .bevel-group legend {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    color: #495057;
+    color: var(--text-secondary);
     padding: 0 0.5rem;
     width: auto;
     float: none;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
 }
 
-/* Conteúdo dentro do bevel - usa grid para layout flexível */
+/* Conteúdo dentro do bevel - usa flex para layout */
 .bevel-content {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 1rem;
+    gap: 0.75rem 1.5rem;
 }
 
 /* Campos órfãos */
 .orphan-fields {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 1rem;
+    gap: 0.75rem 1.5rem;
     padding: 1rem 0;
 }
 
 /* Labels dos campos */
 .form-label {
-    font-size: 0.875rem;
+    font-size: 14px;
     font-weight: 500;
-    color: #495057;
-    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+    line-height: 1.4;
 }
 
-/* Inputs e selects */
+/* Indicador de obrigatório */
+.text-danger {
+    color: var(--color-danger);
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+/* Inputs e selects - Estado Normal */
 .form-control,
 .form-select {
-    font-size: 0.9rem;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-primary);
+    background-color: var(--bg-white);
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+    padding: 8px 12px;
+    height: 40px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* Estado Focus */
 .form-control:focus,
 .form-select:focus {
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    outline: none;
 }
 
-/* Campos desabilitados */
+/* Estado Readonly */
+.form-control:read-only,
+.form-control[readonly] {
+    background-color: var(--bg-readonly);
+    border-color: var(--border-light);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+/* Estado Disabled */
 .form-control:disabled,
 .form-select:disabled {
-    background-color: #f8f9fa;
-    opacity: 0.8;
+    background-color: var(--bg-disabled);
+    border-color: var(--border-light);
+    color: var(--text-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Estado de Validação - Válido */
+.was-validated .form-control:valid,
+.was-validated .form-select:valid {
+    border-color: var(--color-success);
+    background-color: #f0fff4;
+}
+
+/* Estado de Validação - Inválido */
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid {
+    border-color: var(--color-danger);
+    background-color: #fff5f5;
 }
 
 /* Checkboxes */
@@ -80,19 +170,34 @@
     width: 1.15em;
     height: 1.15em;
     flex-shrink: 0;
+    border: 1px solid var(--border-default);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.form-check-input:checked {
+    background-color: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.form-check-input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
 .form-check-label {
-    font-size: 0.9rem;
-    color: #495057;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-secondary);
     padding-left: 0.35em;
     cursor: pointer;
 }
 
 /* Labels estáticos */
 .field-static-label {
-    font-size: 0.9rem;
-    color: #6c757d;
+    font-size: 14px;
+    color: var(--text-muted);
     font-weight: 500;
 }
 
@@ -102,69 +207,224 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: var(--bg-readonly);
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
 }
 
-/* Campos obrigatórios */
-.text-danger {
-    font-weight: bold;
+/* Botões de Ação */
+.btn {
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 20px;
+    height: 40px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
 }
 
-/* Estados de validação */
-.was-validated .form-control:invalid,
-.was-validated .form-select:invalid {
-    border-color: #dc3545;
+/* Botão Primário (Salvar) - Verde */
+.btn-primary {
+    background-color: var(--color-success);
+    color: var(--bg-white);
 }
 
-.was-validated .form-control:valid,
-.was-validated .form-select:valid {
-    border-color: #198754;
+.btn-primary:hover {
+    background-color: var(--color-success-hover);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
 }
 
-/* Responsividade */
+.btn-primary:active {
+    background-color: var(--color-success-active);
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary:disabled {
+    background-color: var(--text-disabled);
+    color: #666666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Botão Secundário (Limpar/Fechar) - Cinza */
+.btn-outline-secondary {
+    background-color: var(--btn-default-bg);
+    color: var(--text-secondary);
+    border: none;
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--btn-default-hover);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-outline-secondary:active {
+    background-color: var(--btn-default-active);
+    transform: translateY(0);
+}
+
+/* Container dos botões */
+.d-flex.gap-2 {
+    gap: 10px !important;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+/* Badge de contagem */
+.badge {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.badge.bg-info {
+    background-color: var(--color-info) !important;
+    color: var(--text-primary);
+}
+
+/* Título do formulário */
+h4.mb-0 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Mensagens de validação/erro */
+.invalid-feedback {
+    font-size: 14px;
+    color: var(--color-danger);
+    font-weight: 500;
+}
+
+/* Placeholder */
+.form-control::placeholder,
+.form-select::placeholder {
+    color: var(--text-placeholder);
+    font-weight: 400;
+}
+
+/* Separador horizontal */
+hr {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 1.5rem 0;
+}
+
+/* Responsividade Mobile - Equilibrado */
 @media (max-width: 768px) {
+    .container,
+    .container-fluid {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+
     .form-container {
         padding: 0.5rem;
+        max-width: 100%;
+    }
+
+    h4.mb-0 {
+        font-size: 17px;
+        font-weight: 600;
     }
 
     .bevel-group {
-        padding: 0.75rem;
+        padding: 0.875rem;
+        margin-bottom: 0.875rem;
+    }
+
+    .bevel-group legend {
+        font-size: 14px;
+        font-weight: 600;
     }
 
     .bevel-content,
     .orphan-fields {
-        gap: 0;
+        gap: 0.75rem;
+        flex-direction: column;
     }
 
-    /* Em mobile, campos ocupam linha inteira */
+    /* Campos ocupam linha inteira */
     .bevel-content > div,
     .orphan-fields > div {
-        flex: 0 0 100%;
-        max-width: 100%;
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
     }
+
+    .form-label {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 0.35rem;
+    }
+
+    /* Inputs confortáveis mas não gigantes */
+    .form-control,
+    .form-select {
+        height: 44px;
+        font-size: 16px;
+        padding: 10px 12px;
+    }
+
+    /* Checkboxes */
+    .form-check {
+        min-height: 44px;
+        padding-left: 2em;
+    }
+
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+    }
+
+    .form-check-label {
+        font-size: 15px;
+        padding-left: 0.5rem;
+    }
+
+    /* Botões empilhados */
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 10px !important;
+    }
+
+    .btn {
+        width: 100%;
+        height: 46px;
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    .badge {
+        font-size: 12px;
+    }
+
+    .navbar-brand {
+        font-size: 16px;
+    }
+
+    .nav-link {
+        font-size: 14px;
+        padding: 10px 6px !important;
+    }
+}
+
+/* Animações suaves */
+.bevel-group,
+.form-control,
+.form-select,
+.btn {
+    transition: all 0.2s ease;
 }
 
 /* Tooltips */
 [title]:not([title=""]) {
     cursor: help;
-}
-
-/* Badge de contagem */
-.badge {
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-/* Botões do formulário */
-.btn-primary {
-    min-width: 100px;
-}
-
-.btn-outline-secondary {
-    min-width: 100px;
-}
-
-/* Hover suave nos fieldsets */
-.bevel-group:hover {
-    background-color: #f5f5f5;
-    transition: background-color 0.2s ease;
 }

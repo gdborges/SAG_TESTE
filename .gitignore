@@ -1,0 +1,23 @@
+# Build results
+bin/
+obj/
+publish-linux/
+
+# Database files
+*.db
+
+# User-specific files
+*.user
+*.suo
+.vs/
+
+# IDE
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
