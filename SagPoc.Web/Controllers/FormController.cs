@@ -10,11 +10,16 @@ namespace SagPoc.Web.Controllers;
 public class FormController : Controller
 {
     private readonly IMetadataService _metadataService;
+    private readonly ILookupService _lookupService;
     private readonly ILogger<FormController> _logger;
 
-    public FormController(IMetadataService metadataService, ILogger<FormController> logger)
+    public FormController(
+        IMetadataService metadataService,
+        ILookupService lookupService,
+        ILogger<FormController> logger)
     {
         _metadataService = metadataService;
+        _lookupService = lookupService;
         _logger = logger;
     }
 
@@ -53,12 +58,40 @@ public class FormController : Controller
                 return NotFound($"Nenhum campo encontrado para a tabela {id}");
             }
 
+            // Popular LookupOptions para campos T/IT com SQL_CAMP
+            await PopulateLookupOptionsAsync(formMetadata.Fields);
+
             return View(formMetadata);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao renderizar formulário {TableId}", id);
             return View("Error", new ErrorViewModel { RequestId = HttpContext.TraceIdentifier });
+        }
+    }
+
+    /// <summary>
+    /// Popula as opções de lookup para campos T/IT que têm SQL_CAMP definido.
+    /// </summary>
+    private async Task PopulateLookupOptionsAsync(List<FieldMetadata> fields)
+    {
+        var lookupFields = fields.Where(f =>
+            (f.CompCamp?.ToUpper() == "T" || f.CompCamp?.ToUpper() == "IT") &&
+            !string.IsNullOrEmpty(f.SqlCamp));
+
+        foreach (var field in lookupFields)
+        {
+            try
+            {
+                field.LookupOptions = await _lookupService.ExecuteLookupQueryAsync(field.SqlCamp!);
+                _logger.LogDebug("Campo {FieldName}: {Count} opções carregadas",
+                    field.NomeCamp, field.LookupOptions?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao carregar lookup para campo {FieldName}", field.NomeCamp);
+                field.LookupOptions = new List<LookupItem>();
+            }
         }
     }
 

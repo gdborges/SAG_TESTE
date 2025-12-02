@@ -1,8 +1,35 @@
 -- Script SQLite para SAG POC
 -- Criação da tabela e inserção de dados
 
--- Drop tabela se existir
+-- Drop tabelas/views se existirem
 DROP TABLE IF EXISTS SistCamp;
+DROP VIEW IF EXISTS POCATPMV;
+DROP VIEW IF EXISTS POCAGRUS;
+DROP VIEW IF EXISTS POCATPDO;
+
+-- =====================================================
+-- VIEWS DE LOOKUP PARA CAMPOS T/IT (DUAL-like)
+-- Mesmo padrão usado no SQL Server (usando SELECT sem FROM)
+-- =====================================================
+
+-- View POCATPDO (Tipos de Documento)
+-- Equivalente SQL Server: SELECT 1, 'Dinheiro' FROM DUAL
+CREATE VIEW POCATPDO (CODITPDO, NOMETPDO) AS
+SELECT 1, 'Dinheiro';
+
+-- View POCATPMV (Tipos de Movimento)
+-- Equivalente SQL Server: SELECT 1, 'Entrada', 1, 1, 'E', 'E' FROM DUAL
+CREATE VIEW POCATPMV (CODITPMV, NOMETPMV, CODITPDO, ATIVTPMV, LOCATPMV, DESCTPMV) AS
+SELECT 1, 'Entrada', 1, 1, 'E', 'E';
+
+-- View POCAGRUS (Grupos de Usuário)
+-- Equivalente SQL Server: SELECT 1, 'Administradores', 1 FROM DUAL
+CREATE VIEW POCAGRUS (CODIGRUS, NOMEGRUS, ATIVGRUS) AS
+SELECT 1, 'Administradores', 1;
+
+-- =====================================================
+-- TABELA PRINCIPAL SistCamp
+-- =====================================================
 
 -- Criar tabela SistCamp
 CREATE TABLE SistCamp (

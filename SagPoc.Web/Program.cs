@@ -8,6 +8,9 @@ builder.Services.AddControllersWithViews();
 // Register MetadataService
 builder.Services.AddScoped<IMetadataService, MetadataService>();
 
+// Register LookupService for T/IT field combos
+builder.Services.AddScoped<ILookupService, LookupService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

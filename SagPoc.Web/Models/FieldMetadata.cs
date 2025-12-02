@@ -53,6 +53,12 @@ public class FieldMetadata
     public string? ExprCamp { get; set; }  // Expressões do campo
     public string? EperCamp { get; set; }  // Expressões de permissão
 
+    // Lookup dinâmico (populado pelo controller)
+    /// <summary>
+    /// Opções carregadas do SQL_CAMP (populado pelo controller para campos T/IT)
+    /// </summary>
+    public List<LookupItem>? LookupOptions { get; set; }
+
     /// <summary>
     /// Indica se o campo é obrigatório
     /// </summary>
@@ -63,6 +69,13 @@ public class FieldMetadata
     /// Nota: InicCamp é ignorado na POC (no Delphi, é controlado por expressões em runtime).
     /// </summary>
     public bool IsDisabled => DesaCamp == 1;
+
+    /// <summary>
+    /// Indica se é campo "Informada" (IT, IL, etc.) - somente leitura/informativo.
+    /// No Delphi: IT usa TLcbLbl (não persiste), T usa TDBLcbLbl (persiste).
+    /// Na POC: IT renderiza como disabled para indicar que é informativo.
+    /// </summary>
+    public bool IsInformada => CompCamp?.ToUpper().StartsWith("I") == true;
 
     /// <summary>
     /// Retorna o tipo HTML equivalente baseado no CompCamp
@@ -144,4 +157,20 @@ public enum ComponentType
     Button,         // BTN - TsgBtn
     Label,          // LBL - TsgLbl
     DataGrid        // DBG - TsgDBG
+}
+
+/// <summary>
+/// Item de lookup para combos T/IT (carregado via SQL_CAMP)
+/// </summary>
+public class LookupItem
+{
+    /// <summary>
+    /// Chave/ID do item (primeira coluna do SQL_CAMP)
+    /// </summary>
+    public string Key { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Valor/descrição do item (segunda coluna do SQL_CAMP)
+    /// </summary>
+    public string Value { get; set; } = string.Empty;
 }

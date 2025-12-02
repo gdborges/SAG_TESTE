@@ -135,8 +135,7 @@
         break;
 
     case ComponentType.ComboBox:
-    case ComponentType.LookupCombo:
-        // C, T, IT - ComboBox/Select
+        // C - ComboBox com valores fixos (VareCamp)
         <div class="@colClass mb-3">
             @if (hasLabel)
             {
@@ -164,10 +163,48 @@
                     }
                 }
             </select>
-            @if (componentType == ComponentType.LookupCombo && !string.IsNullOrEmpty(Model.SqlCamp))
+        </div>
+        break;
+
+    case ComponentType.LookupCombo:
+        // T, IT - LookupCombo com SQL_CAMP
+        // T = ligado ao banco, IT = informativo (sem persistência)
+        // Na POC não há persistência, então ambos são tratados igualmente
+        <div class="@colClass mb-3">
+            @if (hasLabel)
             {
-                <small class="text-muted">(Lookup)</small>
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
             }
+            <select class="form-select"
+                    id="@fieldId"
+                    name="@fieldName"
+                    title="@hint"
+                    @(isRequired ? "required" : "")
+                    @(isDisabled ? "disabled" : "")>
+                <option value="">Selecione...</option>
+                @if (Model.LookupOptions != null && Model.LookupOptions.Count > 0)
+                {
+                    foreach (var opt in Model.LookupOptions)
+                    {
+                        <option value="@opt.Key">@opt.Value</option>
+                    }
+                }
+                else if (!string.IsNullOrEmpty(Model.VareCamp))
+                {
+                    // Fallback para VareCamp se LookupOptions não foi carregado
+                    var fallbackOptions = Model.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var opt in fallbackOptions)
+                    {
+                        <option value="@opt.Trim()">@opt.Trim()</option>
+                    }
+                }
+            </select>
         </div>
         break;
 
