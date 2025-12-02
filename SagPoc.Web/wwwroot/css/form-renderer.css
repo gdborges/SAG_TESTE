@@ -428,3 +428,81 @@ hr {
 [title]:not([title=""]) {
     cursor: help;
 }
+
+/* ===========================================
+   Tabs / Guias
+   =========================================== */
+
+/* Nav Tabs Container */
+.nav-tabs {
+    border-bottom: 2px solid var(--border-default);
+    margin-bottom: 0;
+    background-color: var(--bg-gray-ultra-light);
+    padding: 0 0.5rem;
+    border-radius: 8px 8px 0 0;
+}
+
+/* Tab Links */
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 0.875rem 1.25rem;
+    margin-bottom: -2px;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    border-radius: 0;
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--text-secondary);
+    border-bottom-color: var(--border-light);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.nav-tabs .nav-link:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--border-focus);
+    border-bottom-color: var(--border-focus);
+    background-color: var(--bg-white);
+    font-weight: 600;
+}
+
+/* Tab Content Container */
+.tab-content {
+    border: 1px solid var(--border-default);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    background-color: var(--bg-white);
+}
+
+/* Tab Pane */
+.tab-pane {
+    padding: 1rem;
+}
+
+/* Tab Pane Form Container */
+.tab-pane .form-container {
+    padding: 0;
+    background: transparent;
+}
+
+/* Responsive Tabs */
+@media (max-width: 576px) {
+    .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-tabs .nav-link {
+        white-space: nowrap;
+        padding: 0.75rem 1rem;
+        font-size: 14px;
+    }
+}

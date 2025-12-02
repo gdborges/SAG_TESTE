@@ -2,7 +2,6 @@
 @using SagPoc.Web.Models
 @{
     ViewData["Title"] = $"Formulário {Model.TableId}";
-    var bevelGroups = Model.GetBevelGroups();
 }
 
 <div class="container-fluid mt-3">
@@ -10,42 +9,116 @@
         <h4 class="mb-0">@ViewData["Title"]</h4>
         <div>
             <span class="badge bg-info">@Model.Fields.Count campos</span>
+            @if (Model.HasMultipleTabs)
+            {
+                <span class="badge bg-secondary ms-1">@Model.GetTabGroups().Count guias</span>
+            }
             <a asp-action="Index" class="btn btn-outline-secondary btn-sm ms-2">Voltar</a>
         </div>
     </div>
 
     <form id="dynamicForm" class="needs-validation" novalidate>
-        <div class="form-container">
-            @foreach (var group in bevelGroups)
-            {
-                if (group.HasBevel)
+        @if (Model.HasMultipleTabs)
+        {
+            var tabGroups = Model.GetTabGroups();
+            var firstTab = tabGroups.FirstOrDefault();
+
+            <!-- Nav Tabs -->
+            <ul class="nav nav-tabs" id="formTabs" role="tablist">
+                @foreach (var tab in tabGroups)
                 {
-                    // Renderiza bevel como fieldset com seus campos dentro
-                    <fieldset class="bevel-group mb-3">
-                        @if (!string.IsNullOrEmpty(group.Bevel!.LabeCamp) && group.Bevel.LabeCamp != "-")
-                        {
-                            <legend>@group.Bevel.LabeCamp</legend>
-                        }
-                        <div class="bevel-content">
+                    var isActive = tab.TabIndex == firstTab?.TabIndex;
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(isActive ? "active" : "")"
+                                id="tab-@tab.TabIndex-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#tab-@tab.TabIndex"
+                                type="button"
+                                role="tab"
+                                aria-controls="tab-@tab.TabIndex"
+                                aria-selected="@(isActive ? "true" : "false")">
+                            @tab.TabName
+                        </button>
+                    </li>
+                }
+            </ul>
+
+            <!-- Tab Panes -->
+            <div class="tab-content" id="formTabsContent">
+                @foreach (var tab in tabGroups)
+                {
+                    var isActive = tab.TabIndex == firstTab?.TabIndex;
+                    <div class="tab-pane fade @(isActive ? "show active" : "")"
+                         id="tab-@tab.TabIndex"
+                         role="tabpanel"
+                         aria-labelledby="tab-@tab.TabIndex-tab">
+                        <div class="form-container">
+                            @foreach (var group in tab.BevelGroups)
+                            {
+                                if (group.HasBevel)
+                                {
+                                    <fieldset class="bevel-group mb-3">
+                                        @if (!string.IsNullOrEmpty(group.Bevel!.LabeCamp) && group.Bevel.LabeCamp != "-")
+                                        {
+                                            <legend>@group.Bevel.LabeCamp</legend>
+                                        }
+                                        <div class="bevel-content">
+                                            @foreach (var field in group.Children)
+                                            {
+                                                @await Html.PartialAsync("_FieldRendererV2", field)
+                                            }
+                                        </div>
+                                    </fieldset>
+                                }
+                                else
+                                {
+                                    <div class="orphan-fields mb-3">
+                                        @foreach (var field in group.Children)
+                                        {
+                                            @await Html.PartialAsync("_FieldRendererV2", field)
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Formulário sem abas - comportamento atual -->
+            var bevelGroups = Model.GetBevelGroups();
+            <div class="form-container">
+                @foreach (var group in bevelGroups)
+                {
+                    if (group.HasBevel)
+                    {
+                        <fieldset class="bevel-group mb-3">
+                            @if (!string.IsNullOrEmpty(group.Bevel!.LabeCamp) && group.Bevel.LabeCamp != "-")
+                            {
+                                <legend>@group.Bevel.LabeCamp</legend>
+                            }
+                            <div class="bevel-content">
+                                @foreach (var field in group.Children)
+                                {
+                                    @await Html.PartialAsync("_FieldRendererV2", field)
+                                }
+                            </div>
+                        </fieldset>
+                    }
+                    else
+                    {
+                        <div class="orphan-fields mb-3">
                             @foreach (var field in group.Children)
                             {
                                 @await Html.PartialAsync("_FieldRendererV2", field)
                             }
                         </div>
-                    </fieldset>
+                    }
                 }
-                else
-                {
-                    // Campos órfãos (sem bevel)
-                    <div class="orphan-fields mb-3">
-                        @foreach (var field in group.Children)
-                        {
-                            @await Html.PartialAsync("_FieldRendererV2", field)
-                        }
-                    </div>
-                }
-            }
-        </div>
+            </div>
+        }
 
         <hr class="my-4" />
 

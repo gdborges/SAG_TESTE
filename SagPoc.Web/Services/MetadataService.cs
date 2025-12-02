@@ -76,39 +76,49 @@ public class MetadataService : IMetadataService
     }
 
     private string GetSqlServerFieldsQuery() => @"
-        SELECT
-            CODICAMP as CodiCamp,
-            CODITABE as CodiTabe,
-            NOMECAMP as NomeCamp,
-            ISNULL(LABECAMP, '') as LabeCamp,
-            ISNULL(HINTCAMP, '') as HintCamp,
-            ISNULL(COMPCAMP, 'E') as CompCamp,
-            ISNULL(TOPOCAMP, 0) as TopoCamp,
-            ISNULL(ESQUCAMP, 0) as EsquCamp,
-            ISNULL(TAMACAMP, 100) as TamaCamp,
-            ISNULL(ALTUCAMP, 21) as AltuCamp,
-            ISNULL(GUIACAMP, 0) as GuiaCamp,
-            ISNULL(ORDECAMP, 0) as OrdeCamp,
-            ISNULL(OBRICAMP, 0) as ObriCamp,
-            ISNULL(DESACAMP, 0) as DesaCamp,
-            ISNULL(INICCAMP, 0) as InicCamp,
-            ISNULL(MASCCAMP, '') as MascCamp,
-            MINICAMP as MiniCamp,
-            MAXICAMP as MaxiCamp,
-            ISNULL(DECICAMP, 0) as DeciCamp,
-            CAST(SQL_CAMP as NVARCHAR(MAX)) as SqlCamp,
-            CAST(VARECAMP as NVARCHAR(MAX)) as VareCamp,
-            CFONCAMP as CfonCamp,
-            CTAMCAMP as CtamCamp,
-            CCORCAMP as CcorCamp,
-            LFONCAMP as LfonCamp,
-            LTAMCAMP as LtamCamp,
-            LCORCAMP as LcorCamp,
-            CAST(EXPRCAMP as NVARCHAR(MAX)) as ExprCamp,
-            CAST(EPERCAMP as NVARCHAR(MAX)) as EperCamp
-        FROM SISTCAMP
-        WHERE CODITABE = @CodiTabe
-        ORDER BY TOPOCAMP, ESQUCAMP, ORDECAMP";
+        WITH CamposUnicos AS (
+            SELECT
+                CODICAMP as CodiCamp,
+                CODITABE as CodiTabe,
+                NOMECAMP as NomeCamp,
+                ISNULL(LABECAMP, '') as LabeCamp,
+                ISNULL(HINTCAMP, '') as HintCamp,
+                ISNULL(COMPCAMP, 'E') as CompCamp,
+                ISNULL(TOPOCAMP, 0) as TopoCamp,
+                ISNULL(ESQUCAMP, 0) as EsquCamp,
+                ISNULL(TAMACAMP, 100) as TamaCamp,
+                ISNULL(ALTUCAMP, 21) as AltuCamp,
+                ISNULL(GUIACAMP, 0) as GuiaCamp,
+                ISNULL(ORDECAMP, 0) as OrdeCamp,
+                ISNULL(OBRICAMP, 0) as ObriCamp,
+                ISNULL(DESACAMP, 0) as DesaCamp,
+                ISNULL(INICCAMP, 0) as InicCamp,
+                ISNULL(MASCCAMP, '') as MascCamp,
+                MINICAMP as MiniCamp,
+                MAXICAMP as MaxiCamp,
+                ISNULL(DECICAMP, 0) as DeciCamp,
+                CAST(SQL_CAMP as NVARCHAR(MAX)) as SqlCamp,
+                CAST(VARECAMP as NVARCHAR(MAX)) as VareCamp,
+                CFONCAMP as CfonCamp,
+                CTAMCAMP as CtamCamp,
+                CCORCAMP as CcorCamp,
+                LFONCAMP as LfonCamp,
+                LTAMCAMP as LtamCamp,
+                LCORCAMP as LcorCamp,
+                CAST(EXPRCAMP as NVARCHAR(MAX)) as ExprCamp,
+                CAST(EPERCAMP as NVARCHAR(MAX)) as EperCamp,
+                ROW_NUMBER() OVER (PARTITION BY NOMECAMP ORDER BY CODICAMP) as RowNum
+            FROM SISTCAMP
+            WHERE CODITABE = @CodiTabe
+        )
+        SELECT CodiCamp, CodiTabe, NomeCamp, LabeCamp, HintCamp, CompCamp,
+               TopoCamp, EsquCamp, TamaCamp, AltuCamp, GuiaCamp, OrdeCamp,
+               ObriCamp, DesaCamp, InicCamp, MascCamp, MiniCamp, MaxiCamp,
+               DeciCamp, SqlCamp, VareCamp, CfonCamp, CtamCamp, CcorCamp,
+               LfonCamp, LtamCamp, LcorCamp, ExprCamp, EperCamp
+        FROM CamposUnicos
+        WHERE RowNum = 1
+        ORDER BY TopoCamp, EsquCamp, OrdeCamp";
 
     private string GetSqliteFieldsQuery() => @"
         SELECT

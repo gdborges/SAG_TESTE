@@ -5,7 +5,8 @@
     var componentType = Model.GetComponentType();
     var fieldId = $"field_{Model.CodiCamp}";
     var fieldName = Model.NomeCamp;
-    var label = string.IsNullOrEmpty(Model.LabeCamp) ? Model.NomeCamp : Model.LabeCamp;
+    var label = Model.LabeCamp;  // Não usa fallback - se LabeCamp é vazio, não exibe label
+    var hasLabel = !string.IsNullOrEmpty(label);
     var isRequired = Model.IsRequired;
     var isDisabled = Model.IsDisabled;
     var hint = Model.HintCamp;
@@ -41,13 +42,16 @@
     case ComponentType.TextInput:
         // E - Input de texto
         <div class="@colClass mb-3">
-            <label for="@fieldId" class="form-label">
-                @label
-                @if (isRequired)
-                {
-                    <span class="text-danger">*</span>
-                }
-            </label>
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
             <input type="text"
                    class="form-control"
                    id="@fieldId"
@@ -63,13 +67,16 @@
     case ComponentType.NumberInput:
         // N - Input numérico
         <div class="@colClass mb-3">
-            <label for="@fieldId" class="form-label">
-                @label
-                @if (isRequired)
-                {
-                    <span class="text-danger">*</span>
-                }
-            </label>
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
             <input type="number"
                    class="form-control"
                    id="@fieldId"
@@ -87,13 +94,16 @@
     case ComponentType.DateInput:
         // D - Input de data
         <div class="@colClass mb-3">
-            <label for="@fieldId" class="form-label">
-                @label
-                @if (isRequired)
-                {
-                    <span class="text-danger">*</span>
-                }
-            </label>
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
             <input type="date"
                    class="form-control"
                    id="@fieldId"
@@ -114,9 +124,12 @@
                        name="@fieldName"
                        title="@hint"
                        @(isDisabled ? "disabled" : "") />
-                <label for="@fieldId" class="form-check-label">
-                    @label
-                </label>
+                @if (hasLabel)
+                {
+                    <label for="@fieldId" class="form-check-label">
+                        @label
+                    </label>
+                }
             </div>
         </div>
         break;
@@ -125,13 +138,16 @@
     case ComponentType.LookupCombo:
         // C, T, IT - ComboBox/Select
         <div class="@colClass mb-3">
-            <label for="@fieldId" class="form-label">
-                @label
-                @if (isRequired)
-                {
-                    <span class="text-danger">*</span>
-                }
-            </label>
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
             <select class="form-select"
                     id="@fieldId"
                     name="@fieldName"
@@ -159,13 +175,16 @@
         // M, BM - TextArea/Memo
         var rows = Model.AltuCamp > 50 ? Model.AltuCamp / 25 : 3;
         <div class="col-12 mb-3">
-            <label for="@fieldId" class="form-label">
-                @label
-                @if (isRequired)
-                {
-                    <span class="text-danger">*</span>
-                }
-            </label>
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
             <textarea class="form-control"
                       id="@fieldId"
                       name="@fieldName"

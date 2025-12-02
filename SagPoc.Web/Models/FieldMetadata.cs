@@ -71,13 +71,22 @@ public class FieldMetadata
     {
         return CompCamp?.ToUpper() switch
         {
-            "E" => "text",           // TDBEdtLbl → input text
-            "N" => "number",         // TDBRxELbl → input number
-            "D" => "date",           // TDBRxDLbl → input date
-            "S" => "checkbox",       // TDBChkLbl → checkbox
-            "C" => "select",         // TDBCmbLbl → select/combo
-            "T" or "IT" => "select", // TDBLcbLbl → select com lookup
-            "M" or "BM" => "textarea", // TDBMemLbl → textarea
+            // Tipos básicos
+            "E" => "text",
+            "N" => "number",
+            "D" => "date",
+            "S" => "checkbox",
+            "C" => "select",
+            "T" or "IT" => "select",
+            "M" or "BM" => "textarea",
+
+            // Tipos estendidos
+            "ES" => "checkbox",        // Editor Sim/Não
+            "EC" => "select",          // Editor Combo
+            "EN" or "LN" => "number",  // Editor Numérico
+            "ED" => "date",            // Editor Data
+            "EA" or "EE" or "LE" or "EI" or "ET" => "text",
+
             _ => "text"
         };
     }
@@ -89,18 +98,32 @@ public class FieldMetadata
     {
         return CompCamp?.ToUpper() switch
         {
-            "E" => ComponentType.TextInput,
-            "N" => ComponentType.NumberInput,
-            "D" => ComponentType.DateInput,
-            "S" => ComponentType.Checkbox,
-            "C" => ComponentType.ComboBox,
-            "T" or "IT" => ComponentType.LookupCombo,
-            "M" or "BM" => ComponentType.TextArea,
-            "BVL" => ComponentType.Bevel,
-            "BTN" => ComponentType.Button,
-            "LBL" => ComponentType.Label,
-            "DBG" => ComponentType.DataGrid,
-            _ => ComponentType.TextInput
+            // Tipos básicos
+            "E" => ComponentType.TextInput,           // TDBEdtLbl - Editor texto
+            "N" => ComponentType.NumberInput,         // TDBRxELbl - Editor numérico
+            "D" => ComponentType.DateInput,           // TDBRxDLbl - Editor data
+            "S" => ComponentType.Checkbox,            // TDBChkLbl - Checkbox
+            "C" => ComponentType.ComboBox,            // TDBCmbLbl - ComboBox
+            "T" or "IT" => ComponentType.LookupCombo, // TDBLcbLbl - Lookup combo
+            "M" or "BM" => ComponentType.TextArea,    // TDBMemLbl - Memo/TextArea
+
+            // Tipos estendidos (E = Editor + sufixo)
+            "ES" => ComponentType.Checkbox,           // TChkLbl - Editor Sim/Não (Checkbox)
+            "EC" => ComponentType.ComboBox,           // TCmbLbl - Editor Combo (ComboBox fixo)
+            "EN" or "LN" => ComponentType.NumberInput, // Editor Numérico estendido
+            "ED" => ComponentType.DateInput,          // Editor Data estendido
+            "EA" => ComponentType.TextInput,          // TFilLbl - Editor Arquivo (texto por ora)
+            "EE" or "LE" => ComponentType.TextInput,  // Editor Especial (texto por ora)
+            "EI" => ComponentType.TextInput,          // Editor Inteiro (texto por ora)
+            "ET" => ComponentType.TextInput,          // Editor Texto estendido
+
+            // Componentes visuais
+            "BVL" => ComponentType.Bevel,             // TsgBvl - Agrupador visual
+            "BTN" => ComponentType.Button,            // TsgBtn - Botão
+            "LBL" => ComponentType.Label,             // TsgLbl - Label
+            "DBG" => ComponentType.DataGrid,          // TsgDBG - Grid
+
+            _ => ComponentType.TextInput              // Fallback para input texto
         };
     }
 }
