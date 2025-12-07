@@ -102,7 +102,8 @@ public class FormMetadata
             }
 
             group.Children = group.Children
-                .OrderBy(f => f.TopoCamp)
+                .OrderBy(f => f.OrdeCamp)
+                .ThenBy(f => f.TopoCamp)
                 .ThenBy(f => f.EsquCamp)
                 .ToList();
 
@@ -115,7 +116,8 @@ public class FormMetadata
 
         var orphanFields = inputFields
             .Where(f => !assignedFields.Contains(f.CodiCamp))
-            .OrderBy(f => f.TopoCamp)
+            .OrderBy(f => f.OrdeCamp)
+            .ThenBy(f => f.TopoCamp)
             .ThenBy(f => f.EsquCamp)
             .ToList();
 
@@ -136,7 +138,8 @@ public class FormMetadata
     /// </summary>
     public IEnumerable<FieldMetadata> Bevels =>
         Fields.Where(f => f.GetComponentType() == ComponentType.Bevel)
-              .OrderBy(f => f.TopoCamp)
+              .OrderBy(f => f.OrdeCamp)
+              .ThenBy(f => f.TopoCamp)
               .ThenBy(f => f.EsquCamp);
 
     /// <summary>
@@ -144,7 +147,8 @@ public class FormMetadata
     /// </summary>
     public IEnumerable<FieldMetadata> InputFields =>
         Fields.Where(f => f.GetComponentType() != ComponentType.Bevel)
-              .OrderBy(f => f.TopoCamp)
+              .OrderBy(f => f.OrdeCamp)
+              .ThenBy(f => f.TopoCamp)
               .ThenBy(f => f.EsquCamp);
 
     /// <summary>
@@ -155,7 +159,8 @@ public class FormMetadata
     {
         var bevels = Fields
             .Where(f => f.GetComponentType() == ComponentType.Bevel)
-            .OrderBy(f => f.TopoCamp)
+            .OrderBy(f => f.OrdeCamp)
+            .ThenBy(f => f.TopoCamp)
             .ThenBy(f => f.EsquCamp)
             .ToList();
 
@@ -183,9 +188,10 @@ public class FormMetadata
                 }
             }
 
-            // Ordena campos dentro do bevel por posição
+            // Ordena campos dentro do bevel por ORDECAMP (sequência de tabulação)
             group.Children = group.Children
-                .OrderBy(f => f.TopoCamp)
+                .OrderBy(f => f.OrdeCamp)
+                .ThenBy(f => f.TopoCamp)
                 .ThenBy(f => f.EsquCamp)
                 .ToList();
 
@@ -199,7 +205,8 @@ public class FormMetadata
         // Campos órfãos (fora de qualquer bevel)
         var orphanFields = inputFields
             .Where(f => !assignedFields.Contains(f.CodiCamp))
-            .OrderBy(f => f.TopoCamp)
+            .OrderBy(f => f.OrdeCamp)
+            .ThenBy(f => f.TopoCamp)
             .ThenBy(f => f.EsquCamp)
             .ToList();
 

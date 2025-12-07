@@ -11,15 +11,18 @@ public class FormController : Controller
 {
     private readonly IMetadataService _metadataService;
     private readonly ILookupService _lookupService;
+    private readonly IConsultaService _consultaService;
     private readonly ILogger<FormController> _logger;
 
     public FormController(
         IMetadataService metadataService,
         ILookupService lookupService,
+        IConsultaService consultaService,
         ILogger<FormController> logger)
     {
         _metadataService = metadataService;
         _lookupService = lookupService;
+        _consultaService = consultaService;
         _logger = logger;
     }
 
@@ -61,7 +64,19 @@ public class FormController : Controller
             // Popular LookupOptions para campos T/IT com SQL_CAMP
             await PopulateLookupOptionsAsync(formMetadata.Fields);
 
-            return View(formMetadata);
+            // Carrega metadados da tabela e consultas
+            var tableMetadata = await _consultaService.GetTableMetadataAsync(id);
+            var consultas = await _consultaService.GetConsultasByTableAsync(id);
+
+            // Monta o ViewModel
+            var viewModel = new FormRenderViewModel
+            {
+                Form = formMetadata,
+                Table = tableMetadata,
+                Consultas = consultas
+            };
+
+            return View(viewModel);
         }
         catch (Exception ex)
         {
@@ -71,12 +86,13 @@ public class FormController : Controller
     }
 
     /// <summary>
-    /// Popula as opções de lookup para campos T/IT que têm SQL_CAMP definido.
+    /// Popula as opções de lookup para campos L/T/IT/IL que têm SQL_CAMP definido.
     /// </summary>
     private async Task PopulateLookupOptionsAsync(List<FieldMetadata> fields)
     {
+        var lookupTypes = new[] { "L", "T", "IT", "IL" };
         var lookupFields = fields.Where(f =>
-            (f.CompCamp?.ToUpper() == "T" || f.CompCamp?.ToUpper() == "IT") &&
+            lookupTypes.Contains(f.CompCamp?.ToUpper()) &&
             !string.IsNullOrEmpty(f.SqlCamp));
 
         foreach (var field in lookupFields)
@@ -113,4 +129,113 @@ public class FormController : Controller
             return StatusCode(500, ex.Message);
         }
     }
+
+    #region API Endpoints para Consulta/CRUD
+
+    /// <summary>
+    /// Retorna as consultas disponíveis para uma tabela.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetConsultas(int tableId)
+    {
+        try
+        {
+            var consultas = await _consultaService.GetConsultasByTableAsync(tableId);
+            return Json(consultas.Select(c => new
+            {
+                c.CodiCons,
+                c.NomeCons,
+                c.BuscCons,
+                Columns = c.GetColumns()
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter consultas da tabela {TableId}", tableId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Executa uma consulta com filtros e paginação.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ExecuteConsulta([FromBody] GridFilterRequest request)
+    {
+        try
+        {
+            var result = await _consultaService.ExecuteConsultaAsync(request);
+            return Json(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar consulta {ConsultaId}", request.ConsultaId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém um registro pelo ID.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetRecord(int tableId, int recordId)
+    {
+        try
+        {
+            var record = await _consultaService.GetRecordByIdAsync(tableId, recordId);
+            if (record == null)
+                return NotFound(new { error = "Registro não encontrado" });
+
+            return Json(record);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter registro {RecordId} da tabela {TableId}", recordId, tableId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Salva (insere ou atualiza) um registro.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> SaveRecord([FromBody] SaveRecordRequest request)
+    {
+        try
+        {
+            var result = await _consultaService.SaveRecordAsync(request);
+            if (result.Success)
+                return Json(result);
+            else
+                return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao salvar registro na tabela {TableId}", request.TableId);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Exclui um registro.
+    /// </summary>
+    [HttpDelete]
+    public async Task<IActionResult> DeleteRecord(int tableId, int recordId)
+    {
+        try
+        {
+            var result = await _consultaService.DeleteRecordAsync(tableId, recordId);
+            if (result.Success)
+                return Json(result);
+            else
+                return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao excluir registro {RecordId} da tabela {TableId}", recordId, tableId);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    #endregion
 }

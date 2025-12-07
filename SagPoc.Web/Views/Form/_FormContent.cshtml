@@ -1,0 +1,57 @@
+@model SagPoc.Web.Models.FormMetadata
+@using SagPoc.Web.Models
+
+<form id="dynamicForm" class="needs-validation" novalidate>
+    <input type="hidden" id="editingRecordId" name="editingRecordId" value="" />
+
+    @{
+        var bevelGroups = Model.GetBevelGroups();
+    }
+
+    @foreach (var group in bevelGroups)
+    {
+        if (group.HasBevel)
+        {
+            <fieldset class="bevel-group mb-3">
+                @* Usa HasBevelCaption (LbcxCamp != 0) para determinar se mostra o label *@
+                @if (group.Bevel!.HasBevelCaption && !string.IsNullOrEmpty(group.Bevel.LabeCamp))
+                {
+                    <legend>@group.Bevel.LabeCamp</legend>
+                }
+                <div class="bevel-content">
+                    @foreach (var field in group.Children)
+                    {
+                        @await Html.PartialAsync("_FieldRendererV2", field)
+                    }
+                </div>
+            </fieldset>
+        }
+        else
+        {
+            <div class="orphan-fields mb-3">
+                @foreach (var field in group.Children)
+                {
+                    @await Html.PartialAsync("_FieldRendererV2", field)
+                }
+            </div>
+        }
+    }
+
+    <hr class="my-4" />
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Salvar
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="btnCancelar">
+            <i class="bi bi-x-lg"></i> Cancelar
+        </button>
+    </div>
+</form>
+
+<script>
+    document.getElementById('btnCancelar')?.addEventListener('click', function() {
+        // Volta para a tab Consulta
+        document.getElementById('tab-consulta-tab')?.click();
+    });
+</script>

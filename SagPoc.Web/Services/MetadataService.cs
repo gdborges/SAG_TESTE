@@ -93,10 +93,12 @@ public class MetadataService : IMetadataService
                 ISNULL(OBRICAMP, 0) as ObriCamp,
                 ISNULL(DESACAMP, 0) as DesaCamp,
                 ISNULL(INICCAMP, 0) as InicCamp,
+                ISNULL(LBCXCAMP, 0) as LbcxCamp,
                 ISNULL(MASCCAMP, '') as MascCamp,
                 MINICAMP as MiniCamp,
                 MAXICAMP as MaxiCamp,
                 ISNULL(DECICAMP, 0) as DeciCamp,
+                PADRCAMP as PadrCamp,
                 CAST(SQL_CAMP as NVARCHAR(MAX)) as SqlCamp,
                 CAST(VARECAMP as NVARCHAR(MAX)) as VareCamp,
                 CFONCAMP as CfonCamp,
@@ -113,12 +115,12 @@ public class MetadataService : IMetadataService
         )
         SELECT CodiCamp, CodiTabe, NomeCamp, LabeCamp, HintCamp, CompCamp,
                TopoCamp, EsquCamp, TamaCamp, AltuCamp, GuiaCamp, OrdeCamp,
-               ObriCamp, DesaCamp, InicCamp, MascCamp, MiniCamp, MaxiCamp,
-               DeciCamp, SqlCamp, VareCamp, CfonCamp, CtamCamp, CcorCamp,
+               ObriCamp, DesaCamp, InicCamp, LbcxCamp, MascCamp, MiniCamp, MaxiCamp,
+               DeciCamp, PadrCamp, SqlCamp, VareCamp, CfonCamp, CtamCamp, CcorCamp,
                LfonCamp, LtamCamp, LcorCamp, ExprCamp, EperCamp
         FROM CamposUnicos
         WHERE RowNum = 1
-        ORDER BY TopoCamp, EsquCamp, OrdeCamp";
+        ORDER BY OrdeCamp, TopoCamp, EsquCamp";
 
     private string GetSqliteFieldsQuery() => @"
         SELECT
@@ -137,10 +139,12 @@ public class MetadataService : IMetadataService
             COALESCE(ObriCamp, 0) as ObriCamp,
             COALESCE(DesaCamp, 0) as DesaCamp,
             COALESCE(InicCamp, 0) as InicCamp,
+            COALESCE(LbcxCamp, 0) as LbcxCamp,
             COALESCE(MascCamp, '') as MascCamp,
             MiniCamp,
             MaxiCamp,
             COALESCE(DeciCamp, 0) as DeciCamp,
+            PadrCamp,
             SqlCamp,
             VareCamp,
             CfonCamp,
@@ -153,7 +157,7 @@ public class MetadataService : IMetadataService
             EperCamp
         FROM SistCamp
         WHERE CodiTabe = @CodiTabe
-        ORDER BY TopoCamp, EsquCamp, OrdeCamp";
+        ORDER BY OrdeCamp, TopoCamp, EsquCamp";
 
     /// <inheritdoc/>
     public async Task<Dictionary<int, string>> GetAvailableTablesAsync()

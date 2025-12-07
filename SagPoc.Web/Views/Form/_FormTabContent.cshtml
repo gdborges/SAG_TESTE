@@ -1,0 +1,31 @@
+@model SagPoc.Web.Models.TabGroup
+@using SagPoc.Web.Models
+
+@foreach (var group in Model.BevelGroups)
+{
+    if (group.HasBevel)
+    {
+        <fieldset class="bevel-group mb-3">
+            @* Usa HasBevelCaption (LbcxCamp != 0) para determinar se mostra o label *@
+            @if (group.Bevel!.HasBevelCaption && !string.IsNullOrEmpty(group.Bevel.LabeCamp))
+            {
+                <legend>@group.Bevel.LabeCamp</legend>
+            }
+            <div class="bevel-content">
+                @foreach (var field in group.Children)
+                {
+                    @await Html.PartialAsync("_FieldRendererV2", field)
+                }
+            </div>
+        </fieldset>
+    }
+    else
+    {
+        <div class="orphan-fields mb-3">
+            @foreach (var field in group.Children)
+            {
+                @await Html.PartialAsync("_FieldRendererV2", field)
+            }
+        </div>
+    }
+}

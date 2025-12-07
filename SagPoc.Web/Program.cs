@@ -11,6 +11,9 @@ builder.Services.AddScoped<IMetadataService, MetadataService>();
 // Register LookupService for T/IT field combos
 builder.Services.AddScoped<ILookupService, LookupService>();
 
+// Register ConsultaService for grid queries and CRUD
+builder.Services.AddScoped<IConsultaService, ConsultaService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

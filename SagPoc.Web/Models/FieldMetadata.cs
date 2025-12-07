@@ -30,12 +30,14 @@ public class FieldMetadata
     public int ObriCamp { get; set; }      // Campo obrigatório (1=sim)
     public int DesaCamp { get; set; }      // Campo desabilitado (1=sim)
     public int InicCamp { get; set; }      // Inicialmente desabilitado
+    public int LbcxCamp { get; set; }      // Label Box - Mostra caption em Bevel (1=sim)
 
     // Formatação
     public string MascCamp { get; set; } = string.Empty;  // Máscara de entrada
     public double? MiniCamp { get; set; }  // Valor mínimo
     public double? MaxiCamp { get; set; }  // Valor máximo
     public int DeciCamp { get; set; }      // Casas decimais
+    public double? PadrCamp { get; set; }  // Valor padrão (usado em checkboxes)
 
     // Lookup/Combo
     public string? SqlCamp { get; set; }   // Query para lookup
@@ -78,6 +80,12 @@ public class FieldMetadata
     public bool IsInformada => CompCamp?.ToUpper().StartsWith("I") == true;
 
     /// <summary>
+    /// Indica se o Bevel deve exibir caption (LbcxCamp = 1).
+    /// No Delphi, quando LbcxCamp != 0, o Bevel mostra o LabeCamp como título.
+    /// </summary>
+    public bool HasBevelCaption => LbcxCamp != 0;
+
+    /// <summary>
     /// Retorna o tipo HTML equivalente baseado no CompCamp
     /// </summary>
     public string GetHtmlInputType()
@@ -117,7 +125,7 @@ public class FieldMetadata
             "D" => ComponentType.DateInput,           // TDBRxDLbl - Editor data
             "S" => ComponentType.Checkbox,            // TDBChkLbl - Checkbox
             "C" => ComponentType.ComboBox,            // TDBCmbLbl - ComboBox
-            "T" or "IT" => ComponentType.LookupCombo, // TDBLcbLbl - Lookup combo
+            "L" or "T" or "IT" or "IL" => ComponentType.LookupCombo, // TDBLcbLbl - Lookup combo
             "M" or "BM" => ComponentType.TextArea,    // TDBMemLbl - Memo/TextArea
 
             // Tipos estendidos (E = Editor + sufixo)
@@ -136,6 +144,9 @@ public class FieldMetadata
             "LBL" => ComponentType.Label,             // TsgLbl - Label
             "DBG" => ComponentType.DataGrid,          // TsgDBG - Grid
 
+            // Componentes especiais (não renderizados)
+            "DEPOSHOW" or "ATUAGRID" => ComponentType.Hidden,  // Componentes internos
+
             _ => ComponentType.TextInput              // Fallback para input texto
         };
     }
@@ -151,12 +162,13 @@ public enum ComponentType
     DateInput,      // D - TDBRxDLbl
     Checkbox,       // S - TDBChkLbl
     ComboBox,       // C - TDBCmbLbl
-    LookupCombo,    // T/IT - TDBLcbLbl
+    LookupCombo,    // L/T/IT/IL - TDBLcbLbl
     TextArea,       // M/BM - TDBMemLbl
     Bevel,          // BVL - TsgBvl (agrupador visual)
     Button,         // BTN - TsgBtn
     Label,          // LBL - TsgLbl
-    DataGrid        // DBG - TsgDBG
+    DataGrid,       // DBG - TsgDBG
+    Hidden          // DEPOSHOW, ATUAGRID - componentes internos não renderizados
 }
 
 /// <summary>
