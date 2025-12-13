@@ -18,6 +18,23 @@ publish-linux/
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Logs
 *.log
+
+# Temporary files
+~$*.docx
+*.tmp
+*.bak
+
+# Archives
+docs.zip
+
+# AI agent configs (local)
+.agent/
+.claude/
+.gemini/
+
+# Malformed filenames
+C:Users*
