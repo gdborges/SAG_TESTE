@@ -90,6 +90,7 @@ public class MetadataService : IMetadataService
             PADRCAMP as PadrCamp,
             CAST(SQL_CAMP as NVARCHAR(MAX)) as SqlCamp,
             CAST(VARECAMP as NVARCHAR(MAX)) as VareCamp,
+            CAST(VAGRCAMP as NVARCHAR(MAX)) as VaGrCamp,
             CFONCAMP as CfonCamp,
             CTAMCAMP as CtamCamp,
             CCORCAMP as CcorCamp,

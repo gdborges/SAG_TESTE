@@ -41,7 +41,8 @@ public class FieldMetadata
 
     // Lookup/Combo
     public string? SqlCamp { get; set; }   // Query para lookup
-    public string? VareCamp { get; set; }  // Valores do combo (texto separado)
+    public string? VareCamp { get; set; }  // Valores do combo (texto exibido, separado por |)
+    public string? VaGrCamp { get; set; }  // Valores de gravação do combo (separado por |, usado como value)
 
     // Visual
     public string? CfonCamp { get; set; }  // Fonte do campo
@@ -86,6 +87,13 @@ public class FieldMetadata
     public bool HasBevelCaption => LbcxCamp != 0;
 
     /// <summary>
+    /// Indica se o campo pertence a um movimento (registro filho/detalhe).
+    /// No Delphi (PlusUni.pas linha 691): GuiaCamp >= 10 significa movimento.
+    /// Movimentos são renderizados em abas separadas com grid próprio.
+    /// </summary>
+    public bool IsMovementField => GuiaCamp >= 10;
+
+    /// <summary>
     /// Retorna o tipo HTML equivalente baseado no CompCamp
     /// </summary>
     public string GetHtmlInputType()
@@ -113,62 +121,233 @@ public class FieldMetadata
     }
 
     /// <summary>
-    /// Retorna o tipo de componente para renderização
+    /// Retorna o tipo de componente para renderização.
+    /// Mapeamento completo baseado na procedure MontCampPers (PlusUni.pas).
     /// </summary>
     public ComponentType GetComponentType()
     {
-        return CompCamp?.ToUpper() switch
+        var comp = CompCamp?.ToUpper()?.Trim() ?? "";
+
+        // Primeiro verifica campos especiais pelo nome
+        var nome = NomeCamp?.ToUpper()?.Trim() ?? "";
+        if (nome == "DEPOSHOW" || nome == "ATUAGRID")
+            return ComponentType.Hidden;
+
+        return comp switch
         {
-            // Tipos básicos
+            // === Tipos Básicos (DB-Aware) ===
             "E" => ComponentType.TextInput,           // TDBEdtLbl - Editor texto
             "N" => ComponentType.NumberInput,         // TDBRxELbl - Editor numérico
             "D" => ComponentType.DateInput,           // TDBRxDLbl - Editor data
             "S" => ComponentType.Checkbox,            // TDBChkLbl - Checkbox
-            "C" => ComponentType.ComboBox,            // TDBCmbLbl - ComboBox
-            "L" or "T" or "IT" or "IL" => ComponentType.LookupCombo, // TDBLcbLbl - Lookup combo
-            "M" or "BM" => ComponentType.TextArea,    // TDBMemLbl - Memo/TextArea
+            "C" => ComponentType.ComboBox,            // TDBCmbLbl - ComboBox fixo
+            "T" => ComponentType.LookupCombo,         // TDBLcbLbl - Lookup com SQL (persiste)
+            "IT" => ComponentType.LookupComboInfo,    // TLcbLbl - Lookup informativo (não persiste)
+            "L" => ComponentType.LookupModal,         // TDBLookNume - Lookup modal (persiste)
+            "IL" => ComponentType.LookupModalInfo,    // TDBLookNume - Lookup modal informativo
+            "M" => ComponentType.TextArea,            // TDBMemLbl - Memo simples
+            "BM" => ComponentType.TextAreaBlob,       // TDBMemLbl - Memo BLOB
+            "A" => ComponentType.FileInput,           // TDBFilLbl - Upload de arquivo
 
-            // Tipos estendidos (E = Editor + sufixo)
-            "ES" => ComponentType.Checkbox,           // TChkLbl - Editor Sim/Não (Checkbox)
-            "EC" => ComponentType.ComboBox,           // TCmbLbl - Editor Combo (ComboBox fixo)
-            "EN" or "LN" => ComponentType.NumberInput, // Editor Numérico estendido
-            "ED" => ComponentType.DateInput,          // Editor Data estendido
-            "EA" => ComponentType.TextInput,          // TFilLbl - Editor Arquivo (texto por ora)
-            "EE" or "LE" => ComponentType.TextInput,  // Editor Especial (texto por ora)
-            "EI" => ComponentType.TextInput,          // Editor Inteiro (texto por ora)
-            "ET" => ComponentType.TextInput,          // Editor Texto estendido
+            // === Tipos Calculados (não-DB) ===
+            "EE" => ComponentType.CalcTextInput,      // TEdtLbl - Editor texto calculado editável
+            "LE" => ComponentType.CalcTextReadonly,   // TEdtLbl - Editor texto calculado readonly
+            "EN" => ComponentType.CalcNumberInput,    // TRxEdtLbl - Número calculado editável
+            "LN" => ComponentType.CalcNumberReadonly, // TRxEdtLbl - Número calculado readonly
+            "ED" => ComponentType.CalcDateInput,      // TRxDatLbl - Data calculada
+            "EC" => ComponentType.CalcComboBox,       // TCmbLbl - Combo calculado
+            "ES" => ComponentType.CalcCheckbox,       // TChkLbl - Checkbox calculado
+            "ET" => ComponentType.CalcMemo,           // TMemLbl - Memo calculado
+            "EA" => ComponentType.CalcFileInput,      // TFilLbl - Arquivo calculado
+            "EI" => ComponentType.DirectoryInput,     // TDirLbl - Seletor de diretório
 
-            // Componentes visuais
+            // === Tipos Info (readonly, dados de outra tabela via VaGrCamp) ===
+            "IE" => ComponentType.InfoTextInput,      // TDBEdtLbl - Info texto readonly
+            "IN" => ComponentType.InfoNumberInput,    // TDBRxELbl - Info número readonly
+            "IM" => ComponentType.InfoTextArea,       // TDBMemLbl - Info memo readonly
+            "IR" => ComponentType.InfoRichEdit,       // TDBRchLbl - Info RichEdit readonly
+
+            // === Tipos RichEdit ===
+            "RM" => ComponentType.RichEdit,           // TDBRchLbl - RichEdit DB-Aware
+            "RB" => ComponentType.RichEditBlob,       // TDBRchLbl - RichEdit BLOB
+
+            // === Tipos Advanced Memo (com syntax highlighting) ===
+            "BS" => ComponentType.AdvMemoSQL,         // TDBAdvMemLbl - Memo SQL
+            "BE" => ComponentType.AdvMemoGeneral,     // TDBAdvMemLbl - Memo geral (PLSAG)
+            "BI" => ComponentType.AdvMemoINI,         // TDBAdvMemLbl - Memo INI
+            "BP" => ComponentType.AdvMemoPascal,      // TDBAdvMemLbl - Memo Pascal
+            "BX" => ComponentType.AdvMemoXML,         // TDBAdvMemLbl - Memo XML
+            "RS" => ComponentType.AdvRichSQL,         // TDBAdvMemLbl - RichEdit SQL
+            "RE" => ComponentType.AdvRichGeneral,     // TDBAdvMemLbl - RichEdit geral
+            "RI" => ComponentType.AdvRichINI,         // TDBAdvMemLbl - RichEdit INI
+            "RP" => ComponentType.AdvRichPascal,      // TDBAdvMemLbl - RichEdit Pascal
+            "RX" => ComponentType.AdvRichXML,         // TDBAdvMemLbl - RichEdit XML
+
+            // === Tipos Visuais ===
             "BVL" => ComponentType.Bevel,             // TsgBvl - Agrupador visual
             "BTN" => ComponentType.Button,            // TsgBtn - Botão
-            "LBL" => ComponentType.Label,             // TsgLbl - Label
-            "DBG" => ComponentType.DataGrid,          // TsgDBG - Grid
+            "LBL" => ComponentType.Label,             // TsgLbl - Label estático
+            "DBG" => ComponentType.DataGrid,          // TsgDBG - Grid de dados
+            "GRA" => ComponentType.Chart,             // TFraGraf - Gráfico
+            "TIM" => ComponentType.Timer,             // TsgTim - Timer
+            "LC" => ComponentType.CheckList,          // TLstLbl - Lista de checkboxes
 
-            // Componentes especiais (não renderizados)
-            "DEPOSHOW" or "ATUAGRID" => ComponentType.Hidden,  // Componentes internos
+            // === Tipos de Imagem ===
+            "FE" => ComponentType.ImageEditable,      // TDBImgLbl - Imagem editável
+            "FI" => ComponentType.ImageReadonly,      // TDBImgLbl - Imagem somente leitura
+            "FF" => ComponentType.ImageFixed,         // TImgLbl - Imagem fixa
+
+            // === Campos especiais que devem ser ocultos ===
+            "DEPOSHOW" or "ATUAGRID" => ComponentType.Hidden,
 
             _ => ComponentType.TextInput              // Fallback para input texto
         };
     }
+
+    /// <summary>
+    /// Indica se o campo deve ser oculto (não renderizado visualmente).
+    /// Campos ocultos: DEPOSHOW, ATUAGRID, OrdeCamp=9999
+    /// </summary>
+    public bool IsHidden
+    {
+        get
+        {
+            // Campos especiais pelo nome
+            var nome = NomeCamp?.ToUpper()?.Trim() ?? "";
+            if (nome == "DEPOSHOW" || nome == "ATUAGRID")
+                return true;
+
+            // Campos com OrdeCamp = 9999 não recebem foco no Delphi
+            if (OrdeCamp == 9999)
+                return true;
+
+            // Verifica pelo tipo
+            return GetComponentType() == ComponentType.Hidden;
+        }
+    }
+
+    /// <summary>
+    /// Indica se o campo é somente leitura (tipos Info, Calc Readonly, etc.)
+    /// </summary>
+    public bool IsReadonly
+    {
+        get
+        {
+            var type = GetComponentType();
+            return type switch
+            {
+                // Tipos calculados readonly
+                ComponentType.CalcTextReadonly => true,
+                ComponentType.CalcNumberReadonly => true,
+                // Tipos info (dados de outra tabela)
+                ComponentType.InfoTextInput => true,
+                ComponentType.InfoNumberInput => true,
+                ComponentType.InfoTextArea => true,
+                ComponentType.InfoRichEdit => true,
+                // Tipos de imagem somente leitura
+                ComponentType.ImageReadonly => true,
+                ComponentType.ImageFixed => true,
+                _ => false
+            };
+        }
+    }
+
+    /// <summary>
+    /// Indica se o campo é um componente visual (não de entrada de dados).
+    /// Componentes visuais: Bevel, Button, Label, DataGrid, Chart, Timer, CheckList
+    /// </summary>
+    public bool IsVisualComponent
+    {
+        get
+        {
+            var type = GetComponentType();
+            return type switch
+            {
+                ComponentType.Bevel => true,
+                ComponentType.Button => true,
+                ComponentType.Label => true,
+                ComponentType.DataGrid => true,
+                ComponentType.Chart => true,
+                ComponentType.Timer => true,
+                ComponentType.CheckList => true,
+                ComponentType.ImageFixed => true,
+                _ => false
+            };
+        }
+    }
 }
 
 /// <summary>
-/// Tipos de componentes suportados
+/// Tipos de componentes suportados - Mapeamento completo do MontCampPers (Delphi)
 /// </summary>
 public enum ComponentType
 {
-    TextInput,      // E - TDBEdtLbl
-    NumberInput,    // N - TDBRxELbl
-    DateInput,      // D - TDBRxDLbl
-    Checkbox,       // S - TDBChkLbl
-    ComboBox,       // C - TDBCmbLbl
-    LookupCombo,    // L/T/IT/IL - TDBLcbLbl
-    TextArea,       // M/BM - TDBMemLbl
-    Bevel,          // BVL - TsgBvl (agrupador visual)
-    Button,         // BTN - TsgBtn
-    Label,          // LBL - TsgLbl
-    DataGrid,       // DBG - TsgDBG
-    Hidden          // DEPOSHOW, ATUAGRID - componentes internos não renderizados
+    // === Tipos Básicos (DB-Aware) ===
+    TextInput,          // E - TDBEdtLbl - Editor texto simples
+    NumberInput,        // N - TDBRxELbl - Editor numérico com decimais
+    DateInput,          // D - TDBRxDLbl - Editor de data
+    Checkbox,           // S - TDBChkLbl - Checkbox sim/não
+    ComboBox,           // C - TDBCmbLbl - ComboBox com valores fixos (VareCamp)
+    LookupCombo,        // T - TDBLcbLbl - Lookup com SQL (DB-Aware, persiste)
+    LookupComboInfo,    // IT - TLcbLbl - Lookup com SQL (não-DB, informativo)
+    LookupModal,        // L - TDBLookNume - Lookup modal numérico (DB-Aware)
+    LookupModalInfo,    // IL - TDBLookNume - Lookup modal informativo (não-DB)
+    TextArea,           // M - TDBMemLbl - Memo/textarea
+    TextAreaBlob,       // BM - TDBMemLbl - Memo armazenado em BLOB
+
+    // === Tipos Calculados (não-DB) ===
+    CalcTextInput,      // EE - TEdtLbl - Editor texto calculado editável
+    CalcTextReadonly,   // LE - TEdtLbl - Editor texto calculado readonly
+    CalcNumberInput,    // EN - TRxEdtLbl - Número calculado editável
+    CalcNumberReadonly, // LN - TRxEdtLbl - Número calculado readonly
+    CalcDateInput,      // ED - TRxDatLbl - Data calculada
+    CalcComboBox,       // EC - TCmbLbl - Combo calculado
+    CalcCheckbox,       // ES - TChkLbl - Checkbox calculado
+    CalcMemo,           // ET - TMemLbl - Memo calculado (não-DB)
+
+    // === Tipos de Arquivo ===
+    FileInput,          // A - TDBFilLbl - Upload de arquivo (DB-Aware)
+    CalcFileInput,      // EA - TFilLbl - Arquivo calculado
+    DirectoryInput,     // EI - TDirLbl - Seletor de diretório
+
+    // === Tipos Info (readonly, dados de outra tabela) ===
+    InfoTextInput,      // IE - TDBEdtLbl - Info texto (readonly, outra tabela)
+    InfoNumberInput,    // IN - TDBRxELbl - Info número (readonly, outra tabela)
+    InfoTextArea,       // IM - TDBMemLbl - Info memo (readonly, outra tabela)
+    InfoRichEdit,       // IR - TDBRchLbl - Info RichEdit (readonly, outra tabela)
+
+    // === Tipos RichEdit ===
+    RichEdit,           // RM - TDBRchLbl - RichEdit DB-Aware
+    RichEditBlob,       // RB - TDBRchLbl - RichEdit armazenado em BLOB
+
+    // === Tipos Advanced Memo (com syntax highlighting) ===
+    AdvMemoSQL,         // BS - TDBAdvMemLbl - Memo avançado SQL
+    AdvMemoGeneral,     // BE - TDBAdvMemLbl - Memo avançado geral
+    AdvMemoINI,         // BI - TDBAdvMemLbl - Memo avançado INI
+    AdvMemoPascal,      // BP - TDBAdvMemLbl - Memo avançado Pascal
+    AdvMemoXML,         // BX - TDBAdvMemLbl - Memo avançado XML
+    AdvRichSQL,         // RS - TDBAdvMemLbl - RichEdit avançado SQL
+    AdvRichGeneral,     // RE - TDBAdvMemLbl - RichEdit avançado geral
+    AdvRichINI,         // RI - TDBAdvMemLbl - RichEdit avançado INI
+    AdvRichPascal,      // RP - TDBAdvMemLbl - RichEdit avançado Pascal
+    AdvRichXML,         // RX - TDBAdvMemLbl - RichEdit avançado XML
+
+    // === Tipos Visuais ===
+    Bevel,              // BVL - TsgBvl - Agrupador visual (fieldset)
+    Button,             // BTN - TsgBtn - Botão
+    Label,              // LBL - TsgLbl - Label estático
+    DataGrid,           // DBG - TsgDBG - Grid de dados
+    Chart,              // GRA - TFraGraf - Gráfico
+    Timer,              // TIM - TsgTim - Timer (não visual)
+    CheckList,          // LC - TLstLbl - Lista de checkboxes
+
+    // === Tipos de Imagem ===
+    ImageEditable,      // FE - TDBImgLbl - Imagem editável (upload)
+    ImageReadonly,      // FI - TDBImgLbl - Imagem somente leitura
+    ImageFixed,         // FF - TImgLbl - Imagem fixa (do banco)
+
+    // === Tipos Ocultos ===
+    Hidden              // DEPOSHOW, ATUAGRID, campos especiais - não renderizados
 }
 
 /// <summary>
