@@ -207,9 +207,16 @@ public class ConsultaService : IConsultaService
             var offset = (request.Page - 1) * request.PageSize;
 
             // Aplica ordenação e paginação
+            // Quando há filtros, a query é envolvida em subquery e o ORDER BY original pode referenciar
+            // colunas internas que não são visíveis na query externa (só os aliases são visíveis)
+            var hasFilters = request.Filters.Any(f => !string.IsNullOrEmpty(f.Field) && !string.IsNullOrEmpty(f.Value));
+            var orderByClause = hasFilters && string.IsNullOrEmpty(request.SortField)
+                ? "(SELECT NULL)"  // Não pode usar ORDER BY extraído quando há subquery wrapper
+                : GetOrderByClause(request, consulta, hasFilters ? null : extractedOrderBy);
+
             var pagedSql = $@"
                 {filteredSql}
-                ORDER BY {GetOrderByClause(request, consulta, extractedOrderBy)}
+                ORDER BY {orderByClause}
                 OFFSET {offset} ROWS
                 FETCH NEXT {request.PageSize} ROWS ONLY";
 
@@ -317,7 +324,8 @@ public class ConsultaService : IConsultaService
     private string SanitizeFieldName(string fieldName)
     {
         // Remove caracteres inválidos para prevenir SQL injection
-        return Regex.Replace(fieldName, @"[^\w\s]", "");
+        // Preserva letras acentuadas (á, é, í, ó, ú, ã, õ, ç, etc.)
+        return Regex.Replace(fieldName, @"[^\p{L}\p{N}\s_]", "");
     }
 
     private string ApplyFiltersToSql(string baseSql, string filterClause)

@@ -1,47 +1,71 @@
-@model SagPoc.Web.Models.FieldMetadata
+@model object
 @using SagPoc.Web.Models
 
 @{
-    var componentType = Model.GetComponentType();
-    var fieldId = $"field_{Model.CodiCamp}";
-    var fieldName = Model.NomeCamp;
-    var label = Model.LabeCamp;  // Não usa fallback - se LabeCamp é vazio, não exibe label
-    var hasLabel = !string.IsNullOrEmpty(label);
-    var isRequired = Model.IsRequired;
-    var isDisabled = Model.IsDisabled;
-    var hint = Model.HintCamp;
+    // Suporta FieldRenderContext (novo) ou FieldMetadata (compatibilidade)
+    FieldMetadata field;
+    bool isSingleInRow = false;
 
-    // Calcular tamanho relativo baseado na largura do campo
-    // Delphi usa ~340px de largura total, vamos mapear para colunas Bootstrap
-    var width = Model.TamaCamp > 0 ? Model.TamaCamp : 150;
-    var colClass = width switch
+    if (Model is FieldRenderContext ctx)
     {
-        >= 300 => "col-12",        // Campo largo - linha inteira
-        >= 200 => "col-md-8",      // Campo médio-grande
-        >= 150 => "col-md-6",      // Campo médio
-        >= 100 => "col-md-4",      // Campo pequeno
-        _ => "col-md-3"            // Campo muito pequeno
-    };
-
-    // Checkboxes são menores
-    if (componentType == ComponentType.Checkbox)
-    {
-        colClass = "col-md-6 col-lg-4";
+        field = ctx.Field;
+        isSingleInRow = ctx.IsSingleInRow;
     }
+    else if (Model is FieldMetadata fm)
+    {
+        field = fm;
+        isSingleInRow = false; // fallback: nao aplica max-width
+    }
+    else
+    {
+        throw new InvalidOperationException("Model deve ser FieldRenderContext ou FieldMetadata");
+    }
+
+    // Campos ocultos não são renderizados
+    if (field.IsHidden)
+    {
+        return;
+    }
+
+    var componentType = field.GetComponentType();
+    var fieldId = $"field_{field.CodiCamp}";
+    var fieldName = field.NomeCamp;
+    var label = field.LabeCamp;
+    var hasLabel = !string.IsNullOrEmpty(label);
+    var isRequired = field.IsRequired;
+    var isDisabled = field.IsDisabled || field.IsReadonly;
+    var hint = field.HintCamp;
+
+    // Estilo baseado em TamaCamp
+    // - Campo único na linha: max-width para não esticar demais
+    // - Múltiplos campos: flex-basis para manter proporções originais
+    var wrapperStyle = "";
+    if (field.TamaCamp > 0)
+    {
+        if (isSingleInRow)
+        {
+            wrapperStyle = $"max-width: {field.TamaCamp}px;";
+        }
+        else
+        {
+            // Usa flex-basis para manter proporção, mas permite crescer/encolher
+            wrapperStyle = $"flex: 0 1 {field.TamaCamp}px; min-width: {Math.Min(field.TamaCamp, 120)}px;";
+        }
+    }
+
+    // Classe adicional para campos readonly
+    var readonlyClass = field.IsReadonly ? "field-readonly" : "";
 }
 
 @switch (componentType)
 {
-    case ComponentType.Label:
-        // LBL - Label estático
-        <div class="@colClass mb-2">
-            <span class="field-static-label" title="@hint">@label</span>
-        </div>
-        break;
+    // ============================================================
+    // TIPOS BÁSICOS (DB-Aware)
+    // ============================================================
 
     case ComponentType.TextInput:
         // E - Input de texto
-        <div class="@colClass mb-3">
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -60,13 +84,13 @@
                    placeholder="@hint"
                    @(isRequired ? "required" : "")
                    @(isDisabled ? "disabled" : "")
-                   data-mask="@Model.MascCamp" />
+                   data-mask="@field.MascCamp" />
         </div>
         break;
 
     case ComponentType.NumberInput:
-        // N - Input numérico
-        <div class="@colClass mb-3">
+        // N - Input numerico
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -83,9 +107,9 @@
                    name="@fieldName"
                    title="@hint"
                    placeholder="@hint"
-                   @(Model.MiniCamp.HasValue ? $"min=\"{Model.MiniCamp}\"" : "")
-                   @(Model.MaxiCamp.HasValue ? $"max=\"{Model.MaxiCamp}\"" : "")
-                   step="@(Model.DeciCamp > 0 ? $"0.{"".PadRight(Model.DeciCamp - 1, '0')}1" : "1")"
+                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
+                   step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
                    @(isRequired ? "required" : "")
                    @(isDisabled ? "disabled" : "") />
         </div>
@@ -93,7 +117,7 @@
 
     case ComponentType.DateInput:
         // D - Input de data
-        <div class="@colClass mb-3">
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -116,11 +140,9 @@
 
     case ComponentType.Checkbox:
         // S - Checkbox
-        // Hidden field garante que valor 0 é enviado quando checkbox não marcado
-        // PadrCamp define se o checkbox começa marcado (1) ou desmarcado (0)
-        var isCheckedByDefault = Model.PadrCamp.HasValue && Model.PadrCamp.Value == 1;
-        <div class="@colClass mb-3">
-            <div class="form-check pt-4">
+        var isCheckedByDefault = field.PadrCamp.HasValue && field.PadrCamp.Value == 1;
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
+            <div class="form-check">
                 <input type="hidden" name="@fieldName" value="0" />
                 <input type="checkbox"
                        class="form-check-input"
@@ -142,10 +164,7 @@
 
     case ComponentType.ComboBox:
         // C - ComboBox com valores fixos (VareCamp)
-        // Suporta formato "codigo=descricao" ou apenas "descricao"
-        // Quando não há código explícito, usa o índice (0, 1, 2, ...) como valor
-        // porque no Delphi o ItemIndex é salvo quando a coluna é int
-        <div class="@colClass mb-3">
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -163,15 +182,13 @@
                     @(isRequired ? "required" : "")
                     @(isDisabled ? "disabled" : "")>
                 <option value="">Selecione...</option>
-                @if (!string.IsNullOrEmpty(Model.VareCamp))
+                @if (!string.IsNullOrEmpty(field.VareCamp))
                 {
-                    var options = Model.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    var options = field.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                     var index = 0;
                     foreach (var opt in options)
                     {
                         var trimmed = opt.Trim();
-                        // Formato "codigo=descricao" - usa o código explícito
-                        // Caso contrário, usa o índice como valor (padrão Delphi para colunas int)
                         var parts = trimmed.Split('=', 2);
                         var optValue = parts.Length > 1 ? parts[0].Trim() : index.ToString();
                         var optDisplay = parts.Length > 1 ? parts[1].Trim() : trimmed;
@@ -184,10 +201,10 @@
         break;
 
     case ComponentType.LookupCombo:
+    case ComponentType.LookupComboInfo:
         // T, IT - LookupCombo com SQL_CAMP
-        // T = ligado ao banco, IT = informativo (sem persistência)
-        // Na POC não há persistência, então ambos são tratados igualmente
-        <div class="@colClass mb-3">
+        var isInfoLookup = componentType == ComponentType.LookupComboInfo;
+        <div class="field-wrapper @readonlyClass @(isInfoLookup ? "field-info" : "")" style="@wrapperStyle">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -198,25 +215,23 @@
                     }
                 </label>
             }
-            <select class="form-select"
+            <select class="form-select @(isInfoLookup ? "form-select-info" : "")"
                     id="@fieldId"
                     name="@fieldName"
                     title="@hint"
                     @(isRequired ? "required" : "")
-                    @(isDisabled ? "disabled" : "")>
+                    @(isDisabled || isInfoLookup ? "disabled" : "")>
                 <option value="">Selecione...</option>
-                @if (Model.LookupOptions != null && Model.LookupOptions.Count > 0)
+                @if (field.LookupOptions != null && field.LookupOptions.Count > 0)
                 {
-                    foreach (var opt in Model.LookupOptions)
+                    foreach (var opt in field.LookupOptions)
                     {
                         <option value="@opt.Key">@opt.Value</option>
                     }
                 }
-                else if (!string.IsNullOrEmpty(Model.VareCamp))
+                else if (!string.IsNullOrEmpty(field.VareCamp))
                 {
-                    // Fallback para VareCamp se LookupOptions não foi carregado
-                    // Usa índice como valor quando não há código explícito
-                    var fallbackOptions = Model.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    var fallbackOptions = field.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                     var fbIndex = 0;
                     foreach (var opt in fallbackOptions)
                     {
@@ -232,10 +247,45 @@
         </div>
         break;
 
+    case ComponentType.LookupModal:
+    case ComponentType.LookupModalInfo:
+        // L, IL - Lookup modal (botão de pesquisa ao lado)
+        var isInfoModal = componentType == ComponentType.LookupModalInfo;
+        <div class="field-wrapper @readonlyClass @(isInfoModal ? "field-info" : "")" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
+            <div class="input-group">
+                <input type="text"
+                       class="form-control @(isInfoModal ? "form-control-info" : "")"
+                       id="@fieldId"
+                       name="@fieldName"
+                       title="@hint"
+                       placeholder="@hint"
+                       @(isRequired ? "required" : "")
+                       @(isDisabled || isInfoModal ? "readonly" : "") />
+                <button type="button"
+                        class="btn btn-outline-secondary btn-lookup"
+                        title="Pesquisar"
+                        @(isDisabled ? "disabled" : "")>
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </div>
+        break;
+
     case ComponentType.TextArea:
+    case ComponentType.TextAreaBlob:
         // M, BM - TextArea/Memo
-        var rows = Model.AltuCamp > 50 ? Model.AltuCamp / 25 : 3;
-        <div class="col-12 mb-3">
+        var textareaRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 3;
+        <div class="field-wrapper field-wrapper-full mb-3 @readonlyClass">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -251,15 +301,448 @@
                       name="@fieldName"
                       title="@hint"
                       placeholder="@hint"
-                      rows="@rows"
+                      rows="@textareaRows"
                       @(isRequired ? "required" : "")
                       @(isDisabled ? "disabled" : "")></textarea>
         </div>
         break;
 
+    case ComponentType.FileInput:
+        // A - Upload de arquivo
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
+            <input type="file"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   @(isRequired ? "required" : "")
+                   @(isDisabled ? "disabled" : "") />
+        </div>
+        break;
+
+    // ============================================================
+    // TIPOS CALCULADOS (não-DB)
+    // ============================================================
+
+    case ComponentType.CalcTextInput:
+        // EE - Editor texto calculado editável
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <input type="text"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   placeholder="@hint"
+                   @(isDisabled ? "disabled" : "")
+                   data-calc="true" />
+        </div>
+        break;
+
+    case ComponentType.CalcTextReadonly:
+        // LE - Editor texto calculado readonly
+        <div class="field-wrapper field-calc field-readonly" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <input type="text"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   readonly
+                   data-calc="true" />
+        </div>
+        break;
+
+    case ComponentType.CalcNumberInput:
+        // EN - Número calculado editável
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <input type="number"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   placeholder="@hint"
+                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
+                   step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
+                   @(isDisabled ? "disabled" : "")
+                   data-calc="true" />
+        </div>
+        break;
+
+    case ComponentType.CalcNumberReadonly:
+        // LN - Número calculado readonly
+        <div class="field-wrapper field-calc field-readonly" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <input type="number"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
+                   readonly
+                   data-calc="true" />
+        </div>
+        break;
+
+    case ComponentType.CalcDateInput:
+        // ED - Data calculada
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <input type="date"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   @(isDisabled ? "disabled" : "")
+                   data-calc="true" />
+        </div>
+        break;
+
+    case ComponentType.CalcComboBox:
+        // EC - Combo calculado
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <select class="form-select form-select-calc"
+                    id="@fieldId"
+                    name="@fieldName"
+                    title="@hint"
+                    @(isDisabled ? "disabled" : "")
+                    data-calc="true">
+                <option value="">Selecione...</option>
+                @if (!string.IsNullOrEmpty(field.VareCamp))
+                {
+                    var calcOptions = field.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    var calcIndex = 0;
+                    foreach (var opt in calcOptions)
+                    {
+                        var trimmed = opt.Trim();
+                        var parts = trimmed.Split('=', 2);
+                        var optValue = parts.Length > 1 ? parts[0].Trim() : calcIndex.ToString();
+                        var optDisplay = parts.Length > 1 ? parts[1].Trim() : trimmed;
+                        <option value="@optValue">@optDisplay</option>
+                        calcIndex++;
+                    }
+                }
+            </select>
+        </div>
+        break;
+
+    case ComponentType.CalcCheckbox:
+        // ES - Checkbox calculado
+        var calcChecked = field.PadrCamp.HasValue && field.PadrCamp.Value == 1;
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            <div class="form-check">
+                <input type="hidden" name="@fieldName" value="0" />
+                <input type="checkbox"
+                       class="form-check-input form-check-calc"
+                       id="@fieldId"
+                       name="@fieldName"
+                       value="1"
+                       title="@hint"
+                       @(calcChecked ? "checked" : "")
+                       @(isDisabled ? "disabled" : "")
+                       data-calc="true" />
+                @if (hasLabel)
+                {
+                    <label for="@fieldId" class="form-check-label">
+                        @label
+                    </label>
+                }
+            </div>
+        </div>
+        break;
+
+    case ComponentType.CalcMemo:
+        // ET - Memo calculado
+        var calcMemoRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 3;
+        <div class="field-wrapper field-wrapper-full field-calc mb-3">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <textarea class="form-control form-control-calc"
+                      id="@fieldId"
+                      name="@fieldName"
+                      title="@hint"
+                      placeholder="@hint"
+                      rows="@calcMemoRows"
+                      @(isDisabled ? "disabled" : "")
+                      data-calc="true"></textarea>
+        </div>
+        break;
+
+    case ComponentType.CalcFileInput:
+        // EA - Arquivo calculado
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <div class="input-group">
+                <input type="text"
+                       class="form-control form-control-calc"
+                       id="@fieldId"
+                       name="@fieldName"
+                       title="@hint"
+                       placeholder="@hint"
+                       @(isDisabled ? "disabled" : "")
+                       data-calc="true" />
+                <button type="button"
+                        class="btn btn-outline-secondary btn-file"
+                        title="Selecionar arquivo"
+                        @(isDisabled ? "disabled" : "")>
+                    <i class="bi bi-folder2-open"></i>
+                </button>
+            </div>
+        </div>
+        break;
+
+    case ComponentType.DirectoryInput:
+        // EI - Seletor de diretório
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <div class="input-group">
+                <input type="text"
+                       class="form-control form-control-calc"
+                       id="@fieldId"
+                       name="@fieldName"
+                       title="@hint"
+                       placeholder="@hint"
+                       @(isDisabled ? "disabled" : "")
+                       data-calc="true" />
+                <button type="button"
+                        class="btn btn-outline-secondary btn-directory"
+                        title="Selecionar diretório"
+                        @(isDisabled ? "disabled" : "")>
+                    <i class="bi bi-folder"></i>
+                </button>
+            </div>
+        </div>
+        break;
+
+    // ============================================================
+    // TIPOS INFO (readonly, dados de outra tabela)
+    // ============================================================
+
+    case ComponentType.InfoTextInput:
+        // IE - Info texto readonly
+        <div class="field-wrapper field-info field-readonly" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <input type="text"
+                   class="form-control form-control-info"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   readonly
+                   data-info="true" />
+        </div>
+        break;
+
+    case ComponentType.InfoNumberInput:
+        // IN - Info número readonly
+        <div class="field-wrapper field-info field-readonly" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <input type="number"
+                   class="form-control form-control-info"
+                   id="@fieldId"
+                   name="@fieldName"
+                   title="@hint"
+                   readonly
+                   data-info="true" />
+        </div>
+        break;
+
+    case ComponentType.InfoTextArea:
+        // IM - Info memo readonly
+        var infoMemoRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 3;
+        <div class="field-wrapper field-wrapper-full field-info field-readonly mb-3">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <textarea class="form-control form-control-info"
+                      id="@fieldId"
+                      name="@fieldName"
+                      title="@hint"
+                      rows="@infoMemoRows"
+                      readonly
+                      data-info="true"></textarea>
+        </div>
+        break;
+
+    case ComponentType.InfoRichEdit:
+        // IR - Info RichEdit readonly
+        var infoRichRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 5;
+        <div class="field-wrapper field-wrapper-full field-info field-readonly mb-3">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <div class="form-control form-control-rich-info"
+                 id="@fieldId"
+                 style="min-height: @(infoRichRows * 25)px;"
+                 data-info="true"
+                 data-rich="true">
+            </div>
+        </div>
+        break;
+
+    // ============================================================
+    // TIPOS RICHEDIT
+    // ============================================================
+
+    case ComponentType.RichEdit:
+    case ComponentType.RichEditBlob:
+        // RM, RB - RichEdit
+        var richRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 5;
+        <div class="field-wrapper field-wrapper-full mb-3 @readonlyClass">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
+            <div class="form-control form-control-rich"
+                 id="@fieldId"
+                 contenteditable="@(!isDisabled)"
+                 style="min-height: @(richRows * 25)px;"
+                 data-rich="true">
+            </div>
+            <input type="hidden" name="@fieldName" id="@(fieldId)_hidden" />
+        </div>
+        break;
+
+    // ============================================================
+    // TIPOS ADVANCED MEMO (com syntax highlighting)
+    // ============================================================
+
+    case ComponentType.AdvMemoSQL:
+    case ComponentType.AdvMemoGeneral:
+    case ComponentType.AdvMemoINI:
+    case ComponentType.AdvMemoPascal:
+    case ComponentType.AdvMemoXML:
+    case ComponentType.AdvRichSQL:
+    case ComponentType.AdvRichGeneral:
+    case ComponentType.AdvRichINI:
+    case ComponentType.AdvRichPascal:
+    case ComponentType.AdvRichXML:
+        // BS, BE, BI, BP, BX, RS, RE, RI, RP, RX - Memos avançados
+        var advMemoRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 8;
+        var syntaxType = componentType switch
+        {
+            ComponentType.AdvMemoSQL or ComponentType.AdvRichSQL => "sql",
+            ComponentType.AdvMemoINI or ComponentType.AdvRichINI => "ini",
+            ComponentType.AdvMemoPascal or ComponentType.AdvRichPascal => "pascal",
+            ComponentType.AdvMemoXML or ComponentType.AdvRichXML => "xml",
+            _ => "text"
+        };
+        <div class="field-wrapper field-wrapper-full field-advanced-memo mb-3 @readonlyClass">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                </label>
+            }
+            <textarea class="form-control form-control-code"
+                      id="@fieldId"
+                      name="@fieldName"
+                      title="@hint"
+                      rows="@advMemoRows"
+                      @(isRequired ? "required" : "")
+                      @(isDisabled ? "disabled" : "")
+                      data-syntax="@syntaxType"
+                      spellcheck="false"></textarea>
+        </div>
+        break;
+
+    // ============================================================
+    // TIPOS VISUAIS
+    // ============================================================
+
+    case ComponentType.Label:
+        // LBL - Label estático
+        <div class="field-wrapper field-label" style="@wrapperStyle">
+            <span class="field-static-label" title="@hint">@label</span>
+        </div>
+        break;
+
     case ComponentType.Button:
         // BTN - Botão
-        <div class="@colClass mb-3 d-flex align-items-end">
+        <div class="field-wrapper field-button d-flex align-items-end" style="@wrapperStyle">
             <button type="button"
                     class="btn btn-secondary"
                     id="@fieldId"
@@ -271,26 +754,183 @@
         break;
 
     case ComponentType.DataGrid:
-        // DBG - Grid (placeholder)
-        <div class="col-12 mb-3">
-            <div class="field-grid border rounded p-3 bg-light">
-                <small class="text-muted">[Grid: @fieldName - @label]</small>
+        // DBG - Grid de dados (placeholder visual)
+        <div class="field-wrapper field-wrapper-full field-grid mb-3">
+            <div class="data-grid-placeholder border rounded p-3 bg-light">
+                @if (hasLabel)
+                {
+                    <div class="data-grid-header mb-2">
+                        <strong>@label</strong>
+                    </div>
+                }
+                <div class="data-grid-content text-muted">
+                    <small>[Grid: @fieldName]</small>
+                </div>
             </div>
         </div>
         break;
 
-    case ComponentType.Bevel:
-        // BVL - Não renderiza aqui, já é tratado no Render.cshtml
+    case ComponentType.Chart:
+        // GRA - Gráfico (placeholder visual)
+        <div class="field-wrapper field-wrapper-full field-chart mb-3">
+            <div class="chart-placeholder border rounded p-3 bg-light text-center">
+                @if (hasLabel)
+                {
+                    <div class="chart-header mb-2">
+                        <strong>@label</strong>
+                    </div>
+                }
+                <div class="chart-content text-muted">
+                    <i class="bi bi-bar-chart-fill fs-1"></i>
+                    <br />
+                    <small>[Gráfico: @fieldName]</small>
+                </div>
+            </div>
+        </div>
         break;
 
-    case ComponentType.Hidden:
-        // DEPOSHOW, ATUAGRID - Componentes internos, não renderiza
+    case ComponentType.Timer:
+        // TIM - Timer (não visual, não renderiza nada)
         break;
+
+    case ComponentType.CheckList:
+        // LC - Lista de checkboxes
+        <div class="field-wrapper field-wrapper-full field-checklist mb-3 @readonlyClass">
+            @if (hasLabel)
+            {
+                <label class="form-label">
+                    @label
+                </label>
+            }
+            <div class="checklist-container border rounded p-2">
+                @if (!string.IsNullOrEmpty(field.VareCamp))
+                {
+                    var checklistOptions = field.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    var clIndex = 0;
+                    foreach (var opt in checklistOptions)
+                    {
+                        var trimmed = opt.Trim();
+                        var parts = trimmed.Split('=', 2);
+                        var optValue = parts.Length > 1 ? parts[0].Trim() : clIndex.ToString();
+                        var optDisplay = parts.Length > 1 ? parts[1].Trim() : trimmed;
+                        <div class="form-check">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="@(fieldId)_@clIndex"
+                                   name="@(fieldName)[]"
+                                   value="@optValue"
+                                   @(isDisabled ? "disabled" : "") />
+                            <label class="form-check-label" for="@(fieldId)_@clIndex">
+                                @optDisplay
+                            </label>
+                        </div>
+                        clIndex++;
+                    }
+                }
+                else
+                {
+                    <small class="text-muted">[Lista vazia]</small>
+                }
+            </div>
+        </div>
+        break;
+
+    // ============================================================
+    // TIPOS DE IMAGEM
+    // ============================================================
+
+    case ComponentType.ImageEditable:
+        // FE - Imagem editável (upload)
+        <div class="field-wrapper field-image @readonlyClass" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                </label>
+            }
+            <div class="image-container border rounded p-2">
+                <img id="@(fieldId)_preview"
+                     class="img-thumbnail mb-2"
+                     style="max-height: @(field.AltuCamp > 0 ? field.AltuCamp : 150)px; display: none;"
+                     alt="Preview" />
+                <input type="file"
+                       class="form-control"
+                       id="@fieldId"
+                       name="@fieldName"
+                       accept="image/*"
+                       @(isDisabled ? "disabled" : "")
+                       data-image-upload="true" />
+            </div>
+        </div>
+        break;
+
+    case ComponentType.ImageReadonly:
+        // FI - Imagem somente leitura
+        <div class="field-wrapper field-image field-readonly" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label class="form-label">
+                    @label
+                </label>
+            }
+            <div class="image-container border rounded p-2 bg-light">
+                <img id="@(fieldId)_image"
+                     class="img-thumbnail"
+                     style="max-height: @(field.AltuCamp > 0 ? field.AltuCamp : 150)px;"
+                     alt="@label"
+                     src=""
+                     data-image-readonly="true" />
+            </div>
+        </div>
+        break;
+
+    case ComponentType.ImageFixed:
+        // FF - Imagem fixa (do banco ou recurso)
+        <div class="field-wrapper field-image field-readonly" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label class="form-label">
+                    @label
+                </label>
+            }
+            <div class="image-container">
+                <img id="@(fieldId)_image"
+                     class="img-fluid"
+                     style="max-height: @(field.AltuCamp > 0 ? field.AltuCamp : 150)px;"
+                     alt="@label"
+                     src=""
+                     data-image-fixed="true" />
+            </div>
+        </div>
+        break;
+
+    // ============================================================
+    // BEVEL (tratado em _FormContent.cshtml, não aqui)
+    // ============================================================
+
+    case ComponentType.Bevel:
+        // BVL - Agrupador visual - não renderiza aqui
+        break;
+
+    // ============================================================
+    // HIDDEN (não deve ser renderizado)
+    // ============================================================
+
+    case ComponentType.Hidden:
+        // Campos ocultos (DEPOSHOW, ATUAGRID) - não renderiza
+        break;
+
+    // ============================================================
+    // FALLBACK
+    // ============================================================
 
     default:
         // Fallback para input text
-        <div class="@colClass mb-3">
-            <label for="@fieldId" class="form-label">@label</label>
+        <div class="field-wrapper" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">@label</label>
+            }
             <input type="text"
                    class="form-control"
                    id="@fieldId"
