@@ -37,19 +37,30 @@
     var hint = field.HintCamp;
 
     // Estilo baseado em TamaCamp
-    // - Campo único na linha: max-width para não esticar demais
-    // - Múltiplos campos: flex-basis para manter proporções originais
+    // - Campo único na linha: flex grow para usar espaço disponível
+    // - Múltiplos campos: flex-grow proporcional ao TamaCamp
+    // - Checkboxes/botões: tamanho fixo, não crescem
     var wrapperStyle = "";
     if (field.TamaCamp > 0)
     {
+        var isFixedWidth = componentType == ComponentType.Checkbox
+                        || componentType == ComponentType.CalcCheckbox
+                        || componentType == ComponentType.Button;
+
         if (isSingleInRow)
         {
-            wrapperStyle = $"max-width: {field.TamaCamp}px;";
+            // Campo único: permitir crescer para usar espaço disponível
+            wrapperStyle = $"flex: 1 1 {field.TamaCamp}px;";
+        }
+        else if (isFixedWidth)
+        {
+            // Checkboxes/botões: não crescer, manter compactos
+            wrapperStyle = $"flex: 0 0 auto;";
         }
         else
         {
-            // Usa flex-basis para manter proporção, mas permite crescer/encolher
-            wrapperStyle = $"flex: 0 1 {field.TamaCamp}px; min-width: {Math.Min(field.TamaCamp, 120)}px;";
+            // Multi-campo: crescer proporcionalmente ao TamaCamp original
+            wrapperStyle = $"flex: {field.TamaCamp} 1 {field.TamaCamp}px; min-width: {Math.Min(field.TamaCamp, 120)}px;";
         }
     }
 
