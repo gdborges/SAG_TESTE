@@ -1,0 +1,53 @@
+namespace SagPoc.Web.Models;
+
+/// <summary>
+/// Request para salvar um registro.
+/// </summary>
+public class SaveRecordRequest
+{
+    /// <summary>
+    /// ID da tabela (CODITABE)
+    /// </summary>
+    public int TableId { get; set; }
+
+    /// <summary>
+    /// ID do registro (null = inserir novo)
+    /// </summary>
+    public int? RecordId { get; set; }
+
+    /// <summary>
+    /// Campos e valores a salvar
+    /// </summary>
+    public Dictionary<string, object?> Fields { get; set; } = new();
+
+    /// <summary>
+    /// Indica se é um novo registro
+    /// </summary>
+    public bool IsNew => RecordId == null || RecordId == 0;
+}
+
+/// <summary>
+/// Response de operação de salvamento.
+/// </summary>
+public class SaveRecordResponse
+{
+    /// <summary>
+    /// Indica se a operação foi bem sucedida
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// Mensagem de retorno
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>
+    /// ID do registro (útil após inserção)
+    /// </summary>
+    public int? RecordId { get; set; }
+
+    /// <summary>
+    /// Erros de validação
+    /// </summary>
+    public Dictionary<string, string> ValidationErrors { get; set; } = new();
+}

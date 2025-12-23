@@ -1,0 +1,108 @@
+@model SagPoc.Web.Models.FormRenderViewModel
+
+<div class="consulta-container" id="consultaContainer" data-table-id="@Model.Form.TableId">
+    <!-- Barra de ferramentas -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label class="form-label fw-bold">Consulta</label>
+            <select id="consultaSelect" class="form-select">
+                @foreach (var consulta in Model.Consultas)
+                {
+                    <option value="@consulta.CodiCons" data-busc="@consulta.BuscCons">
+                        @consulta.BuscCons
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-md-8 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-secondary me-2" id="btnRefresh" title="Atualizar">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center" id="filterRow">
+                <div class="col-md-3">
+                    <select id="filterField" class="form-select form-select-sm">
+                        <option value="">-- Campo --</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="filterCondition" class="form-select form-select-sm">
+                        <option value="startswith">Iniciado por</option>
+                        <option value="contains" selected>Contém</option>
+                        <option value="equals">Igual a</option>
+                        <option value="notequals">Diferente de</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="filterValue" class="form-control form-control-sm" placeholder="Localiza...">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="button" class="btn btn-primary btn-sm" id="btnAddFilter">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnClearFilters">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </button>
+                </div>
+            </div>
+            <!-- Tags de filtros ativos -->
+            <div id="activeFilters" class="mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm" id="consultaGrid">
+            <thead class="table-dark">
+                <tr id="gridHeader"></tr>
+            </thead>
+            <tbody id="gridBody">
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">
+                        Selecione uma consulta para carregar os dados...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginacao -->
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <div class="text-muted" id="gridInfo">
+            Mostrando 0 registros
+        </div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="gridPagination">
+            </ul>
+        </nav>
+    </div>
+
+    <hr class="my-3">
+
+    <!-- Botoes CRUD -->
+    <div class="d-flex gap-2">
+        @if (Model.ShowBtnIncluir)
+        {
+            <button type="button" class="btn btn-success" id="btnIncluir">
+                <i class="bi bi-plus-circle"></i> Incluir
+            </button>
+        }
+        @if (Model.ShowBtnAlterar)
+        {
+            <button type="button" class="btn btn-primary" id="btnAlterar" disabled>
+                <i class="bi bi-pencil"></i> Alterar
+            </button>
+        }
+        @if (Model.ShowBtnExcluir)
+        {
+            <button type="button" class="btn btn-danger" id="btnExcluir" disabled>
+                <i class="bi bi-trash"></i> Excluir
+            </button>
+        }
+    </div>
+</div>

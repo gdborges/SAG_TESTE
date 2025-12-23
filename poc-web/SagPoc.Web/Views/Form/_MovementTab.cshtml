@@ -1,0 +1,121 @@
+@model IGrouping<int, SagPoc.Web.Models.FieldMetadata>
+@using SagPoc.Web.Models
+@{
+    // Filtra campos ocultos e agrupa por bevel
+    var allFields = Model.Where(f => !f.IsHidden).ToList();
+    var bevels = allFields.Where(f => f.GetComponentType() == ComponentType.Bevel).OrderBy(f => f.OrdeCamp).ToList();
+    var inputFields = allFields.Where(f => f.GetComponentType() != ComponentType.Bevel &&
+                                            f.GetComponentType() != ComponentType.Timer).OrderBy(f => f.OrdeCamp).ToList();
+
+    // Nome do movimento (primeiro bevel com caption ou "Movimento")
+    var movementName = bevels.FirstOrDefault(b => b.HasBevelCaption)?.LabeCamp ?? "Movimento";
+
+    // Agrupa campos por linha usando RowTolerance (20px)
+    var fieldRows = new List<List<FieldMetadata>>();
+    if (inputFields.Any())
+    {
+        var sortedFields = inputFields.OrderBy(f => f.TopoCamp).ThenBy(f => f.EsquCamp).ToList();
+        List<FieldMetadata>? currentRow = null;
+        int currentTopoCamp = 0;
+
+        foreach (var field in sortedFields)
+        {
+            if (currentRow == null || Math.Abs(field.TopoCamp - currentTopoCamp) > 20)
+            {
+                currentRow = new List<FieldMetadata>();
+                fieldRows.Add(currentRow);
+                currentTopoCamp = field.TopoCamp;
+            }
+            currentRow.Add(field);
+        }
+
+        // Ordena campos dentro de cada linha por EsquCamp
+        foreach (var row in fieldRows)
+        {
+            row.Sort((a, b) => a.EsquCamp.CompareTo(b.EsquCamp));
+        }
+    }
+}
+
+<div class="movement-container">
+    <!-- Campos do movimento organizados por linhas -->
+    @if (fieldRows.Any())
+    {
+        <div class="movement-fields mb-3">
+            @foreach (var row in fieldRows)
+            {
+                var isSingle = row.Count == 1;
+                if (isSingle)
+                {
+                    <div class="field-row-single mb-2">
+                        @{
+                            var ctx = new FieldRenderContext { Field = row[0], IsSingleInRow = true };
+                        }
+                        @await Html.PartialAsync("_FieldRendererV2", ctx)
+                    </div>
+                }
+                else
+                {
+                    <div class="field-row-multi mb-2">
+                        @foreach (var field in row)
+                        {
+                            var ctx = new FieldRenderContext { Field = field, IsSingleInRow = false };
+                            @await Html.PartialAsync("_FieldRendererV2", ctx)
+                        }
+                    </div>
+                }
+            }
+        </div>
+    }
+
+    <!-- Grid de itens (placeholder visual) -->
+    <div class="movement-grid-container">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">Itens</h6>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary btn-sm" disabled title="Funcionalidade em desenvolvimento">
+                    <i class="bi bi-plus-lg"></i> Envia
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" disabled title="Funcionalidade em desenvolvimento">
+                    <i class="bi bi-trash"></i> Remove
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped movement-grid">
+                <thead class="table-light">
+                    <tr>
+                        @if (inputFields.Any())
+                        {
+                            @foreach (var field in inputFields.Take(6))
+                            {
+                                <th title="@field.HintCamp">@(string.IsNullOrEmpty(field.LabeCamp) ? field.NomeCamp : field.LabeCamp)</th>
+                            }
+                            @if (inputFields.Count > 6)
+                            {
+                                <th>...</th>
+                            }
+                        }
+                        else
+                        {
+                            <th>Coluna 1</th>
+                            <th>Coluna 2</th>
+                            <th>Coluna 3</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="text-center text-muted">
+                        <td colspan="@(inputFields.Any() ? Math.Min(inputFields.Count, 6) + (inputFields.Count > 6 ? 1 : 0) : 3)">
+                            <div class="py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                <span>Nenhum item cadastrado</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

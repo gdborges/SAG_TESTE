@@ -1,0 +1,588 @@
+/* ============================================
+   Vision Design System Theme for SAG-WEB
+   ============================================ */
+
+/* ============================================
+   1. CSS Variables (Design Tokens)
+   ============================================ */
+:root {
+    /* Neutral Colors */
+    --neutral-white: #FFFFFF;
+    --neutral-100: #F5F5F5;
+    --neutral-200: #E5E5E5;
+    --neutral-300: #D4D4D4;
+    --neutral-400: #A3A3A3;
+    --neutral-500: #737373;
+    --neutral-600: #525252;
+    --neutral-700: #404040;
+    --neutral-800: #262626;
+
+    /* Primary Colors */
+    --primary-100: #E8F0FC;
+    --primary-200: #A3C2F0;
+    --primary-300: #447BDA;
+    --primary-400: #2D5CB8;
+
+    /* Feedback Colors */
+    --feedback-error-100: #EA4335;
+    --feedback-error-bg: #FEE2E2;
+    --feedback-success-100: #34A853;
+    --feedback-success-bg: #DCFCE7;
+    --feedback-warning-100: #FBBC05;
+    --feedback-warning-bg: #FEF3C7;
+    --feedback-info-100: #4285F4;
+    --feedback-info-bg: #DBEAFE;
+
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Border Radius */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+
+    /* Typography */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-size-xs: 12px;
+    --font-size-sm: 14px;
+    --font-size-base: 16px;
+    --font-size-lg: 18px;
+    --font-size-xl: 20px;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+}
+
+/* ============================================
+   2. Base Typography
+   ============================================ */
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-800);
+    background-color: var(--neutral-100);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-semibold);
+    color: var(--neutral-800);
+}
+
+label {
+    font-weight: var(--font-weight-medium);
+    color: var(--neutral-700);
+    font-size: var(--font-size-sm);
+}
+
+/* ============================================
+   3. Form Controls (Inputs, Selects, Textareas)
+   ============================================ */
+.form-control,
+.form-select,
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="datetime-local"],
+select,
+textarea {
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-800);
+    background-color: var(--neutral-white);
+    border: 1px solid var(--neutral-300);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-control:focus,
+.form-select:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--primary-300);
+    box-shadow: 0 0 0 3px var(--primary-100);
+    outline: none;
+}
+
+.form-control:disabled,
+.form-select:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+    background-color: var(--neutral-100);
+    color: var(--neutral-500);
+    cursor: not-allowed;
+}
+
+.form-control.is-invalid,
+.form-control.error,
+input.error,
+select.error,
+textarea.error {
+    border-color: var(--feedback-error-100);
+}
+
+.form-control.is-invalid:focus,
+.form-control.error:focus {
+    box-shadow: 0 0 0 3px var(--feedback-error-bg);
+}
+
+/* Placeholder */
+::placeholder {
+    color: var(--neutral-400);
+}
+
+/* ============================================
+   4. Buttons
+   ============================================ */
+.btn {
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+/* Primary Button */
+.btn-primary {
+    background-color: var(--primary-300);
+    border-color: var(--primary-300);
+    color: var(--neutral-white);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--primary-400);
+    border-color: var(--primary-400);
+    color: var(--neutral-white);
+}
+
+.btn-primary:active {
+    background-color: var(--primary-400);
+    border-color: var(--primary-400);
+}
+
+/* Secondary Button */
+.btn-secondary,
+.btn-outline-secondary {
+    background-color: var(--neutral-white);
+    border: 1px solid var(--neutral-300);
+    color: var(--neutral-800);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus,
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+    background-color: var(--neutral-100);
+    border-color: var(--neutral-400);
+    color: var(--neutral-800);
+}
+
+/* Success Button */
+.btn-success {
+    background-color: var(--feedback-success-100);
+    border-color: var(--feedback-success-100);
+    color: var(--neutral-white);
+}
+
+.btn-success:hover,
+.btn-success:focus {
+    background-color: #2D9649;
+    border-color: #2D9649;
+    color: var(--neutral-white);
+}
+
+/* Danger Button */
+.btn-danger {
+    background-color: var(--feedback-error-100);
+    border-color: var(--feedback-error-100);
+    color: var(--neutral-white);
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: #D33426;
+    border-color: #D33426;
+    color: var(--neutral-white);
+}
+
+/* Warning Button */
+.btn-warning {
+    background-color: var(--feedback-warning-100);
+    border-color: var(--feedback-warning-100);
+    color: var(--neutral-800);
+}
+
+/* Button Disabled State */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   5. Cards and Containers
+   ============================================ */
+.card {
+    background-color: var(--neutral-white);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+    background-color: var(--neutral-100);
+    border-bottom: 1px solid var(--neutral-200);
+    font-weight: var(--font-weight-semibold);
+    padding: var(--spacing-md);
+}
+
+.card-body {
+    padding: var(--spacing-md);
+}
+
+/* ============================================
+   6. Form Container (SAG-WEB specific)
+   ============================================ */
+.form-container {
+    background-color: var(--neutral-white);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-lg);
+}
+
+/* ============================================
+   7. Bevel Group (Field Grouping)
+   ============================================ */
+/* NOTA: Estilos de bevel-group movidos para form-renderer.css
+   para evitar conflitos de especificidade */
+
+/* ============================================
+   8. Tabs
+   ============================================ */
+.nav-tabs {
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+.nav-tabs .nav-link {
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--neutral-600);
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+    transition: all var(--transition-fast);
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--neutral-800);
+    border-bottom-color: var(--neutral-300);
+    background-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-300);
+    border-bottom-color: var(--primary-300);
+    background-color: transparent;
+}
+
+.tab-content {
+    padding: var(--spacing-md) 0;
+}
+
+/* ============================================
+   9. Tables
+   ============================================ */
+.table {
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+}
+
+.table thead th {
+    background-color: var(--neutral-100);
+    color: var(--neutral-700);
+    font-weight: var(--font-weight-semibold);
+    border-bottom: 2px solid var(--neutral-200);
+    padding: var(--spacing-md);
+}
+
+.table tbody td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--neutral-200);
+    color: var(--neutral-800);
+}
+
+.table tbody tr:hover {
+    background-color: var(--primary-100);
+}
+
+.table tbody tr.selected,
+.table tbody tr.active {
+    background-color: var(--primary-100);
+    border-left: 3px solid var(--primary-300);
+}
+
+/* Striped Table */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--neutral-100);
+}
+
+.table-striped tbody tr:nth-of-type(odd):hover {
+    background-color: var(--primary-100);
+}
+
+/* ============================================
+   10. Alerts and Messages
+   ============================================ */
+.alert {
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    font-size: var(--font-size-sm);
+}
+
+.alert-danger {
+    background-color: var(--feedback-error-bg);
+    border-color: var(--feedback-error-100);
+    color: var(--feedback-error-100);
+}
+
+.alert-success {
+    background-color: var(--feedback-success-bg);
+    border-color: var(--feedback-success-100);
+    color: var(--feedback-success-100);
+}
+
+.alert-warning {
+    background-color: var(--feedback-warning-bg);
+    border-color: var(--feedback-warning-100);
+    color: var(--neutral-800);
+}
+
+.alert-info {
+    background-color: var(--feedback-info-bg);
+    border-color: var(--feedback-info-100);
+    color: var(--feedback-info-100);
+}
+
+/* ============================================
+   11. Validation Messages
+   ============================================ */
+.invalid-feedback,
+.field-validation-error,
+.text-danger {
+    color: var(--feedback-error-100);
+    font-size: var(--font-size-xs);
+    margin-top: var(--spacing-xs);
+}
+
+.valid-feedback {
+    color: var(--feedback-success-100);
+    font-size: var(--font-size-xs);
+    margin-top: var(--spacing-xs);
+}
+
+/* ============================================
+   12. Badges and Labels
+   ============================================ */
+.badge {
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+}
+
+.badge.bg-primary {
+    background-color: var(--primary-300) !important;
+}
+
+.badge.bg-success {
+    background-color: var(--feedback-success-100) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--feedback-error-100) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--feedback-warning-100) !important;
+    color: var(--neutral-800) !important;
+}
+
+/* ============================================
+   13. Modal Overrides
+   ============================================ */
+.modal-content {
+    border-radius: var(--radius-lg);
+    border: none;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+    background-color: var(--neutral-white);
+    border-bottom: 1px solid var(--neutral-200);
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.modal-title {
+    font-weight: var(--font-weight-semibold);
+    color: var(--neutral-800);
+}
+
+.modal-body {
+    padding: var(--spacing-lg);
+}
+
+.modal-footer {
+    background-color: var(--neutral-100);
+    border-top: 1px solid var(--neutral-200);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* ============================================
+   14. Checkbox and Radio
+   ============================================ */
+.form-check-input {
+    border-color: var(--neutral-300);
+    border-radius: var(--radius-sm);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-300);
+    border-color: var(--primary-300);
+}
+
+.form-check-input:focus {
+    border-color: var(--primary-300);
+    box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.form-check-label {
+    color: var(--neutral-700);
+    font-size: var(--font-size-sm);
+}
+
+/* ============================================
+   15. Dropdown Menu
+   ============================================ */
+.dropdown-menu {
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-xs) 0;
+}
+
+.dropdown-item {
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    color: var(--neutral-700);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: var(--primary-100);
+    color: var(--neutral-800);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+    background-color: var(--primary-300);
+    color: var(--neutral-white);
+}
+
+/* ============================================
+   16. Pagination
+   ============================================ */
+.pagination .page-link {
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-700);
+    border-color: var(--neutral-200);
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.pagination .page-link:hover {
+    background-color: var(--primary-100);
+    border-color: var(--neutral-300);
+    color: var(--primary-300);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-300);
+    border-color: var(--primary-300);
+    color: var(--neutral-white);
+}
+
+.pagination .page-item.disabled .page-link {
+    color: var(--neutral-400);
+    background-color: var(--neutral-100);
+}
+
+/* ============================================
+   17. Breadcrumb
+   ============================================ */
+.breadcrumb {
+    background-color: transparent;
+    padding: var(--spacing-sm) 0;
+    font-size: var(--font-size-sm);
+}
+
+.breadcrumb-item a {
+    color: var(--primary-300);
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--primary-400);
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: var(--neutral-600);
+}
+
+/* ============================================
+   18. Utility Classes
+   ============================================ */
+.text-primary {
+    color: var(--primary-300) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-300) !important;
+}
+
+.border-primary {
+    border-color: var(--primary-300) !important;
+}
+
+/* Gap utilities */
+.gap-xs { gap: var(--spacing-xs); }
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.gap-lg { gap: var(--spacing-lg); }
+.gap-xl { gap: var(--spacing-xl); }

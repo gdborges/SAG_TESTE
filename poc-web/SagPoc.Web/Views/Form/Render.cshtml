@@ -1,0 +1,262 @@
+@model SagPoc.Web.Models.FormRenderViewModel
+@using SagPoc.Web.Models
+@{
+    ViewData["Title"] = Model.Table?.NomeTabe ?? $"Formulário {Model.Form.TableId}";
+    var hasConsultas = Model.HasConsultas;
+}
+
+<link rel="stylesheet" href="~/css/consulta-grid.css" />
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">@ViewData["Title"]</h4>
+        <div>
+            <span class="badge bg-info">@Model.Form.Fields.Count campos</span>
+            @if (hasConsultas)
+            {
+                <span class="badge bg-success ms-1">@Model.Consultas.Count consultas</span>
+            }
+            @if (Model.Form.HasMultipleTabs)
+            {
+                <span class="badge bg-secondary ms-1">@Model.Form.GetTabGroups().Count guias</span>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm ms-2">Voltar</a>
+        </div>
+    </div>
+
+    @if (hasConsultas)
+    {
+        <!-- Layout com Guia Consulta + Guias de Dados -->
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <!-- Tab Consulta -->
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-consulta-tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-consulta"
+                        type="button" role="tab" aria-controls="tab-consulta" aria-selected="true">
+                    @Model.ConsultaTabName
+                </button>
+            </li>
+            <!-- Tab Dados (primeira guia) -->
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-dados-tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-dados"
+                        type="button" role="tab" aria-controls="tab-dados" aria-selected="false">
+                    @Model.DadosTabName
+                </button>
+            </li>
+            @{
+                // Só mostra aba "Dados Adicionais" se existirem campos com GuiaCamp=2
+                var hasTab2Fields = Model.Form.HeaderFields.Any(f => f.GuiaCamp == 2);
+            }
+            @if (!string.IsNullOrEmpty(Model.DadosTab2Name) && hasTab2Fields)
+            {
+                <!-- Tab Dados 2 (segunda guia) -->
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-dados2-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-dados2"
+                            type="button" role="tab" aria-controls="tab-dados2" aria-selected="false">
+                        @Model.DadosTab2Name
+                    </button>
+                </li>
+            }
+            @* Abas de Movimento (GuiaCamp >= 10) *@
+            @if (Model.Form.HasMovements)
+            {
+                @foreach (var movementGroup in Model.Form.MovementsByType)
+                {
+                    var movementTabId = $"tab-mov-{movementGroup.Key}";
+                    var firstBevel = movementGroup.FirstOrDefault(f => f.GetComponentType() == SagPoc.Web.Models.ComponentType.Bevel && f.HasBevelCaption);
+                    var movementName = firstBevel?.LabeCamp ?? $"Movimento {movementGroup.Key}";
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="@(movementTabId)-tab"
+                                data-bs-toggle="tab" data-bs-target="#@movementTabId"
+                                type="button" role="tab" aria-controls="@movementTabId" aria-selected="false">
+                            @movementName
+                        </button>
+                    </li>
+                }
+            }
+        </ul>
+
+        <div class="tab-content" id="mainTabsContent">
+            <!-- Conteudo Tab Consulta -->
+            <div class="tab-pane fade show active" id="tab-consulta" role="tabpanel" aria-labelledby="tab-consulta-tab">
+                <div class="p-3">
+                    @await Html.PartialAsync("_ConsultaTab", Model)
+                </div>
+            </div>
+
+            <!-- Conteudo Tab Dados -->
+            <div class="tab-pane fade" id="tab-dados" role="tabpanel" aria-labelledby="tab-dados-tab">
+                <div class="p-3">
+                    @await Html.PartialAsync("_FormContent", Model.Form)
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.DadosTab2Name) && hasTab2Fields)
+            {
+                <!-- Conteudo Tab Dados 2 -->
+                <div class="tab-pane fade" id="tab-dados2" role="tabpanel" aria-labelledby="tab-dados2-tab">
+                    <div class="p-3">
+                        @{
+                            var tabGroups = Model.Form.GetTabGroups();
+                            var secondTab = tabGroups.Skip(1).FirstOrDefault();
+                            if (secondTab != null)
+                            {
+                                @await Html.PartialAsync("_FormTabContent", secondTab)
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Conteudo das Abas de Movimento *@
+            @if (Model.Form.HasMovements)
+            {
+                @foreach (var movementGroup in Model.Form.MovementsByType)
+                {
+                    var movementTabId = $"tab-mov-{movementGroup.Key}";
+                    <div class="tab-pane fade" id="@movementTabId" role="tabpanel" aria-labelledby="@(movementTabId)-tab">
+                        <div class="p-3">
+                            @await Html.PartialAsync("_MovementTab", movementGroup)
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <!-- Layout sem Guia Consulta (comportamento original) -->
+        <form id="dynamicForm" class="needs-validation" novalidate>
+            @if (Model.Form.HasMultipleTabs)
+            {
+                var tabGroups = Model.Form.GetTabGroups();
+                var firstTab = tabGroups.FirstOrDefault();
+
+                <!-- Nav Tabs -->
+                <ul class="nav nav-tabs" id="formTabs" role="tablist">
+                    @foreach (var tab in tabGroups)
+                    {
+                        var isActive = tab.TabIndex == firstTab?.TabIndex;
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link @(isActive ? "active" : "")"
+                                    id="tab-@tab.TabIndex-tab"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#tab-@tab.TabIndex"
+                                    type="button"
+                                    role="tab"
+                                    aria-controls="tab-@tab.TabIndex"
+                                    aria-selected="@(isActive ? "true" : "false")">
+                                @tab.TabName
+                            </button>
+                        </li>
+                    }
+                </ul>
+
+                <!-- Tab Panes -->
+                <div class="tab-content" id="formTabsContent">
+                    @foreach (var tab in tabGroups)
+                    {
+                        var isActive = tab.TabIndex == firstTab?.TabIndex;
+                        <div class="tab-pane fade @(isActive ? "show active" : "")"
+                             id="tab-@tab.TabIndex"
+                             role="tabpanel"
+                             aria-labelledby="tab-@tab.TabIndex-tab">
+                            <div class="form-container p-3">
+                                @await Html.PartialAsync("_FormTabContent", tab)
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <!-- Formulario sem abas -->
+                <div class="form-container">
+                    @await Html.PartialAsync("_FormContent", Model.Form)
+                </div>
+            }
+
+            <hr class="my-4" />
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    Salvar
+                </button>
+                <button type="reset" class="btn btn-outline-secondary">
+                    Limpar
+                </button>
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/consulta-grid.js"></script>
+    <script>
+        // Validacao Bootstrap
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    if (!form.checkValidity()) {
+                        event.stopPropagation();
+                    } else {
+                        // Salvar via AJAX
+                        saveForm(form);
+                    }
+                    form.classList.add('was-validated');
+                }, false)
+            })
+        })()
+
+        // Funcao para salvar formulario
+        async function saveForm(form) {
+            const formData = new FormData(form);
+            const fields = {};
+            formData.forEach((value, key) => {
+                fields[key] = value;
+            });
+
+            // Garantir que checkboxes nao marcados enviem valor 0
+            form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (!cb.checked && cb.name) {
+                    fields[cb.name] = '0';
+                }
+            });
+
+            const tableId = @Model.Form.TableId;
+            const recordId = document.getElementById('editingRecordId')?.value || null;
+
+            try {
+                const response = await fetch('/Form/SaveRecord', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tableId: tableId,
+                        recordId: recordId ? parseInt(recordId) : null,
+                        fields: fields
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    // Volta para tab Consulta e recarrega
+                    if (window.consultaGrid) {
+                        document.getElementById('tab-consulta-tab')?.click();
+                        window.consultaGrid.loadData();
+                    }
+                } else {
+                    alert('Erro: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                alert('Erro ao salvar registro');
+            }
+        }
+    </script>
+}

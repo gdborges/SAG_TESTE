@@ -1,0 +1,32 @@
+@model SagPoc.Web.Models.FieldRow
+@using SagPoc.Web.Models
+
+@{
+    var isSingleField = Model.IsSingleField;
+}
+
+@if (isSingleField)
+{
+    @* Linha com campo unico - nao precisa de grid *@
+    <div class="field-row field-row-single">
+        @await Html.PartialAsync("_FieldRendererV2", new FieldRenderContext
+        {
+            Field = Model.Fields.First(),
+            IsSingleInRow = true
+        })
+    </div>
+}
+else
+{
+    @* Linha com multiplos campos - usa CSS Grid *@
+    <div class="field-row field-row-multi">
+        @foreach (var field in Model.Fields)
+        {
+            @await Html.PartialAsync("_FieldRendererV2", new FieldRenderContext
+            {
+                Field = field,
+                IsSingleInRow = false
+            })
+        }
+    </div>
+}

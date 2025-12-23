@@ -1,0 +1,490 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tipo Documento - SagPoc.Web</title>
+    
+    <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="/css/site.css?v=j6fhJSuuyLpOSLuPJU0TsDV0iNjor5S3rDnvxJrt4bg" />
+    <link rel="stylesheet" href="/css/form-renderer.css?v=sSTpEXMpEU9RX0RdBMcPWaEQ-b6zy8xUW5OubeNvDco" />
+    <link rel="stylesheet" href="/SagPoc.Web.styles.css?v=HK8pM9HNVohpMIyqYc_0utR_alZF-CCSYZOWVkQwu4w" />
+</head>
+<body>
+    <header b-k2ctk0jt16>
+        <nav b-k2ctk0jt16 class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div b-k2ctk0jt16 class="container-fluid">
+                <a class="navbar-brand" href="/">SagPoc.Web</a>
+                <button b-k2ctk0jt16 class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span b-k2ctk0jt16 class="navbar-toggler-icon"></span>
+                </button>
+                <div b-k2ctk0jt16 class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul b-k2ctk0jt16 class="navbar-nav flex-grow-1">
+                        <li b-k2ctk0jt16 class="nav-item">
+                            <a class="nav-link text-dark" href="/">Home</a>
+                        </li>
+                        <li b-k2ctk0jt16 class="nav-item">
+                            <a class="nav-link text-dark" href="/Form">Formulários</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div b-k2ctk0jt16 class="container">
+        <main b-k2ctk0jt16 role="main" class="pb-3">
+            
+<link rel="stylesheet" href="/css/consulta-grid.css" />
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Tipo Documento</h4>
+        <div>
+            <span class="badge bg-info">11 campos</span>
+                <span class="badge bg-success ms-1">1 consultas</span>
+            <a class="btn btn-outline-secondary btn-sm ms-2" href="/Form">Voltar</a>
+        </div>
+    </div>
+
+        <!-- Layout com Guia Consulta + Guias de Dados -->
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <!-- Tab Consulta -->
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-consulta-tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-consulta"
+                        type="button" role="tab" aria-controls="tab-consulta" aria-selected="true">
+                    Consulta
+                </button>
+            </li>
+            <!-- Tab Dados (primeira guia) -->
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-dados-tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-dados"
+                        type="button" role="tab" aria-controls="tab-dados" aria-selected="false">
+                    Dados Gerais
+                </button>
+            </li>
+                <!-- Tab Dados 2 (segunda guia) -->
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-dados2-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-dados2"
+                            type="button" role="tab" aria-controls="tab-dados2" aria-selected="false">
+                        Dados Adicionais
+                    </button>
+                </li>
+        </ul>
+        <div class="tab-content" id="mainTabsContent">
+            <!-- Conteudo Tab Consulta -->
+            <div class="tab-pane fade show active" id="tab-consulta" role="tabpanel" aria-labelledby="tab-consulta-tab">
+                <div class="p-3">
+                    
+<div class="consulta-container" id="consultaContainer" data-table-id="210">
+    <!-- Barra de ferramentas -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label class="form-label fw-bold">Consulta</label>
+            <select id="consultaSelect" class="form-select">
+                    <option value="210000" data-busc="TPDO000-Padr&#xE3;o">
+                        TPDO000-Padr&#xE3;o
+                    </option>
+            </select>
+        </div>
+        <div class="col-md-8 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-secondary me-2" id="btnRefresh" title="Atualizar">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center" id="filterRow">
+                <div class="col-md-3">
+                    <select id="filterField" class="form-select form-select-sm">
+                        <option value="">-- Campo --</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="filterCondition" class="form-select form-select-sm">
+                        <option value="startswith">Iniciado por</option>
+                        <option value="contains" selected>Contém</option>
+                        <option value="equals">Igual a</option>
+                        <option value="notequals">Diferente de</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="filterValue" class="form-control form-control-sm" placeholder="Localiza...">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="button" class="btn btn-primary btn-sm" id="btnAddFilter">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnClearFilters">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </button>
+                </div>
+            </div>
+            <!-- Tags de filtros ativos -->
+            <div id="activeFilters" class="mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm" id="consultaGrid">
+            <thead class="table-dark">
+                <tr id="gridHeader"></tr>
+            </thead>
+            <tbody id="gridBody">
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">
+                        Selecione uma consulta para carregar os dados...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginacao -->
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <div class="text-muted" id="gridInfo">
+            Mostrando 0 registros
+        </div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="gridPagination">
+            </ul>
+        </nav>
+    </div>
+
+    <hr class="my-3">
+
+    <!-- Botoes CRUD -->
+    <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success" id="btnIncluir">
+                <i class="bi bi-plus-circle"></i> Incluir
+            </button>
+            <button type="button" class="btn btn-primary" id="btnAlterar" disabled>
+                <i class="bi bi-pencil"></i> Alterar
+            </button>
+            <button type="button" class="btn btn-danger" id="btnExcluir" disabled>
+                <i class="bi bi-trash"></i> Excluir
+            </button>
+    </div>
+</div>
+
+                </div>
+            </div>
+
+            <!-- Conteudo Tab Dados -->
+            <div class="tab-pane fade" id="tab-dados" role="tabpanel" aria-labelledby="tab-dados-tab">
+                <div class="p-3">
+                    
+<form id="dynamicForm" class="needs-validation" novalidate>
+    <input type="hidden" id="editingRecordId" name="editingRecordId" value="" />
+
+
+            <fieldset class="bevel-group mb-3">
+                <div class="bevel-content">
+
+
+    <div class="field-row field-row-single">
+        
+
+        <div class="field-wrapper" style="max-width: 310px;">
+                <label for="field_4" class="form-label">
+                    Nome
+                        <span class="text-danger">*</span>
+                </label>
+            <input type="text"
+                   class="form-control"
+                   id="field_4"
+                   name="NOMETPDO"
+                   title="Nome do Documento"
+                   placeholder="Nome do Documento"
+                   required
+                   
+                   data-mask="" />
+        </div>
+
+    </div>
+
+
+    <div class="field-row field-row-multi">
+
+
+        <div class="field-wrapper" style="">
+                <label for="field_5" class="form-label">
+                    Tipo
+                        <span class="text-danger">*</span>
+                </label>
+            <select class="form-select"
+                    id="field_5"
+                    name="TIPOTPDO"
+                    title="Tipo do Documento"
+                    required
+                    >
+                <option value="">Selecione...</option>
+                        <option value="DI">Dinheiro</option>
+                        <option value="DU">Duplicata</option>
+                        <option value="BO">Boleto</option>
+                        <option value="CH">Cheque</option>
+                        <option value="CR">Credito em Conta</option>
+                        <option value="DE">Debito em Conta</option>
+                        <option value="DT">DOC/TED</option>
+                        <option value="EX">Expedicao</option>
+                        <option value="CC">Cartao Credito</option>
+                        <option value="CD">Cartao Debito</option>
+                        <option value="ND">Nota de Debito</option>
+                        <option value="OP">Ordem de Pagamento</option>
+                        <option value="TR">Transferencia</option>
+                        <option value="PX">PIX</option>
+            </select>
+        </div>
+
+
+        <div class="field-wrapper" style="">
+                <label for="field_9" class="form-label">
+                    Ordem
+                </label>
+            <input type="number"
+                   class="form-control"
+                   id="field_9"
+                   name="ORDETPDO"
+                   title="Ordem"
+                   placeholder="Ordem"
+                   min=&quot;0&quot;
+                   max=&quot;0&quot;
+                   step="1"
+                   
+                    />
+        </div>
+    </div>
+
+
+    <div class="field-row field-row-multi">
+
+
+        <div class="field-wrapper" style="">
+            <div class="form-check">
+                <input type="hidden" name="ATIVTPDO" value="0" />
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="field_7"
+                       name="ATIVTPDO"
+                       value="1"
+                       title="Tipo de Documento Ativo"
+                       checked
+                        />
+                    <label for="field_7" class="form-check-label">
+                        Ativo
+                    </label>
+            </div>
+        </div>
+
+
+        <div class="field-wrapper" style="">
+                <label for="field_8" class="form-label">
+                    Dispon&#xED;vel no SAGMob
+                </label>
+            <select class="form-select"
+                    id="field_8"
+                    name="PDA_TPDO"
+                    title="Dispon&#xED;vel no SAGMob"
+                    
+                    >
+                <option value="">Selecione...</option>
+                        <option value="0">Sim</option>
+                        <option value="1">N&#xE3;o</option>
+            </select>
+        </div>
+    </div>
+                </div>
+            </fieldset>
+            <fieldset class="bevel-group mb-3">
+                <div class="bevel-content">
+
+
+    <div class="field-row field-row-multi">
+
+
+        <div class="field-wrapper" style="">
+            <div class="form-check">
+                <input type="hidden" name="BLCOTPDO" value="0" />
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="field_2"
+                       name="BLCOTPDO"
+                       value="1"
+                       title="Bloqueio Comercial"
+                       
+                        />
+                    <label for="field_2" class="form-check-label">
+                        Bloqueio Comercial
+                    </label>
+            </div>
+        </div>
+
+
+        <div class="field-wrapper" style="">
+            <div class="form-check">
+                <input type="hidden" name="BLFITPDO" value="0" />
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="field_3"
+                       name="BLFITPDO"
+                       value="1"
+                       title="Bloqueio Financeiro"
+                       
+                        />
+                    <label for="field_3" class="form-check-label">
+                        Bloqueio Financeiro
+                    </label>
+            </div>
+        </div>
+    </div>
+                </div>
+            </fieldset>
+            <fieldset class="bevel-group mb-3">
+                <div class="bevel-content">
+
+
+    <div class="field-row field-row-single">
+        
+
+        <div class="field-wrapper" style="max-width: 150px;">
+            <div class="form-check">
+                <input type="hidden" name="SF16TPDO" value="0" />
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="field_11"
+                       name="SF16TPDO"
+                       value="1"
+                       title="Inclui no Reg. 1601 - Opera&#xE7;&#xF5;es com instrumentos de pagamentos eletr&#xF4;nicos do SPED Fiscal os pagamentos lan&#xE7;ados com esse tipo"
+                       
+                        />
+                    <label for="field_11" class="form-check-label">
+                        Reg. 1601 (SPED Fiscal)
+                    </label>
+            </div>
+        </div>
+
+    </div>
+                </div>
+            </fieldset>
+
+    <hr class="my-4" />
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Salvar
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="btnCancelar">
+            <i class="bi bi-x-lg"></i> Cancelar
+        </button>
+    </div>
+</form>
+
+<script>
+    document.getElementById('btnCancelar')?.addEventListener('click', function() {
+        // Volta para a tab Consulta
+        document.getElementById('tab-consulta-tab')?.click();
+    });
+</script>
+
+                </div>
+            </div>
+
+                <!-- Conteudo Tab Dados 2 -->
+                <div class="tab-pane fade" id="tab-dados2" role="tabpanel" aria-labelledby="tab-dados2-tab">
+                    <div class="p-3">
+                    </div>
+                </div>
+        </div>
+</div>
+
+
+        </main>
+    </div>
+
+    <footer b-k2ctk0jt16 class="border-top footer text-muted">
+        <div b-k2ctk0jt16 class="container">
+            &copy; 2025 - SagPoc.Web - <a href="/Home/Privacy">Privacy</a>
+        </div>
+    </footer>
+    <script src="/lib/jquery/dist/jquery.min.js"></script>
+    <script src="/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/site.js?v=hRQyftXiu1lLX2P9Ly9xa4gHJgLeR1uGN5qegUobtGo"></script>
+    
+    <script src="/js/consulta-grid.js"></script>
+    <script>
+        // Validacao Bootstrap
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    if (!form.checkValidity()) {
+                        event.stopPropagation();
+                    } else {
+                        // Salvar via AJAX
+                        saveForm(form);
+                    }
+                    form.classList.add('was-validated');
+                }, false)
+            })
+        })()
+
+        // Funcao para salvar formulario
+        async function saveForm(form) {
+            const formData = new FormData(form);
+            const fields = {};
+            formData.forEach((value, key) => {
+                fields[key] = value;
+            });
+
+            // Garantir que checkboxes nao marcados enviem valor 0
+            form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (!cb.checked && cb.name) {
+                    fields[cb.name] = '0';
+                }
+            });
+
+            const tableId = 210;
+            const recordId = document.getElementById('editingRecordId')?.value || null;
+
+            try {
+                const response = await fetch('/Form/SaveRecord', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tableId: tableId,
+                        recordId: recordId ? parseInt(recordId) : null,
+                        fields: fields
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    // Volta para tab Consulta e recarrega
+                    if (window.consultaGrid) {
+                        document.getElementById('tab-consulta-tab')?.click();
+                        window.consultaGrid.loadData();
+                    }
+                } else {
+                    alert('Erro: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                alert('Erro ao salvar registro');
+            }
+        }
+    </script>
+
+</body>
+</html>
+

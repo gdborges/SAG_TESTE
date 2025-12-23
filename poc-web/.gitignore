@@ -1,0 +1,40 @@
+# Build results
+bin/
+obj/
+publish-linux/
+
+# Database files
+*.db
+
+# User-specific files
+*.user
+*.suo
+.vs/
+
+# IDE
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Logs
+*.log
+
+# Temporary files
+~$*.docx
+*.tmp
+*.bak
+
+# Archives
+docs.zip
+
+# AI agent configs (local)
+.agent/
+.claude/
+.gemini/
+
+# Malformed filenames
+C:Users*
