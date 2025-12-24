@@ -1,98 +1,171 @@
 /* ===========================================
    CSS para o renderizador de formulários dinâmicos
-   POC SAG - Design baseado em GUIA_VISUAL_INCLUSAO_RAPIDA
+   POC SAG - Design baseado em Vision Design System
    =========================================== */
 
-/* Variáveis de cores (baseadas no GUIA_VISUAL) */
+/* Variáveis de cores - Mapeamento Vision para compatibilidade */
 :root {
-    /* Cores Primárias */
-    --color-success: #5cb85c;
-    --color-success-hover: #4cae4c;
-    --color-success-active: #449d44;
-    --color-danger: #FF0000;
-    --color-danger-light: #d96f6f;
-    --color-info: #78acff;
-    --color-warning: #f0ad4e;
+    /* Cores Primárias - Usando Vision */
+    --color-success: var(--feedback-success-100, #34A853);
+    --color-success-hover: #2D9649;
+    --color-success-active: #267A3D;
+    --color-danger: var(--feedback-error-100, #EA4335);
+    --color-danger-light: #F87171;
+    --color-info: var(--feedback-info-100, #4285F4);
+    --color-warning: var(--feedback-warning-100, #FBBC05);
 
-    /* Cores de Background */
-    --bg-white: #ffffff;
-    --bg-readonly: #f5f5f5;
-    --bg-gray-light: #f9f9f9;
-    --bg-gray-ultra-light: #fafafa;
-    --bg-disabled: #f0f0f0;
+    /* Cores de Background - Usando Vision */
+    --bg-white: var(--neutral-white, #FFFFFF);
+    --bg-readonly: var(--neutral-100, #F5F5F5);
+    --bg-gray-light: var(--neutral-100, #F5F5F5);
+    --bg-gray-ultra-light: var(--neutral-100, #F5F5F5);
+    --bg-disabled: var(--neutral-100, #F5F5F5);
 
-    /* Cores de Borda */
-    --border-default: #ddd;
-    --border-light: #e0e0e0;
-    --border-focus: #007bff;
+    /* Cores de Borda - Usando Vision */
+    --border-default: var(--neutral-300, #D4D4D4);
+    --border-light: var(--neutral-200, #E5E5E5);
+    --border-focus: var(--primary-300, #447BDA);
 
-    /* Cores de Texto */
-    --text-primary: #000000;
-    --text-secondary: #333333;
-    --text-muted: #797979;
-    --text-disabled: #cccccc;
-    --text-placeholder: #999999;
+    /* Cores de Texto - Usando Vision */
+    --text-primary: var(--neutral-800, #262626);
+    --text-secondary: var(--neutral-700, #404040);
+    --text-muted: var(--neutral-600, #525252);
+    --text-disabled: var(--neutral-400, #A3A3A3);
+    --text-placeholder: var(--neutral-400, #A3A3A3);
 
     /* Botões */
-    --btn-default-bg: #e0e0e0;
-    --btn-default-hover: #d0d0d0;
-    --btn-default-active: #c0c0c0;
+    --btn-default-bg: var(--neutral-200, #E5E5E5);
+    --btn-default-hover: var(--neutral-300, #D4D4D4);
+    --btn-default-active: var(--neutral-400, #A3A3A3);
 }
 
 /* Container principal do formulário */
 .form-container {
     max-width: 800px;
     background-color: var(--bg-white);
-    padding: 1rem;
-    border-radius: 8px;
+    padding: var(--spacing-lg, 1.5rem);
+    border-radius: var(--radius-lg, 16px);
+    box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
 }
 
 /* Bevel Groups (Fieldsets) */
-.bevel-group {
-    border: 1px solid var(--border-default);
-    border-radius: 8px;
-    padding: 1.25rem 1.5rem;
-    background-color: var(--bg-gray-ultra-light);
-    margin-bottom: 1.5rem;
-    transition: background-color 0.2s ease;
+fieldset.bevel-group {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md, 12px);
+    padding: 0.5rem 0.75rem;
+    background-color: var(--bg-white);
+    margin: 0 0 0.5rem 0;
+    min-width: 0;
+    min-height: 0;
+    transition: background-color var(--transition-fast, 150ms ease);
 }
 
-.bevel-group:hover {
+fieldset.bevel-group:hover {
     background-color: var(--bg-gray-light);
 }
 
-.bevel-group legend {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    padding: 0 0.5rem;
+fieldset.bevel-group legend {
+    font-size: var(--font-size-sm, 14px);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--text-muted);
+    padding: 0 var(--spacing-xs, 0.25rem);
     width: auto;
     float: none;
-    margin-bottom: 0.75rem;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.2;
 }
 
-/* Conteúdo dentro do bevel - usa flex para layout */
+/* Conteudo dentro do bevel - layout vertical de linhas */
 .bevel-content {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1.5rem;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0;
+    margin: 0;
+    min-height: 0;
 }
 
-/* Campos órfãos */
+/* Reset de margins para elementos dentro de bevel-content */
+.bevel-content > * {
+    margin: 0 !important;
+}
+
+/* Campos orfaos - layout vertical de linhas */
 .orphan-fields {
     display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.25rem 0;
+    margin: 0 0 0.5rem 0;
+}
+
+/* Reset de margins para elementos dentro de orphan-fields */
+.orphan-fields > * {
+    margin: 0 !important;
+}
+
+/* ===========================================
+   Row-Based Layout
+   =========================================== */
+
+/* Linha de campos - sem margin, gap do pai controla */
+.field-row {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Linha com campo unico */
+.field-row-single {
+    display: block;
+}
+
+/* Linha com multiplos campos - Flexbox */
+.field-row-multi {
+    display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem 1.5rem;
-    padding: 1rem 0;
+    gap: 0.5rem;
+    align-items: stretch; /* Todos os wrappers com mesma altura */
+}
+
+/* Campos dentro de linha multi - respeita TamaCamp via style inline */
+.field-row-multi > .field-wrapper {
+    /* flex definido via style inline baseado em TamaCamp */
+    /* fallback se não tiver style: cresce igualmente */
+    flex: 1 1 auto;
+    min-width: 100px;
+    margin: 0 !important;
+}
+
+/* Garante que input-group ocupe toda a largura do wrapper */
+.field-row-multi > .field-wrapper > .input-group {
+    width: 100%;
+}
+
+/* Field wrapper - reset margins */
+.field-wrapper {
+    min-width: 0;
+    margin: 0 !important;
+}
+
+/* Field wrapper que ocupa linha inteira */
+.field-wrapper-full {
+    grid-column: 1 / -1;
+}
+
+/* Garante que inputs preenchem o container */
+.field-wrapper .form-control,
+.field-wrapper .form-select {
+    width: 100%;
 }
 
 /* Labels dos campos */
 .form-label {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--font-size-sm, 14px);
+    font-weight: var(--font-weight-medium, 500);
     color: var(--text-secondary);
-    margin-bottom: 0.35rem;
-    line-height: 1.4;
+    margin-bottom: 0.125rem;
+    line-height: 1.2;
+    display: block;
 }
 
 /* Indicador de obrigatório */
@@ -105,22 +178,23 @@
 /* Inputs e selects - Estado Normal */
 .form-control,
 .form-select {
-    font-size: 14px;
+    font-family: var(--font-family, inherit);
+    font-size: var(--font-size-sm, 14px);
     font-weight: 400;
     color: var(--text-primary);
     background-color: var(--bg-white);
     border: 1px solid var(--border-default);
-    border-radius: 4px;
-    padding: 8px 12px;
-    height: 40px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    border-radius: var(--radius-sm, 6px);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+    height: 38px;
+    transition: border-color var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
 }
 
 /* Estado Focus */
 .form-control:focus,
 .form-select:focus {
     border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    box-shadow: 0 0 0 3px var(--primary-100, rgba(68, 123, 218, 0.15));
     outline: none;
 }
 
@@ -159,10 +233,17 @@
 
 /* Checkboxes */
 .form-check {
-    min-height: 2.5rem;
+    min-height: 38px;
     display: flex;
     align-items: center;
     padding-left: 1.75em;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+/* Checkbox em linha com inputs - adiciona espaço equivalente ao label */
+.field-row-multi .field-wrapper > .form-check {
+    margin-top: calc(14px * 1.2 + 0.125rem); /* altura do label + margin-bottom do label */
 }
 
 .form-check-input {
@@ -171,19 +252,19 @@
     height: 1.15em;
     flex-shrink: 0;
     border: 1px solid var(--border-default);
-    border-radius: 3px;
+    border-radius: var(--radius-sm, 6px);
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    transition: background-color var(--transition-fast, 150ms ease), border-color var(--transition-fast, 150ms ease);
 }
 
 .form-check-input:checked {
-    background-color: var(--color-success);
-    border-color: var(--color-success);
+    background-color: var(--primary-300, #447BDA);
+    border-color: var(--primary-300, #447BDA);
 }
 
 .form-check-input:focus {
     border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    box-shadow: 0 0 0 3px var(--primary-100, rgba(68, 123, 218, 0.15));
 }
 
 .form-check-label {
@@ -214,59 +295,58 @@
 
 /* Botões de Ação */
 .btn {
-    font-size: 14px;
-    font-weight: 500;
-    padding: 10px 20px;
+    font-family: var(--font-family, inherit);
+    font-size: var(--font-size-sm, 14px);
+    font-weight: var(--font-weight-medium, 500);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
     height: 40px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm, 6px);
     border: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast, 150ms ease);
     min-width: 100px;
 }
 
-/* Botão Primário (Salvar) - Verde */
+/* Botão Primário (Salvar) - Azul Vision */
 .btn-primary {
-    background-color: var(--color-success);
-    color: var(--bg-white);
+    background-color: var(--primary-300, #447BDA);
+    color: var(--neutral-white, #FFFFFF);
+    border: 1px solid var(--primary-300, #447BDA);
 }
 
 .btn-primary:hover {
-    background-color: var(--color-success-hover);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transform: translateY(-1px);
+    background-color: var(--primary-400, #2D5CB8);
+    border-color: var(--primary-400, #2D5CB8);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
 .btn-primary:active {
-    background-color: var(--color-success-active);
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    background-color: var(--primary-400, #2D5CB8);
+    border-color: var(--primary-400, #2D5CB8);
 }
 
 .btn-primary:disabled {
-    background-color: var(--text-disabled);
-    color: #666666;
+    background-color: var(--neutral-300, #D4D4D4);
+    border-color: var(--neutral-300, #D4D4D4);
+    color: var(--neutral-500, #737373);
     cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+    opacity: 0.7;
 }
 
-/* Botão Secundário (Limpar/Fechar) - Cinza */
+/* Botão Secundário (Limpar/Fechar) - Neutro */
 .btn-outline-secondary {
-    background-color: var(--btn-default-bg);
-    color: var(--text-secondary);
-    border: none;
+    background-color: var(--neutral-white, #FFFFFF);
+    color: var(--neutral-800, #262626);
+    border: 1px solid var(--neutral-300, #D4D4D4);
 }
 
 .btn-outline-secondary:hover {
-    background-color: var(--btn-default-hover);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transform: translateY(-1px);
+    background-color: var(--neutral-100, #F5F5F5);
+    border-color: var(--neutral-400, #A3A3A3);
 }
 
 .btn-outline-secondary:active {
-    background-color: var(--btn-default-active);
-    transform: translateY(0);
+    background-color: var(--neutral-200, #E5E5E5);
 }
 
 /* Container dos botões */
@@ -430,35 +510,36 @@ hr {
 }
 
 /* ===========================================
-   Tabs / Guias
+   Tabs / Guias - Vision Design System
    =========================================== */
 
 /* Nav Tabs Container */
 .nav-tabs {
-    border-bottom: 2px solid var(--border-default);
+    border-bottom: 1px solid var(--neutral-200, #E5E5E5);
     margin-bottom: 0;
-    background-color: var(--bg-gray-ultra-light);
-    padding: 0 0.5rem;
-    border-radius: 8px 8px 0 0;
+    background-color: transparent;
+    padding: 0;
 }
 
 /* Tab Links */
 .nav-tabs .nav-link {
+    font-family: var(--font-family, inherit);
+    font-size: var(--font-size-sm, 14px);
+    font-weight: var(--font-weight-medium, 500);
     border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--text-muted);
-    font-weight: 500;
-    padding: 0.875rem 1.25rem;
-    margin-bottom: -2px;
-    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
-    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--neutral-600, #525252);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+    margin-bottom: -1px;
+    transition: color var(--transition-fast, 150ms ease), border-color var(--transition-fast, 150ms ease);
+    border-radius: var(--radius-sm, 6px) var(--radius-sm, 6px) 0 0;
     background: transparent;
 }
 
 .nav-tabs .nav-link:hover {
-    color: var(--text-secondary);
-    border-bottom-color: var(--border-light);
-    background-color: rgba(0, 0, 0, 0.02);
+    color: var(--neutral-800, #262626);
+    border-bottom-color: var(--neutral-300, #D4D4D4);
+    background-color: transparent;
 }
 
 .nav-tabs .nav-link:focus {
@@ -467,23 +548,23 @@ hr {
 }
 
 .nav-tabs .nav-link.active {
-    color: var(--border-focus);
-    border-bottom-color: var(--border-focus);
-    background-color: var(--bg-white);
-    font-weight: 600;
+    color: var(--primary-300, #447BDA);
+    border-bottom-color: var(--primary-300, #447BDA);
+    background-color: transparent;
+    font-weight: var(--font-weight-semibold, 600);
 }
 
 /* Tab Content Container */
 .tab-content {
-    border: 1px solid var(--border-default);
+    border: 1px solid var(--neutral-200, #E5E5E5);
     border-top: none;
-    border-radius: 0 0 8px 8px;
-    background-color: var(--bg-white);
+    border-radius: 0 0 var(--radius-lg, 16px) var(--radius-lg, 16px);
+    background-color: var(--neutral-white, #FFFFFF);
 }
 
 /* Tab Pane */
 .tab-pane {
-    padding: 1rem;
+    padding: var(--spacing-md, 16px);
 }
 
 /* Tab Pane Form Container */
@@ -530,4 +611,431 @@ hr {
     font-weight: 500;
     padding: 2px 6px;
     vertical-align: middle;
+}
+
+/* ===========================================
+   Abas de Movimento (GuiaCamp >= 10)
+   =========================================== */
+
+/* Container da aba de movimento */
+.movement-container {
+    padding: var(--spacing-sm, 8px) 0;
+}
+
+/* Campos do movimento */
+.movement-fields {
+    background-color: var(--bg-gray-light);
+    border-radius: var(--radius-md, 12px);
+    padding: var(--spacing-md, 16px);
+    margin-bottom: var(--spacing-md, 16px);
+}
+
+/* Container do grid de movimento */
+.movement-grid-container {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md, 12px);
+    padding: var(--spacing-md, 16px);
+    background-color: var(--bg-white);
+}
+
+/* Grid de itens do movimento */
+.movement-grid {
+    margin-bottom: 0;
+    font-size: var(--font-size-sm, 14px);
+}
+
+.movement-grid thead th {
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--text-secondary);
+    background-color: var(--bg-gray-light);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+    border-color: var(--border-light);
+}
+
+.movement-grid tbody td {
+    padding: var(--spacing-md, 16px);
+    vertical-align: middle;
+    color: var(--text-muted);
+}
+
+/* Botões Envia/Remove desabilitados */
+.movement-grid-container .btn-group .btn:disabled {
+    background-color: var(--btn-default-bg);
+    border-color: var(--border-default);
+    color: var(--text-disabled);
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.movement-grid-container .btn-group .btn:disabled:hover {
+    background-color: var(--btn-default-bg);
+    border-color: var(--border-default);
+}
+
+/* Ícone de lista vazia */
+.movement-grid tbody .bi-inbox {
+    color: var(--text-placeholder);
+}
+
+/* ===========================================
+   Campos Calculados (EE, LE, EN, LN, ED, EC, ES, ET, EA, EI)
+   =========================================== */
+
+/* Container para campos calculados */
+.field-calc {
+    position: relative;
+}
+
+/* Input de campos calculados */
+.form-control-calc,
+.form-select-calc {
+    background-color: var(--bg-gray-light);
+    border-color: var(--neutral-300, #D4D4D4);
+}
+
+.form-control-calc:focus,
+.form-select-calc:focus {
+    background-color: var(--bg-white);
+}
+
+/* Campos calculados readonly */
+.field-calc.field-readonly .form-control-calc,
+.field-calc.field-readonly .form-select-calc {
+    background-color: var(--bg-readonly);
+    cursor: not-allowed;
+    color: var(--text-muted);
+}
+
+/* Checkbox calculado */
+.form-check-calc {
+    border-color: var(--neutral-400, #A3A3A3);
+}
+
+/* ===========================================
+   Campos Info (IE, IN, IM, IR)
+   =========================================== */
+
+/* Container para campos info */
+.field-info {
+    position: relative;
+}
+
+/* Input de campos info */
+.form-control-info,
+.form-select-info {
+    background-color: var(--bg-readonly);
+    border-color: var(--border-light);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+/* RichEdit info readonly */
+.form-control-rich-info {
+    background-color: var(--bg-readonly);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm, 6px);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+    color: var(--text-muted);
+    overflow: auto;
+}
+
+/* ===========================================
+   Campos Readonly genéricos
+   =========================================== */
+
+/* Textareas (Memo/Observação) - altura mínima confortável */
+textarea.form-control {
+    min-height: 120px; /* Altura mínima para campos de texto longo */
+    resize: vertical; /* Permite redimensionar verticalmente */
+}
+
+.field-readonly .form-control,
+.field-readonly .form-select,
+.field-readonly textarea {
+    background-color: var(--bg-readonly) !important;
+    color: var(--text-muted) !important;
+    cursor: not-allowed !important;
+}
+
+.field-readonly .form-label {
+    color: var(--text-muted);
+}
+
+/* ===========================================
+   Lookup Modal (L, IL)
+   =========================================== */
+
+/* Botão de lookup/pesquisa */
+.btn-lookup,
+.btn-file,
+.btn-directory {
+    border-color: var(--border-default);
+    background-color: var(--bg-white);
+    color: var(--text-secondary);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+    transition: all var(--transition-fast, 150ms ease);
+}
+
+.btn-lookup:hover,
+.btn-file:hover,
+.btn-directory:hover {
+    background-color: var(--bg-gray-light);
+    border-color: var(--border-focus);
+    color: var(--primary-300, #447BDA);
+}
+
+.btn-lookup:disabled,
+.btn-file:disabled,
+.btn-directory:disabled {
+    background-color: var(--bg-disabled);
+    color: var(--text-disabled);
+    cursor: not-allowed;
+}
+
+/* Input group com botão - compatível com Bootstrap 5 */
+.input-group {
+    width: 100%;
+    flex-wrap: nowrap; /* Nunca quebra linha - input e botão sempre juntos */
+}
+
+.input-group .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    min-width: 0; /* Permite shrink para caber o botão */
+}
+
+.input-group .btn-lookup,
+.input-group .btn-file,
+.input-group .btn-directory {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 1px solid var(--border-default);
+    margin-left: -1px; /* Sobrepor bordas para aparência unificada */
+    height: 38px; /* Mesma altura do input */
+    min-width: 38px; /* Largura mínima para manter proporção */
+    padding: 0 12px; /* Ajustar padding para centralizar ícone */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-group .form-control:focus {
+    z-index: 1; /* Garante que a borda de foco fique por cima */
+}
+
+.input-group .form-control:focus + .btn-lookup,
+.input-group .form-control:focus + .btn-file,
+.input-group .form-control:focus + .btn-directory {
+    border-left-color: var(--border-focus);
+}
+
+/* ===========================================
+   RichEdit (RM, RB)
+   =========================================== */
+
+.form-control-rich {
+    background-color: var(--bg-white);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm, 6px);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+    overflow: auto;
+    line-height: 1.5;
+}
+
+.form-control-rich:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--primary-100, rgba(68, 123, 218, 0.15));
+}
+
+.form-control-rich[contenteditable="false"] {
+    background-color: var(--bg-readonly);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+/* ===========================================
+   Advanced Memo / Code Editor (BS, BE, BI, BP, BX, RS, RE, RI, RP, RX)
+   =========================================== */
+
+.field-advanced-memo {
+    position: relative;
+}
+
+.form-control-code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid var(--neutral-600, #525252);
+    border-radius: var(--radius-sm, 6px);
+    resize: vertical;
+}
+
+.form-control-code:focus {
+    border-color: var(--primary-300, #447BDA);
+    box-shadow: 0 0 0 3px rgba(68, 123, 218, 0.25);
+}
+
+.form-control-code:disabled {
+    background-color: #2d2d2d;
+    color: #808080;
+}
+
+/* ===========================================
+   Imagens (FE, FI, FF)
+   =========================================== */
+
+.field-image .image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-gray-light);
+    min-height: 100px;
+}
+
+.field-image .img-thumbnail {
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.field-image .img-fluid {
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.field-image input[type="file"] {
+    margin-top: var(--spacing-sm, 8px);
+}
+
+/* ===========================================
+   DataGrid Placeholder (DBG)
+   =========================================== */
+
+.data-grid-placeholder {
+    background-color: var(--bg-gray-light);
+    border: 1px solid var(--border-light);
+    min-height: 120px;
+}
+
+.data-grid-placeholder .data-grid-header {
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: var(--spacing-sm, 8px);
+    color: var(--text-secondary);
+}
+
+.data-grid-placeholder .data-grid-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-md, 16px);
+}
+
+/* ===========================================
+   Chart Placeholder (GRA)
+   =========================================== */
+
+.chart-placeholder {
+    background-color: var(--bg-gray-light);
+    border: 1px solid var(--border-light);
+    min-height: 150px;
+}
+
+.chart-placeholder .chart-header {
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: var(--spacing-sm, 8px);
+    color: var(--text-secondary);
+}
+
+.chart-placeholder .chart-content {
+    padding: var(--spacing-lg, 24px);
+    color: var(--text-placeholder);
+}
+
+.chart-placeholder .chart-content i {
+    opacity: 0.5;
+}
+
+/* ===========================================
+   CheckList (LC)
+   =========================================== */
+
+.field-checklist .checklist-container {
+    background-color: var(--bg-white);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.field-checklist .form-check {
+    padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+    margin: 0;
+    min-height: auto;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.field-checklist .form-check:last-child {
+    border-bottom: none;
+}
+
+.field-checklist .form-check:hover {
+    background-color: var(--bg-gray-light);
+}
+
+/* ===========================================
+   Label estático (LBL)
+   =========================================== */
+
+.field-label {
+    padding: var(--spacing-sm, 8px) 0;
+}
+
+.field-static-label {
+    font-size: var(--font-size-sm, 14px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--text-secondary);
+}
+
+/* ===========================================
+   Botão (BTN)
+   =========================================== */
+
+.field-button {
+    padding-top: var(--spacing-md, 16px);
+}
+
+.field-button .btn {
+    min-width: auto;
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+}
+
+/* Responsividade para abas de movimento */
+@media (max-width: 768px) {
+    .movement-fields .row {
+        gap: var(--spacing-sm, 8px);
+    }
+
+    .movement-fields .col-md-6,
+    .movement-fields .col-lg-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .movement-grid-container {
+        padding: var(--spacing-sm, 8px);
+    }
+
+    .movement-grid-container .d-flex {
+        flex-direction: column;
+        gap: var(--spacing-sm, 8px);
+    }
+
+    .movement-grid-container .btn-group {
+        width: 100%;
+    }
+
+    .movement-grid-container .btn-group .btn {
+        flex: 1;
+    }
 }

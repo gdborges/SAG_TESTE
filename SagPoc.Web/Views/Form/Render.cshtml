@@ -20,7 +20,7 @@
             {
                 <span class="badge bg-secondary ms-1">@Model.Form.GetTabGroups().Count guias</span>
             }
-            <a asp-action="Index" class="btn btn-outline-secondary btn-sm ms-2">Voltar</a>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm ms-2" onclick="if(window.SagEvents) SagEvents.onClose();">Voltar</a>
         </div>
     </div>
 
@@ -44,7 +44,11 @@
                     @Model.DadosTabName
                 </button>
             </li>
-            @if (!string.IsNullOrEmpty(Model.DadosTab2Name))
+            @{
+                // Só mostra aba "Dados Adicionais" se existirem campos com GuiaCamp=2
+                var hasTab2Fields = Model.Form.HeaderFields.Any(f => f.GuiaCamp == 2);
+            }
+            @if (!string.IsNullOrEmpty(Model.DadosTab2Name) && hasTab2Fields)
             {
                 <!-- Tab Dados 2 (segunda guia) -->
                 <li class="nav-item" role="presentation">
@@ -54,6 +58,23 @@
                         @Model.DadosTab2Name
                     </button>
                 </li>
+            }
+            @* Abas de Movimento (GuiaCamp >= 10) *@
+            @if (Model.Form.HasMovements)
+            {
+                @foreach (var movementGroup in Model.Form.MovementsByType)
+                {
+                    var movementTabId = $"tab-mov-{movementGroup.Key}";
+                    var firstBevel = movementGroup.FirstOrDefault(f => f.GetComponentType() == SagPoc.Web.Models.ComponentType.Bevel && f.HasBevelCaption);
+                    var movementName = firstBevel?.LabeCamp ?? $"Movimento {movementGroup.Key}";
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="@(movementTabId)-tab"
+                                data-bs-toggle="tab" data-bs-target="#@movementTabId"
+                                type="button" role="tab" aria-controls="@movementTabId" aria-selected="false">
+                            @movementName
+                        </button>
+                    </li>
+                }
             }
         </ul>
 
@@ -72,7 +93,7 @@
                 </div>
             </div>
 
-            @if (!string.IsNullOrEmpty(Model.DadosTab2Name))
+            @if (!string.IsNullOrEmpty(Model.DadosTab2Name) && hasTab2Fields)
             {
                 <!-- Conteudo Tab Dados 2 -->
                 <div class="tab-pane fade" id="tab-dados2" role="tabpanel" aria-labelledby="tab-dados2-tab">
@@ -87,6 +108,20 @@
                         }
                     </div>
                 </div>
+            }
+
+            @* Conteudo das Abas de Movimento *@
+            @if (Model.Form.HasMovements)
+            {
+                @foreach (var movementGroup in Model.Form.MovementsByType)
+                {
+                    var movementTabId = $"tab-mov-{movementGroup.Key}";
+                    <div class="tab-pane fade" id="@movementTabId" role="tabpanel" aria-labelledby="@(movementTabId)-tab">
+                        <div class="p-3">
+                            @await Html.PartialAsync("_MovementTab", movementGroup)
+                        </div>
+                    </div>
+                }
             }
         </div>
     }
@@ -159,6 +194,23 @@
 
 @section Scripts {
     <script src="~/js/consulta-grid.js"></script>
+    <script src="~/js/sag-events.js"></script>
+    <script>
+        // Inicializa sistema de eventos PLSAG
+        (function() {
+            var formEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FormEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var fieldEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FieldEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+            // Inicializa após o DOM estar pronto
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    SagEvents.init(formEvents, fieldEvents);
+                });
+            } else {
+                SagEvents.init(formEvents, fieldEvents);
+            }
+        })();
+    </script>
     <script>
         // Validacao Bootstrap
         (function () {
@@ -180,6 +232,12 @@
 
         // Funcao para salvar formulario
         async function saveForm(form) {
+            // Dispara evento LancTabe (antes de salvar)
+            if (window.SagEvents && !SagEvents.beforeSave()) {
+                console.log('[saveForm] Operação cancelada por SagEvents.beforeSave()');
+                return;
+            }
+
             const formData = new FormData(form);
             const fields = {};
             formData.forEach((value, key) => {
@@ -209,6 +267,13 @@
 
                 const result = await response.json();
                 if (result.success) {
+                    // Dispara eventos após salvar com sucesso
+                    if (window.SagEvents) {
+                        SagEvents.afterSave();   // EGraTabe
+                        SagEvents.refreshGrid(); // AtuaGrid
+                        SagEvents.onClose();     // AposTabe
+                    }
+
                     alert(result.message);
                     // Volta para tab Consulta e recarrega
                     if (window.consultaGrid) {

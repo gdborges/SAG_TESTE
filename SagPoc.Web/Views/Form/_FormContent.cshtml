@@ -12,26 +12,32 @@
     {
         if (group.HasBevel)
         {
-            <fieldset class="bevel-group mb-3">
+            <fieldset class="bevel-group">
                 @* Usa HasBevelCaption (LbcxCamp != 0) para determinar se mostra o label *@
                 @if (group.Bevel!.HasBevelCaption && !string.IsNullOrEmpty(group.Bevel.LabeCamp))
                 {
                     <legend>@group.Bevel.LabeCamp</legend>
                 }
                 <div class="bevel-content">
-                    @foreach (var field in group.Children)
+                    @{
+                        var fieldRows = group.GetFieldRows();
+                    }
+                    @foreach (var row in fieldRows)
                     {
-                        @await Html.PartialAsync("_FieldRendererV2", field)
+                        @await Html.PartialAsync("_FieldRowRenderer", row)
                     }
                 </div>
             </fieldset>
         }
         else
         {
-            <div class="orphan-fields mb-3">
-                @foreach (var field in group.Children)
+            <div class="orphan-fields">
+                @{
+                    var orphanRows = group.GetFieldRows();
+                }
+                @foreach (var row in orphanRows)
                 {
-                    @await Html.PartialAsync("_FieldRendererV2", field)
+                    @await Html.PartialAsync("_FieldRowRenderer", row)
                 }
             </div>
         }

@@ -9,57 +9,77 @@ build_property.EnforceExtendedAnalyzerRules =
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = SagPoc.Web
 build_property.RootNamespace = SagPoc.Web
-build_property.ProjectDir = C:\Users\geraldo.borges\CascadeProjects\sag\poc-web\SagPoc.Web\
+build_property.ProjectDir = C:\Users\geraldo.borges\CascadeProjects\SAG\SagPoc.Web\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = C:\Users\geraldo.borges\CascadeProjects\sag\poc-web\SagPoc.Web
+build_property.MSBuildProjectDirectory = C:\Users\geraldo.borges\CascadeProjects\SAG\SagPoc.Web
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Form/Index.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Form/Render.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/Render.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxSZW5kZXIuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Form/_FieldRenderer.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/_ConsultaTab.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxfQ29uc3VsdGFUYWIuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/_FieldRenderer.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxfRmllbGRSZW5kZXJlci5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Form/_FieldRendererV2.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/_FieldRendererV2.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxfRmllbGRSZW5kZXJlclYyLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Home/Index.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/_FieldRowRenderer.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxfRmllbGRSb3dSZW5kZXJlci5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/_FormContent.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxfRm9ybUNvbnRlbnQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/_FormTabContent.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxfRm9ybVRhYkNvbnRlbnQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Form/_MovementTab.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRm9ybVxfTW92ZW1lbnRUYWIuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Home/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Home/Privacy.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Home/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Shared/Error.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Shared/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Shared/_ValidationScriptsPartial.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Shared/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/_ViewImports.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/_ViewStart.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/geraldo.borges/CascadeProjects/sag/poc-web/SagPoc.Web/Views/Shared/_Layout.cshtml]
+[C:/Users/geraldo.borges/CascadeProjects/SAG/SagPoc.Web/Views/Shared/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = b-k2ctk0jt16

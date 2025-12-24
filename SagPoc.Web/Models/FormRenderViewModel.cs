@@ -21,6 +21,16 @@ public class FormRenderViewModel
     public List<ConsultaMetadata> Consultas { get; set; } = new();
 
     /// <summary>
+    /// Eventos do formulário (ciclo de vida PLSAG)
+    /// </summary>
+    public FormEventData? FormEvents { get; set; }
+
+    /// <summary>
+    /// Eventos dos campos (PLSAG)
+    /// </summary>
+    public Dictionary<int, FieldEventData> FieldEvents { get; set; } = new();
+
+    /// <summary>
     /// Indica se existem consultas configuradas para esta tabela
     /// </summary>
     public bool HasConsultas => Consultas.Any();

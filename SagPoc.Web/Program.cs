@@ -14,6 +14,9 @@ builder.Services.AddScoped<ILookupService, LookupService>();
 // Register ConsultaService for grid queries and CRUD
 builder.Services.AddScoped<IConsultaService, ConsultaService>();
 
+// Register EventService for PLSAG events
+builder.Services.AddScoped<IEventService, EventService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

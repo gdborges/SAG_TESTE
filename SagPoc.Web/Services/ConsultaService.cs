@@ -26,6 +26,22 @@ public class ConsultaService : IConsultaService
     private IDbConnection CreateConnection() => new SqlConnection(_connectionString);
 
     /// <summary>
+    /// Obtém o nome real da coluna de chave primária (primeira coluna da tabela).
+    /// No SAG, a convenção é que a primeira coluna é sempre a PK (CODI + sufixo da tabela).
+    /// </summary>
+    private async Task<string> GetPrimaryKeyColumnAsync(IDbConnection connection, string tableName)
+    {
+        var sql = @"
+            SELECT TOP 1 COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = @TableName
+            ORDER BY ORDINAL_POSITION";
+
+        var pkColumn = await connection.QueryFirstOrDefaultAsync<string>(sql, new { TableName = tableName });
+        return pkColumn ?? $"CODI{tableName.Replace("POCA", "").Replace("POGE", "")}"; // Fallback
+    }
+
+    /// <summary>
     /// Converte um valor object (que pode ser JsonElement) para tipo primitivo.
     /// </summary>
     private static object? ConvertJsonElementToValue(object? value)
@@ -207,9 +223,16 @@ public class ConsultaService : IConsultaService
             var offset = (request.Page - 1) * request.PageSize;
 
             // Aplica ordenação e paginação
+            // Quando há filtros, a query é envolvida em subquery e o ORDER BY original pode referenciar
+            // colunas internas que não são visíveis na query externa (só os aliases são visíveis)
+            var hasFilters = request.Filters.Any(f => !string.IsNullOrEmpty(f.Field) && !string.IsNullOrEmpty(f.Value));
+            var orderByClause = hasFilters && string.IsNullOrEmpty(request.SortField)
+                ? "(SELECT NULL)"  // Não pode usar ORDER BY extraído quando há subquery wrapper
+                : GetOrderByClause(request, consulta, hasFilters ? null : extractedOrderBy);
+
             var pagedSql = $@"
                 {filteredSql}
-                ORDER BY {GetOrderByClause(request, consulta, extractedOrderBy)}
+                ORDER BY {orderByClause}
                 OFFSET {offset} ROWS
                 FETCH NEXT {request.PageSize} ROWS ONLY";
 
@@ -317,7 +340,8 @@ public class ConsultaService : IConsultaService
     private string SanitizeFieldName(string fieldName)
     {
         // Remove caracteres inválidos para prevenir SQL injection
-        return Regex.Replace(fieldName, @"[^\w\s]", "");
+        // Preserva letras acentuadas (á, é, í, ó, ú, ã, õ, ç, etc.)
+        return Regex.Replace(fieldName, @"[^\p{L}\p{N}\s_]", "");
     }
 
     private string ApplyFiltersToSql(string baseSql, string filterClause)
@@ -355,16 +379,17 @@ public class ConsultaService : IConsultaService
         if (table == null || string.IsNullOrEmpty(table.GravTabe))
             return null;
 
-        // Obtém o nome da coluna PK baseado na sigla da tabela
-        var pkColumn = $"CODI{table.SiglTabe}";
         var tableName = table.GravTabe;
-
-        var sql = $"SELECT * FROM [{tableName}] WHERE [{pkColumn}] = @RecordId";
 
         try
         {
             using var connection = CreateConnection();
             connection.Open();
+
+            // Obtém o nome real da coluna PK da tabela
+            var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
+
+            var sql = $"SELECT * FROM [{tableName}] WHERE [{pkColumn}] = @RecordId";
             var result = await connection.QueryFirstOrDefaultAsync(sql, new { RecordId = recordId });
 
             if (result == null)
@@ -398,12 +423,14 @@ public class ConsultaService : IConsultaService
         }
 
         var tableName = table.GravTabe;
-        var pkColumn = $"CODI{table.SiglTabe}";
 
         try
         {
             using var connection = CreateConnection();
             connection.Open();
+
+            // Obtém o nome real da coluna PK da tabela
+            var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
 
             // Obtém as colunas válidas da tabela para filtrar campos inválidos
             var validColumnsSql = @"
@@ -514,14 +541,16 @@ public class ConsultaService : IConsultaService
         }
 
         var tableName = table.GravTabe;
-        var pkColumn = $"CODI{table.SiglTabe}";
-
-        var sql = $"DELETE FROM [{tableName}] WHERE [{pkColumn}] = @RecordId";
 
         try
         {
             using var connection = CreateConnection();
             connection.Open();
+
+            // Obtém o nome real da coluna PK da tabela
+            var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
+
+            var sql = $"DELETE FROM [{tableName}] WHERE [{pkColumn}] = @RecordId";
             var affected = await connection.ExecuteAsync(sql, new { RecordId = recordId });
 
             return new SaveRecordResponse

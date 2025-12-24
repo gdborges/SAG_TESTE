@@ -1,2 +1,0 @@
-put sag-poc-azure.tar.gz /opt/sag-poc-azure.tar.gz
-bye
