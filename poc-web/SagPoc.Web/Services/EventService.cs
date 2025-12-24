@@ -141,7 +141,7 @@ public class EventService : IEventService
     }
 
     /// <summary>
-    /// Carrega campos especiais AnteCria e DepoCria do SISTCAMP.
+    /// Carrega campos especiais AnteCria, DepoCria, DepoShow e AtuaGrid do SISTCAMP.
     /// </summary>
     private async Task LoadSpecialFieldEventsAsync(IDbConnection connection, int codiTabe, FormEventData result)
     {
@@ -151,7 +151,7 @@ public class EventService : IEventService
                 CAST(EXPRCAMP as NVARCHAR(MAX)) as ExprCamp
             FROM SISTCAMP
             WHERE CODITABE = @CodiTabe
-              AND UPPER(NOMECAMP) IN ('ANTECRIA', 'DEPOCRIA')";
+              AND UPPER(NOMECAMP) IN ('ANTECRIA', 'DEPOCRIA', 'DEPOSHOW', 'ATUAGRID')";
 
         var specialFields = await connection.QueryAsync<dynamic>(sql, new { CodiTabe = codiTabe });
 
@@ -164,6 +164,10 @@ public class EventService : IEventService
                 result.AntecriaInstructions = expr;
             else if (nome == "DEPOCRIA")
                 result.DepocriaInstructions = expr;
+            else if (nome == "DEPOSHOW")
+                result.DepoShowInstructions = expr;
+            else if (nome == "ATUAGRID")
+                result.AtuaGridInstructions = expr;
         }
     }
 

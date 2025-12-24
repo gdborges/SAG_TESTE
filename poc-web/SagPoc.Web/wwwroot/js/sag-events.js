@@ -58,6 +58,11 @@ const SagEvents = (function () {
             fireFormEvent('ShowTabe', formEvents.showTabeInstructions);
         }
 
+        // Dispara evento DepoShow (após ShowTabe)
+        if (formEvents.depoShowInstructions) {
+            fireFormEvent('DepoShow', formEvents.depoShowInstructions);
+        }
+
         console.log('[SagEvents] Inicialização concluída');
     }
 
@@ -249,11 +254,27 @@ const SagEvents = (function () {
 
     /**
      * Dispara evento AposTabe ao finalizar.
-     * Chamado ao fechar o formulário.
+     * Chamado ao fechar o formulário ou após salvar com sucesso.
      */
     function onClose() {
         if (formEvents && formEvents.aposTabeInstructions) {
             fireFormEvent('AposTabe', formEvents.aposTabeInstructions);
+        }
+    }
+
+    /**
+     * Dispara evento AtuaGrid para atualizar grids de movimentos.
+     * Chamado após salvar ou quando necessário recarregar grids.
+     */
+    function refreshGrid() {
+        if (formEvents && formEvents.atuaGridInstructions) {
+            fireFormEvent('AtuaGrid', formEvents.atuaGridInstructions);
+        }
+
+        // Recarrega grid de consulta se existir
+        if (window.consultaGrid && typeof window.consultaGrid.loadData === 'function') {
+            console.log('[SagEvents] Recarregando grid de consulta');
+            window.consultaGrid.loadData();
         }
     }
 
@@ -284,6 +305,7 @@ const SagEvents = (function () {
         beforeSave,
         afterSave,
         onClose,
+        refreshGrid,
         isInitialized,
         getFormEvents,
         getFieldEvents,

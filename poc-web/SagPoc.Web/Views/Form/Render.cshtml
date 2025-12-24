@@ -20,7 +20,7 @@
             {
                 <span class="badge bg-secondary ms-1">@Model.Form.GetTabGroups().Count guias</span>
             }
-            <a asp-action="Index" class="btn btn-outline-secondary btn-sm ms-2">Voltar</a>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm ms-2" onclick="if(window.SagEvents) SagEvents.onClose();">Voltar</a>
         </div>
     </div>
 
@@ -267,9 +267,11 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    // Dispara evento EGraTabe (após salvar com sucesso)
+                    // Dispara eventos após salvar com sucesso
                     if (window.SagEvents) {
-                        SagEvents.afterSave();
+                        SagEvents.afterSave();   // EGraTabe
+                        SagEvents.refreshGrid(); // AtuaGrid
+                        SagEvents.onClose();     // AposTabe
                     }
 
                     alert(result.message);

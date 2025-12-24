@@ -53,6 +53,18 @@ public class FormEventData
     public string DepocriaInstructions { get; set; } = string.Empty;
 
     /// <summary>
+    /// Instruções executadas após ShowTabe (DepoShow).
+    /// Fonte: SISTCAMP.ExprCamp onde NomeCamp='DEPOSHOW'
+    /// </summary>
+    public string DepoShowInstructions { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Instruções para atualização de grids (AtuaGrid).
+    /// Fonte: SISTCAMP.ExprCamp onde NomeCamp='ATUAGRID'
+    /// </summary>
+    public string AtuaGridInstructions { get; set; } = string.Empty;
+
+    /// <summary>
     /// Expressões permanentes da tabela (usado internamente para merge).
     /// </summary>
     internal string EPerTabeInstructions { get; set; } = string.Empty;
@@ -66,5 +78,7 @@ public class FormEventData
         !string.IsNullOrWhiteSpace(EGraTabeInstructions) ||
         !string.IsNullOrWhiteSpace(AposTabeInstructions) ||
         !string.IsNullOrWhiteSpace(AntecriaInstructions) ||
-        !string.IsNullOrWhiteSpace(DepocriaInstructions);
+        !string.IsNullOrWhiteSpace(DepocriaInstructions) ||
+        !string.IsNullOrWhiteSpace(DepoShowInstructions) ||
+        !string.IsNullOrWhiteSpace(AtuaGridInstructions);
 }
