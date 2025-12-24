@@ -1,0 +1,21 @@
+ProcedureName,Type,SourceFile,SourceLine,CalledFrom,CallCount,IsEventHandler,HasBusinessLogic
+AfterCreate,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,1065,-,34,No,Yes
+AtuaGrid,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,369,-,1,No,Yes
+BtnConfClick,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,436,-,69,Yes,Yes
+BtnConf_CampModi,function,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,442,POHeCam6.BtnConfClick,26,No,Yes
+BuscaComponente,function,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,138,POHeCam6.BuscaComponente; POHeCam6.ConfPortSeri,57,No,Yes
+ConfPortSeri,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,292,-,24,No,Yes
+CriaTbs,function,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,125,POHeCam6.FormCreate,1,No,Yes
+DuplClic,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,388,-,1,No,Yes
+FormClose,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,740,-,7,No,Yes
+FormCreate,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,627,-,19,No,Yes
+FormDestroy,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,780,-,8,No,Yes
+GetPgcMovi,function,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,112,-,2,No,Yes
+Grav,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,1218,-,5,No,Yes
+IsWeb,function,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,1056,-,0,No,Unknown
+LePeso,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,1228,-,6,No,Yes
+ListChecColumnClick,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,394,-,1,No,Yes
+LoadCompleted,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,402,-,13,No,Yes
+MudaTab2,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,227,-,12,No,Yes
+MudaTabe2_BuscTbs_Index,function,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,234,POHeCam6.MudaTab2; POHeCam6.MudaTabe2_BuscTbs_Index,5,No,Yes
+QryTabeConfBeforeOpen,procedure,C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas,285,-,1,No,Yes

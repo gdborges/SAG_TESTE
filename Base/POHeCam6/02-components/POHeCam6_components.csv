@@ -1,0 +1,2 @@
+Name,Type,Caption,DataField,DataSource,Required,EditMask,TabOrder,Visible
+DtsTabeConf,TDataSource,,,,,,,True
