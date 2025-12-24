@@ -66,6 +66,11 @@
 
     // Classe adicional para campos readonly
     var readonlyClass = field.IsReadonly ? "field-readonly" : "";
+
+    // Atributos data-sag-* para sistema de eventos PLSAG
+    var sagCodicamp = field.CodiCamp.ToString();
+    var sagNomecamp = field.NomeCamp;
+    var sagComptype = field.CompCamp?.ToUpper()?.Trim() ?? "E";
 }
 
 @switch (componentType)
@@ -95,7 +100,10 @@
                    placeholder="@hint"
                    @(isRequired ? "required" : "")
                    @(isDisabled ? "disabled" : "")
-                   data-mask="@field.MascCamp" />
+                   data-mask="@field.MascCamp"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -122,7 +130,10 @@
                    @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
                    step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
                    @(isRequired ? "required" : "")
-                   @(isDisabled ? "disabled" : "") />
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -145,7 +156,10 @@
                    name="@fieldName"
                    title="@hint"
                    @(isRequired ? "required" : "")
-                   @(isDisabled ? "disabled" : "") />
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -162,7 +176,10 @@
                        value="1"
                        title="@hint"
                        @(isCheckedByDefault ? "checked" : "")
-                       @(isDisabled ? "disabled" : "") />
+                       @(isDisabled ? "disabled" : "")
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                       data-sag-comptype="@sagComptype" />
                 @if (hasLabel)
                 {
                     <label for="@fieldId" class="form-check-label">
@@ -191,7 +208,10 @@
                     name="@fieldName"
                     title="@hint"
                     @(isRequired ? "required" : "")
-                    @(isDisabled ? "disabled" : "")>
+                    @(isDisabled ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (!string.IsNullOrEmpty(field.VareCamp))
                 {
@@ -234,7 +254,10 @@
                     name="@fieldName"
                     title="@hint"
                     @(isRequired ? "required" : "")
-                    @(isDisabled || isInfoLookup ? "disabled" : "")>
+                    @(isDisabled || isInfoLookup ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (field.LookupOptions != null && field.LookupOptions.Count > 0)
                 {
@@ -287,7 +310,10 @@
                        title="@hint"
                        placeholder="@hint"
                        @(isRequired ? "required" : "")
-                       @(isDisabled || isInfoModal ? "readonly" : "") />
+                       @(isDisabled || isInfoModal ? "readonly" : "")
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                       data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-lookup"
                         title="Pesquisar"
@@ -320,7 +346,10 @@
                       placeholder="@hint"
                       rows="@textareaRows"
                       @(isRequired ? "required" : "")
-                      @(isDisabled ? "disabled" : "")></textarea>
+                      @(isDisabled ? "disabled" : "")
+                      data-sag-codicamp="@sagCodicamp"
+                      data-sag-nomecamp="@sagNomecamp"
+                      data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
 
@@ -343,7 +372,10 @@
                    name="@fieldName"
                    title="@hint"
                    @(isRequired ? "required" : "")
-                   @(isDisabled ? "disabled" : "") />
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -367,7 +399,10 @@
                    title="@hint"
                    placeholder="@hint"
                    @(isDisabled ? "disabled" : "")
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -386,7 +421,10 @@
                    name="@fieldName"
                    title="@hint"
                    readonly
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -409,7 +447,10 @@
                    @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
                    step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
                    @(isDisabled ? "disabled" : "")
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -430,7 +471,10 @@
                    @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
                    @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
                    readonly
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -449,7 +493,10 @@
                    name="@fieldName"
                    title="@hint"
                    @(isDisabled ? "disabled" : "")
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -467,7 +514,10 @@
                     name="@fieldName"
                     title="@hint"
                     @(isDisabled ? "disabled" : "")
-                    data-calc="true">
+                    data-calc="true"
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (!string.IsNullOrEmpty(field.VareCamp))
                 {
@@ -504,7 +554,10 @@
                        title="@hint"
                        @(calcChecked ? "checked" : "")
                        @(isDisabled ? "disabled" : "")
-                       data-calc="true" />
+                       data-calc="true"
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                       data-sag-comptype="@sagComptype" />
                 @if (hasLabel)
                 {
                     <label for="@fieldId" class="form-check-label">
@@ -532,7 +585,10 @@
                       placeholder="@hint"
                       rows="@calcMemoRows"
                       @(isDisabled ? "disabled" : "")
-                      data-calc="true"></textarea>
+                      data-calc="true"
+                      data-sag-codicamp="@sagCodicamp"
+                      data-sag-nomecamp="@sagNomecamp"
+                      data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
 
@@ -553,7 +609,10 @@
                        title="@hint"
                        placeholder="@hint"
                        @(isDisabled ? "disabled" : "")
-                       data-calc="true" />
+                       data-calc="true"
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                       data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-file"
                         title="Selecionar arquivo"
@@ -581,7 +640,10 @@
                        title="@hint"
                        placeholder="@hint"
                        @(isDisabled ? "disabled" : "")
-                       data-calc="true" />
+                       data-calc="true"
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                       data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-directory"
                         title="Selecionar diretório"
@@ -611,7 +673,10 @@
                    name="@fieldName"
                    title="@hint"
                    readonly
-                   data-info="true" />
+                   data-info="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -630,7 +695,10 @@
                    name="@fieldName"
                    title="@hint"
                    readonly
-                   data-info="true" />
+                   data-info="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -650,7 +718,10 @@
                       title="@hint"
                       rows="@infoMemoRows"
                       readonly
-                      data-info="true"></textarea>
+                      data-info="true"
+                      data-sag-codicamp="@sagCodicamp"
+                      data-sag-nomecamp="@sagNomecamp"
+                      data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
 
@@ -767,7 +838,10 @@
                     class="btn btn-secondary"
                     id="@fieldId"
                     title="@hint"
-                    @(isDisabled ? "disabled" : "")>
+                    @(isDisabled ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-comptype="@sagComptype">
                 @label
             </button>
         </div>

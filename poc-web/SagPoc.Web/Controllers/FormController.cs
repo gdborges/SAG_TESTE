@@ -12,17 +12,20 @@ public class FormController : Controller
     private readonly IMetadataService _metadataService;
     private readonly ILookupService _lookupService;
     private readonly IConsultaService _consultaService;
+    private readonly IEventService _eventService;
     private readonly ILogger<FormController> _logger;
 
     public FormController(
         IMetadataService metadataService,
         ILookupService lookupService,
         IConsultaService consultaService,
+        IEventService eventService,
         ILogger<FormController> logger)
     {
         _metadataService = metadataService;
         _lookupService = lookupService;
         _consultaService = consultaService;
+        _eventService = eventService;
         _logger = logger;
     }
 
@@ -68,12 +71,21 @@ public class FormController : Controller
             var tableMetadata = await _consultaService.GetTableMetadataAsync(id);
             var consultas = await _consultaService.GetConsultasByTableAsync(id);
 
+            // Carrega eventos PLSAG
+            var formEvents = await _eventService.GetFormEventsAsync(id);
+            var fieldEvents = await _eventService.GetFieldEventsAsync(id);
+
+            _logger.LogInformation("Eventos carregados: Form={HasFormEvents}, Fields={FieldCount}",
+                formEvents.HasEvents, fieldEvents.Count);
+
             // Monta o ViewModel
             var viewModel = new FormRenderViewModel
             {
                 Form = formMetadata,
                 Table = tableMetadata,
-                Consultas = consultas
+                Consultas = consultas,
+                FormEvents = formEvents,
+                FieldEvents = fieldEvents
             };
 
             return View(viewModel);

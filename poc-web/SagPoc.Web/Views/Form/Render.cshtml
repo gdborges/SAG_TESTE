@@ -194,6 +194,23 @@
 
 @section Scripts {
     <script src="~/js/consulta-grid.js"></script>
+    <script src="~/js/sag-events.js"></script>
+    <script>
+        // Inicializa sistema de eventos PLSAG
+        (function() {
+            var formEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FormEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var fieldEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FieldEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+            // Inicializa após o DOM estar pronto
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    SagEvents.init(formEvents, fieldEvents);
+                });
+            } else {
+                SagEvents.init(formEvents, fieldEvents);
+            }
+        })();
+    </script>
     <script>
         // Validacao Bootstrap
         (function () {
@@ -215,6 +232,12 @@
 
         // Funcao para salvar formulario
         async function saveForm(form) {
+            // Dispara evento LancTabe (antes de salvar)
+            if (window.SagEvents && !SagEvents.beforeSave()) {
+                console.log('[saveForm] Operação cancelada por SagEvents.beforeSave()');
+                return;
+            }
+
             const formData = new FormData(form);
             const fields = {};
             formData.forEach((value, key) => {
@@ -244,6 +267,11 @@
 
                 const result = await response.json();
                 if (result.success) {
+                    // Dispara evento EGraTabe (após salvar com sucesso)
+                    if (window.SagEvents) {
+                        SagEvents.afterSave();
+                    }
+
                     alert(result.message);
                     // Volta para tab Consulta e recarrega
                     if (window.consultaGrid) {
