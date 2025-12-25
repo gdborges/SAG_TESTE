@@ -52,38 +52,57 @@ public class PlsagController : ControllerBase
 
     /// <summary>
     /// Executa query PLSAG (QY, QN).
-    /// SEGURO: O SQL e buscado do banco ou construido de forma segura.
+    /// POC: Aceita SQL direto do frontend com validacao.
+    /// Em producao, o SQL deveria vir da tabela SISTCAMP.
     /// </summary>
     [HttpPost("query")]
     public async Task<IActionResult> ExecuteQuery([FromBody] QueryRequest request)
     {
         try
         {
-            _logger.LogInformation("PLSAG Query: {QueryName} CodiTabe={CodiTabe} Type={Type}",
-                request.QueryName, request.CodiTabe, request.Type);
+            _logger.LogInformation("PLSAG Query: {QueryName} CodiTabe={CodiTabe} Type={Type} Sql={Sql}",
+                request.QueryName, request.CodiTabe, request.Type, request.Sql?.Substring(0, Math.Min(50, request.Sql?.Length ?? 0)));
 
             using var connection = CreateConnection();
             connection.Open();
 
-            // Para a POC, usamos o queryName diretamente como nome de uma view ou construimos SQL seguro
-            // Em producao, o SQL deveria vir da tabela SISTCAMP
-            var sql = BuildSafeQuerySql(request.QueryName, request.Params);
+            string sql;
 
-            if (string.IsNullOrEmpty(sql))
+            // POC: Se SQL direto foi fornecido, usa ele (apos validacao)
+            if (!string.IsNullOrEmpty(request.Sql))
             {
-                return BadRequest(new { success = false, error = "Query nao encontrada ou invalida" });
+                sql = request.Sql;
+
+                // Valida SQL antes de executar
+                if (!IsValidSql(sql))
+                {
+                    _logger.LogWarning("SQL bloqueado por seguranca: {Sql}", sql);
+                    return BadRequest(new { success = false, error = "SQL invalido ou nao permitido" });
+                }
+
+                // Apenas SELECT permitido para queries diretas
+                if (!sql.Trim().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("Apenas SELECT permitido para SQL direto: {Sql}", sql);
+                    return BadRequest(new { success = false, error = "Apenas SELECT permitido" });
+                }
             }
-
-            // Valida SQL antes de executar
-            if (!IsValidSql(sql))
+            else
             {
-                _logger.LogWarning("SQL bloqueado por seguranca: {Sql}", sql);
-                return BadRequest(new { success = false, error = "SQL invalido ou nao permitido" });
+                // Para a POC, usamos o queryName diretamente como nome de uma view ou construimos SQL seguro
+                // Em producao, o SQL deveria vir da tabela SISTCAMP
+                sql = BuildSafeQuerySql(request.QueryName, request.Params);
+
+                if (string.IsNullOrEmpty(sql))
+                {
+                    return BadRequest(new { success = false, error = "Query nao encontrada ou invalida" });
+                }
             }
 
             var parameters = new DynamicParameters(request.Params);
+            var isSingleRow = request.SingleRow || request.Type != "multi";
 
-            if (request.Type == "multi")
+            if (!isSingleRow)
             {
                 var results = await connection.QueryAsync<dynamic>(sql, parameters);
                 return Ok(new { success = true, data = results.ToList() });
@@ -96,8 +115,9 @@ public class PlsagController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao executar query PLSAG: {QueryName}", request.QueryName);
-            return StatusCode(500, new { success = false, error = "Erro interno ao executar query" });
+            _logger.LogError(ex, "Erro ao executar query PLSAG: {QueryName} SQL: {Sql}",
+                request.QueryName, request.Sql?.Substring(0, Math.Min(100, request.Sql?.Length ?? 0)));
+            return StatusCode(500, new { success = false, error = $"Erro interno ao executar query: {ex.Message}" });
         }
     }
 
@@ -481,6 +501,8 @@ public class QueryRequest
     public int CodiTabe { get; set; }
     public int? CodiCamp { get; set; }
     public string? QueryName { get; set; }
+    public string? Sql { get; set; }  // SQL direto para POC
+    public bool SingleRow { get; set; } = true;  // Compat com frontend
     public string Type { get; set; } = "single";
     public Dictionary<string, object>? Params { get; set; }
 }

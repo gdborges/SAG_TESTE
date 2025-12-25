@@ -190,3 +190,38 @@
 - [ ] 13.1 Documentar API do PlsagInterpreter
 - [ ] 13.2 Documentar comandos suportados vs nao suportados
 - [ ] 13.3 Atualizar debug popup para mostrar execucao PLSAG
+
+## 14. Comandos Faltantes - Alta/Media Prioridade
+
+Comandos que existem na documentacao base mas nao foram incluidos na proposta original.
+
+### 14.1 Labels e Campos Calculados
+- [x] 14.1.1 Implementar `LN` - Label Numerico (campo calculado numerico, read-only)
+- [x] 14.1.2 Implementar `LB` - Label (define caption/texto de label)
+- [x] 14.1.3 Implementar `LE` - Label Editor (campo calculado texto, read-only)
+
+### 14.2 Botoes
+- [x] 14.2.1 Implementar `BT` - Botao (caption, enable, visible)
+
+### 14.3 Campos Adicionais
+- [x] 14.3.1 Implementar `CC` - Campo Combo (se diferente de CT)
+- [x] 14.3.2 Implementar `CD` - Campo Data (se diferente de CE com mascara)
+
+## 15. Comandos Faltantes - Baixa Prioridade
+
+Comandos menos usados ou com alternativas existentes.
+
+### 15.1 Campos Especiais
+- [x] 15.1.1 Implementar `CA` - Campo Arquivo
+- [x] 15.1.2 Implementar `CR` - Campo Formatado
+- [x] 15.1.3 Implementar `IL` - Lookup Numerico
+
+### 15.2 Editores (sem banco)
+- [x] 15.2.1 Implementar `EE` - Editor Text
+- [x] 15.2.2 Implementar `ES` - Editor Sim/Nao
+- [x] 15.2.3 Implementar `ET` - Editor Memo
+- [x] 15.2.4 Implementar `EC` - Editor Combo
+- [x] 15.2.5 Implementar `ED` - Editor Data
+- [x] 15.2.6 Implementar `EA` - Editor Arquivo
+- [x] 15.2.7 Implementar `EI` - Editor Diretorio
+- [x] 15.2.8 Implementar `EL` - Editor Lookup

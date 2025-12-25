@@ -216,10 +216,20 @@ const PlsagInterpreter = (function() {
         const prefix = raw.substring(0, 2).toUpperCase();
 
         // Verifica se e um comando de 3 caracteres com modificador
-        // Formatos: CE, CN, CS, CV, CF, CC, CM, CT, CI com modificadores D, V, F, C, R
+        // Formatos: CE, CN, CS, CV, CF, CC, CM, CT, CI, CA, CR, CD, LN, LE, IL, EE, ES, ET, EC, ED, EA, EI, EL
+        // com modificadores D, V, F, C, R
         // Exemplos: CED (Campo Enable + Disable), CNV (Campo Disable + Visible), CCD (Campo Combo + Disable)
         const prefix3 = raw.substring(0, 3).toUpperCase();
-        const validBaseCommands = ['CE', 'CN', 'CS', 'CV', 'CF', 'CC', 'CM', 'CT', 'CI', 'IE', 'IN', 'IS', 'IV', 'IF', 'IC', 'IM', 'IT', 'II'];
+        const validBaseCommands = [
+            // Campos vinculados ao banco
+            'CE', 'CN', 'CS', 'CV', 'CF', 'CC', 'CM', 'CT', 'CI', 'CA', 'CR', 'CD',
+            // Inputs (sem banco)
+            'IE', 'IN', 'IS', 'IV', 'IF', 'IC', 'IM', 'IT', 'II', 'IL',
+            // Labels calculados
+            'LN', 'LE',
+            // Editores (volateis, sem banco)
+            'EE', 'ES', 'ET', 'EC', 'ED', 'EA', 'EI', 'EL'
+        ];
         const validModifiers = ['D', 'V', 'F', 'C', 'R'];
         const baseCmd = prefix3.substring(0, 2);
         const modChar = prefix3.charAt(2);
@@ -333,6 +343,56 @@ const PlsagInterpreter = (function() {
     }
 
     /**
+     * Substitui templates para uso em SQL (quotes em strings)
+     * @param {string} text - Texto com templates (SQL)
+     * @returns {string} SQL com valores substituidos e quoted corretamente
+     */
+    function substituteTemplatesForSQL(text) {
+        if (!text || typeof text !== 'string') {
+            return text;
+        }
+
+        const templatePattern = /\{([A-Z][A-Z0-9])-([^}]+)\}/g;
+
+        return text.replace(templatePattern, (match, type, field) => {
+            const value = resolveTemplate(type, field);
+            if (value === undefined) {
+                // Template não resolvido vira NULL em SQL
+                console.warn(`[PLSAG] Template não resolvido em SQL: ${match} -> NULL`);
+                return 'NULL';
+            }
+            return quoteForSQL(value);
+        });
+    }
+
+    /**
+     * Formata um valor para uso em SQL
+     * @param {*} value - Valor a formatar
+     * @returns {string} Valor formatado para SQL
+     */
+    function quoteForSQL(value) {
+        if (value === null || value === undefined || value === '') {
+            return 'NULL';
+        }
+
+        const strValue = String(value);
+
+        // Verifica se e numero puro
+        if (/^-?\d+(\.\d+)?$/.test(strValue)) {
+            return strValue;
+        }
+
+        // Verifica se e data no formato ISO ou DD/MM/YYYY
+        if (/^\d{4}-\d{2}-\d{2}$/.test(strValue) || /^\d{2}\/\d{2}\/\d{4}$/.test(strValue)) {
+            // Escapa aspas simples e retorna como string SQL
+            return "'" + strValue.replace(/'/g, "''") + "'";
+        }
+
+        // Para qualquer outro valor (string), escapa aspas e envolve em quotes
+        return "'" + strValue.replace(/'/g, "''") + "'";
+    }
+
+    /**
      * Resolve um template especifico
      * @param {string} type - Tipo do template (DG, VA, QY, etc.)
      * @param {string} field - Nome do campo ou variavel
@@ -349,12 +409,27 @@ const PlsagInterpreter = (function() {
                 // Campo do formulario
                 return getFormFieldValue(fieldTrimmed);
 
-            case 'CC':
-            case 'CE':
-            case 'CN':
-            case 'CT':
-            case 'CM':
-                // Campo Combo/Editor/Numerico/Tabela/Memo - valor atual do campo
+            case 'CC': // Campo Combo
+            case 'CE': // Campo Editor
+            case 'CN': // Campo Numerico
+            case 'CT': // Campo Tabela
+            case 'CM': // Campo Memo
+            case 'CS': // Campo Sim/Nao
+            case 'CD': // Campo Data
+            case 'CA': // Campo Arquivo
+            case 'CR': // Campo Formatado
+            case 'LN': // Label Numerico
+            case 'LE': // Label Editor
+            case 'IL': // Lookup Numerico
+            case 'EE': // Editor Text
+            case 'ES': // Editor Sim/Nao
+            case 'ET': // Editor Memo
+            case 'EC': // Editor Combo
+            case 'ED': // Editor Data
+            case 'EA': // Editor Arquivo
+            case 'EI': // Editor Diretorio
+            case 'EL': // Editor Lookup
+                // Campo/Editor - valor atual do campo
                 return getFormFieldValue(fieldTrimmed);
 
             case 'VA':
@@ -1078,8 +1153,16 @@ const PlsagInterpreter = (function() {
         }
 
         try {
-            // Comandos de campo (CE, CN, CS, CM, CT, CF, CV + modificadores)
-            if (prefix.startsWith('C') || prefix.startsWith('I')) {
+            // Comandos de campo (CE, CN, CS, CM, CT, CF, CV, CC, CD, CA, CR + modificadores)
+            // Inclui LN (Label Numerico), LE (Label Editor), IL (Lookup Numerico) que sao campos calculados
+            // Inclui Editores: EE, ES, ET, EC, ED, EA, EI, EL (campos volateis, sem banco)
+            const isFieldCommand = prefix.startsWith('C') || // CE, CN, CS, CM, CT, CF, CV, CC, CD, CA, CR
+                                   prefix.startsWith('I') || // IE, IN, IM, IT, IA, IL
+                                   prefix === 'LN' || prefix === 'LE' || // Labels calculados
+                                   prefix.startsWith('LN') || prefix.startsWith('LE') ||
+                                   (prefix.startsWith('E') && prefix !== 'EX'); // Editores: EE, ES, ET, EC, ED, EA, EI, EL
+
+            if (isFieldCommand) {
                 await PlsagCommands.executeFieldCommand(prefix, identifier, parameter, context, modifier);
                 return;
             }
@@ -1091,8 +1174,24 @@ const PlsagInterpreter = (function() {
             }
 
             // Comandos de mensagem (MA, MC, ME, MI, MP)
+            // ME com SQL (validacao) precisa de substituicao SQL-aware
             if (prefix === 'MA' || prefix === 'MC' || prefix === 'ME' || prefix === 'MI' || prefix === 'MP') {
-                const result = await PlsagCommands.executeMessageCommand(prefix, identifier, parameter, context);
+                let msgParam = parameter;
+                if (prefix === 'ME') {
+                    const rawParam = token.parameter || '';
+                    // ME com SQL: "SELECT ... |||mensagem" - substitui SQL com quotes
+                    if (rawParam.trim().toUpperCase().startsWith('SELECT')) {
+                        const pipeIndex = rawParam.indexOf('|||');
+                        if (pipeIndex > 0) {
+                            const sqlPart = rawParam.substring(0, pipeIndex);
+                            const msgPart = rawParam.substring(pipeIndex);
+                            msgParam = substituteTemplatesForSQL(sqlPart) + msgPart;
+                        } else {
+                            msgParam = substituteTemplatesForSQL(rawParam);
+                        }
+                    }
+                }
+                const result = await PlsagCommands.executeMessageCommand(prefix, identifier, msgParam, context);
                 // ME (Message Error) - para execucao apenas se retornar 'STOP'
                 // (query de validacao retornou 0 ou ME simples sem query)
                 if (prefix === 'ME' && result === 'STOP') {
@@ -1112,14 +1211,30 @@ const PlsagInterpreter = (function() {
             }
 
             // Comandos de gravacao (DG, DM, D2, D3)
+            // Para SQL (SELECT...), usa substituicao SQL-aware com quotes em strings
             if (prefix === 'DG' || prefix === 'DM' || prefix === 'D2' || prefix === 'D3') {
-                await PlsagCommands.executeDataCommand(prefix, identifier, parameter, context);
+                const rawParam = token.parameter || '';
+                const isSQL = rawParam.trim().toUpperCase().startsWith('SELECT');
+                const dataParam = isSQL ? substituteTemplatesForSQL(rawParam) : parameter;
+                await PlsagCommands.executeDataCommand(prefix, identifier, dataParam, context);
                 return;
             }
 
             // Comandos especiais EX
             if (prefix === 'EX') {
                 await PlsagCommands.executeExCommand(identifier, parameter, context);
+                return;
+            }
+
+            // Comandos de label (LB)
+            if (prefix === 'LB' || prefix.startsWith('LB')) {
+                await PlsagCommands.executeLabelCommand(prefix, identifier, parameter, context, modifier);
+                return;
+            }
+
+            // Comandos de botao (BT)
+            if (prefix === 'BT' || prefix.startsWith('BT')) {
+                await PlsagCommands.executeButtonCommand(prefix, identifier, parameter, context, modifier);
                 return;
             }
 
@@ -1241,6 +1356,8 @@ const PlsagInterpreter = (function() {
 
         // Templates e Expressões
         substituteTemplates,
+        substituteTemplatesForSQL,
+        quoteForSQL,
         evaluateCondition,
         evaluateArithmetic,
         evaluateExpression,

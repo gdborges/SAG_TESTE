@@ -107,6 +107,44 @@ const PlsagCommands = (function() {
     }
 
     /**
+     * Encontra um label pelo nome/id
+     * Labels sao elementos que exibem texto estatico (nao editavel)
+     * @param {string} labelName - Nome do label
+     * @returns {HTMLElement|null}
+     */
+    function findLabel(labelName) {
+        const name = labelName.trim();
+
+        // 1. Por data-sag-label
+        let el = document.querySelector(`[data-sag-label="${name}"]`);
+        if (el) return el;
+
+        // 2. Por id com prefixo lbl_
+        el = document.getElementById(`lbl_${name}`);
+        if (el) return el;
+
+        // 3. Por id direto
+        el = document.getElementById(name);
+        if (el) return el;
+
+        // 4. Por for apontando para campo
+        el = document.querySelector(`label[for="${name}"]`);
+        if (el) return el;
+
+        // 5. Label associado ao campo (label dentro do mesmo container)
+        const field = findField(name);
+        if (field) {
+            const container = field.closest('.field-wrapper') || field.closest('.form-group');
+            if (container) {
+                el = container.querySelector('label');
+                if (el) return el;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Garante que os containers pai (field-row, bevel-group, bevel-content) estejam visíveis
      * Quando um campo é mostrado, seus containers pai também precisam estar visíveis
      * @param {HTMLElement} element - Elemento a partir do qual buscar containers pai
@@ -170,11 +208,13 @@ const PlsagCommands = (function() {
         switch (baseType) {
             case 'CE': // Campo Editor - define valor texto
             case 'IE': // Input Editor (sem banco)
+            case 'LE': // Label Editor (campo calculado readonly)
                 setFieldValue(element, parameter);
                 break;
 
             case 'CN': // Campo Numerico - define valor numerico
             case 'IN': // Input Numerico
+            case 'LN': // Label Numerico (campo calculado readonly)
                 setFieldValue(element, formatNumber(parameter));
                 break;
 
@@ -204,6 +244,73 @@ const PlsagCommands = (function() {
 
             case 'CV': // Campo Valor (generico)
                 setFieldValue(element, parameter);
+                break;
+
+            case 'CC': // Campo Combo
+                setFieldValue(element, parameter);
+                element.dispatchEvent(new Event('change', { bubbles: true }));
+                break;
+
+            case 'CD': // Campo Data
+                setFieldValue(element, formatDate(parameter));
+                break;
+
+            case 'CA': // Campo Arquivo
+            case 'EA': // Editor Arquivo
+                // File inputs nao podem ter valor definido por seguranca
+                // Apenas limpamos ou logamos
+                if (parameter === '' || parameter === null) {
+                    element.value = '';
+                } else {
+                    console.log(`[PLSAG] ${baseType}: Arquivo selecionado = ${parameter}`);
+                }
+                break;
+
+            case 'CR': // Campo Formatado (com mascara)
+                setFieldValue(element, applyMask(parameter, element.dataset.sagMask));
+                break;
+
+            case 'IL': // Lookup Numerico (similar a LN mas com lookup)
+                setFieldValue(element, formatNumber(parameter));
+                break;
+
+            // ============================================================
+            // EDITORES (campos volateis, sem banco)
+            // ============================================================
+
+            case 'EE': // Editor Text
+                setFieldValue(element, parameter);
+                break;
+
+            case 'ES': // Editor Sim/Nao
+                if (element.type === 'checkbox') {
+                    element.checked = isTruthy(parameter);
+                } else {
+                    setFieldValue(element, parameter);
+                }
+                break;
+
+            case 'ET': // Editor Memo
+                setFieldValue(element, parameter);
+                break;
+
+            case 'EC': // Editor Combo
+                setFieldValue(element, parameter);
+                element.dispatchEvent(new Event('change', { bubbles: true }));
+                break;
+
+            case 'ED': // Editor Data
+                setFieldValue(element, formatDate(parameter));
+                break;
+
+            case 'EI': // Editor Diretorio
+                // Na web, trata como texto (path de diretorio)
+                setFieldValue(element, parameter);
+                break;
+
+            case 'EL': // Editor Lookup
+                setFieldValue(element, parameter);
+                element.dispatchEvent(new Event('change', { bubbles: true }));
                 break;
 
             default:
@@ -304,6 +411,76 @@ const PlsagCommands = (function() {
     }
 
     /**
+     * Formata data para o formato do input date (YYYY-MM-DD)
+     */
+    function formatDate(value) {
+        if (value === null || value === undefined || value === '') {
+            return '';
+        }
+        const str = String(value).trim();
+
+        // Se ja esta no formato YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            return str;
+        }
+
+        // Formato DD/MM/YYYY
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+            const parts = str.split('/');
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        // Formato YYYYMMDD
+        if (/^\d{8}$/.test(str)) {
+            return `${str.substring(0,4)}-${str.substring(4,6)}-${str.substring(6,8)}`;
+        }
+
+        // Tenta parsear como Date
+        const date = new Date(str);
+        if (!isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0];
+        }
+
+        return str;
+    }
+
+    /**
+     * Aplica mascara de formatacao a um valor
+     * @param {string} value - Valor a formatar
+     * @param {string} mask - Mascara (ex: "###.###.###-##" para CPF)
+     * @returns {string} Valor formatado
+     */
+    function applyMask(value, mask) {
+        if (!value) return '';
+        if (!mask) return String(value);
+
+        const cleanValue = String(value).replace(/\D/g, '');
+        let result = '';
+        let valueIndex = 0;
+
+        for (let i = 0; i < mask.length && valueIndex < cleanValue.length; i++) {
+            const maskChar = mask[i];
+            if (maskChar === '#' || maskChar === '9') {
+                // Caractere numerico
+                result += cleanValue[valueIndex];
+                valueIndex++;
+            } else if (maskChar === 'A' || maskChar === 'a') {
+                // Caractere alfabetico - mantém o valor original se não for só números
+                const originalValue = String(value);
+                if (originalValue[valueIndex]) {
+                    result += originalValue[valueIndex];
+                    valueIndex++;
+                }
+            } else {
+                // Caractere literal da mascara
+                result += maskChar;
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Verifica se valor e truthy
      */
     function isTruthy(value) {
@@ -312,6 +489,135 @@ const PlsagCommands = (function() {
         if (value === 'N' || value === 'n' || value === 'false') return false;
         if (value === false) return false;
         return true;
+    }
+
+    // ============================================================
+    // COMANDOS DE LABEL (LB)
+    // ============================================================
+
+    /**
+     * Executa comando de label
+     * LB = Label (define caption/texto)
+     * Modificadores: D (disable), V (visible), C (color)
+     * @param {string} prefix - Prefixo do comando
+     * @param {string} identifier - Nome do label
+     * @param {string} parameter - Valor do parametro
+     * @param {string} modifierFromParser - Modificador extraido pelo parser
+     */
+    async function executeLabelCommand(prefix, identifier, parameter, context, modifierFromParser) {
+        const labelName = identifier.trim();
+        const element = findLabel(labelName);
+
+        if (!element) {
+            console.warn(`[PLSAG] Label nao encontrado: ${labelName}`);
+            return;
+        }
+
+        // Detecta modificador
+        const modifier = (modifierFromParser && modifierFromParser.length > 0) ? modifierFromParser : (prefix.length > 2 ? prefix.charAt(2) : null);
+
+        if (modifier) {
+            const value = parameter !== null && parameter !== undefined ? String(parameter).trim() : '';
+            const isTrue = isTruthy(value);
+
+            switch (modifier) {
+                case 'D': // Disable (visual only - labels nao tem disabled)
+                    if (isTrue) {
+                        element.classList.remove('disabled', 'text-muted');
+                    } else {
+                        element.classList.add('disabled', 'text-muted');
+                    }
+                    break;
+
+                case 'V': // Visible
+                    if (isTrue) {
+                        element.style.display = '';
+                        element.classList.remove('hidden', 'd-none');
+                    } else {
+                        element.style.display = 'none';
+                        element.classList.add('hidden');
+                    }
+                    break;
+
+                case 'C': // Color
+                    if (value) {
+                        element.style.color = value.startsWith('#') ? value : `#${value}`;
+                    }
+                    break;
+
+                default:
+                    console.warn(`[PLSAG] Modificador de label desconhecido: ${modifier}`);
+            }
+            return;
+        }
+
+        // Sem modificador: define o texto/caption
+        element.textContent = parameter ?? '';
+    }
+
+    // ============================================================
+    // COMANDOS DE BOTAO (BT)
+    // ============================================================
+
+    /**
+     * Executa comando de botao
+     * BT = Botao (define caption, enable, visible)
+     * Modificadores: D (disable), V (visible), C (color)
+     * @param {string} prefix - Prefixo do comando
+     * @param {string} identifier - Nome do botao
+     * @param {string} parameter - Valor do parametro
+     * @param {string} modifierFromParser - Modificador extraido pelo parser
+     */
+    async function executeButtonCommand(prefix, identifier, parameter, context, modifierFromParser) {
+        const buttonName = identifier.trim();
+        const element = findButton(buttonName);
+
+        if (!element) {
+            console.warn(`[PLSAG] Botao nao encontrado: ${buttonName}`);
+            return;
+        }
+
+        // Detecta modificador
+        const modifier = (modifierFromParser && modifierFromParser.length > 0) ? modifierFromParser : (prefix.length > 2 ? prefix.charAt(2) : null);
+
+        if (modifier) {
+            const value = parameter !== null && parameter !== undefined ? String(parameter).trim() : '';
+            const isTrue = isTruthy(value);
+
+            switch (modifier) {
+                case 'D': // Disable/Enable
+                    element.disabled = !isTrue;
+                    if (isTrue) {
+                        element.classList.remove('disabled');
+                    } else {
+                        element.classList.add('disabled');
+                    }
+                    break;
+
+                case 'V': // Visible
+                    if (isTrue) {
+                        element.style.display = '';
+                        element.classList.remove('hidden', 'd-none');
+                    } else {
+                        element.style.display = 'none';
+                        element.classList.add('hidden');
+                    }
+                    break;
+
+                case 'C': // Color
+                    if (value) {
+                        element.style.backgroundColor = value.startsWith('#') ? value : `#${value}`;
+                    }
+                    break;
+
+                default:
+                    console.warn(`[PLSAG] Modificador de botao desconhecido: ${modifier}`);
+            }
+            return;
+        }
+
+        // Sem modificador: define o caption/texto do botao
+        element.textContent = parameter ?? '';
     }
 
     // ============================================================
@@ -1101,11 +1407,14 @@ const PlsagCommands = (function() {
         executeQueryCommand,
         executeDataCommand,
         executeExCommand,
+        executeLabelCommand,
+        executeButtonCommand,
 
         // Utilitarios
         findField,
         findFieldContainer,
         findButton,
+        findLabel,
         showModal,
 
         // Validacoes

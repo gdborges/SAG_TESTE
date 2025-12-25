@@ -128,8 +128,8 @@
                    name="@fieldName"
                    title="@hint"
                    placeholder="@hint"
-                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
-                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
                    step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
                    @(isRequired ? "required" : "")
                    @(isDisabled ? "disabled" : "")
@@ -455,8 +455,8 @@
                    name="@fieldName"
                    title="@hint"
                    placeholder="@hint"
-                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
-                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
                    step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
                    @(isDisabled ? "disabled" : "")
                    data-calc="true"
@@ -481,8 +481,8 @@
                    id="@fieldId"
                    name="@fieldName"
                    title="@hint"
-                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
-                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
                    readonly
                    data-calc="true"
                    data-sag-codicamp="@sagCodicamp"

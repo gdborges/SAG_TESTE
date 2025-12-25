@@ -79,8 +79,8 @@
                    id="@fieldId"
                    name="@fieldName"
                    title="@hint"
-                   @(Model.MiniCamp.HasValue ? $"min=\"{Model.MiniCamp}\"" : "")
-                   @(Model.MaxiCamp.HasValue ? $"max=\"{Model.MaxiCamp}\"" : "")
+                   @(Model.MiniCamp.HasValue && Model.MiniCamp.Value != 0 ? $"min=\"{Model.MiniCamp}\"" : "")
+                   @(Model.MaxiCamp.HasValue && Model.MaxiCamp.Value != 0 ? $"max=\"{Model.MaxiCamp}\"" : "")
                    step="@(Model.DeciCamp > 0 ? $"0.{"".PadRight(Model.DeciCamp - 1, '0')}1" : "1")"
                    @(isRequired ? "required" : "")
                    @(isDisabled ? "disabled" : "") />
