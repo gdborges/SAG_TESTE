@@ -77,7 +77,11 @@ public class EventService : IEventService
                 ISNULL(OBRICAMP, 0) as ObriCamp,
                 CAST(EXPRCAMP as NVARCHAR(MAX)) as ExprCamp,
                 CAST(EPERCAMP as NVARCHAR(MAX)) as EPerCamp,
-                CAST(EXP1CAMP as NVARCHAR(MAX)) as Exp1Camp
+                CAST(EXP1CAMP as NVARCHAR(MAX)) as Exp1Camp,
+                ISNULL(INICCAMP, 0) as InicCamp,
+                CAST(VAGRCAMP as NVARCHAR(MAX)) as VaGrCamp,
+                PADRCAMP as PadrCamp,
+                ISNULL(TAGQCAMP, 0) as TagQCamp
             FROM SISTCAMP
             WHERE CODITABE = @CodiTabe
               AND NOMECAMP NOT IN ('AnteCria', 'DepoCria', 'DEPOSHOW', 'ATUAGRID')
@@ -93,20 +97,25 @@ public class EventService : IEventService
 
             foreach (var field in fields)
             {
+                var compType = ((string)(field.CompCamp ?? "E"))?.ToUpper()?.Trim() ?? "E";
+
                 var eventData = new FieldEventData
                 {
                     CodiCamp = (int)field.CodiCamp,
                     NomeCamp = (string)(field.NomeCamp ?? ""),
-                    IsRequired = (int)field.ObriCamp != 0
+                    IsRequired = (int)field.ObriCamp != 0,
+                    // Campos para InicValoCampPers
+                    CompCamp = compType,
+                    InicCamp = (int)(field.InicCamp ?? 0),
+                    DefaultText = (string?)(field.VaGrCamp),
+                    DefaultNumber = field.PadrCamp != null ? (double?)Convert.ToDouble(field.PadrCamp) : null,
+                    IsSequential = (int)(field.TagQCamp ?? 0) == 1
                 };
 
                 // Mescla ExprCamp + EPerCamp
                 var instructions = MergeInstructions(
                     (string)(field.ExprCamp ?? ""),
                     (string)(field.EPerCamp ?? ""));
-
-                // Atribui instruções baseado no tipo de componente
-                var compType = ((string)(field.CompCamp ?? "E"))?.ToUpper()?.Trim() ?? "E";
 
                 if (IsClickComponent(compType))
                 {

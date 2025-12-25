@@ -70,6 +70,7 @@ public class MetadataService : IMetadataService
             CODICAMP as CodiCamp,
             CODITABE as CodiTabe,
             NOMECAMP as NomeCamp,
+            ISNULL(NAMECAMP, NOMECAMP) as NameCamp,
             ISNULL(LABECAMP, '') as LabeCamp,
             ISNULL(HINTCAMP, '') as HintCamp,
             ISNULL(COMPCAMP, 'E') as CompCamp,

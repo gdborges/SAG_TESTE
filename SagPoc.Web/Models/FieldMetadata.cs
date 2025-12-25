@@ -12,6 +12,7 @@ public class FieldMetadata
 
     // Dados do campo
     public string NomeCamp { get; set; } = string.Empty;  // Nome do campo no banco (ex: NOMETPDO)
+    public string NameCamp { get; set; } = string.Empty;  // Nome do componente visual (usado pelo PLSAG para FindComponent)
     public string LabeCamp { get; set; } = string.Empty;  // Label exibido (ex: "Nome")
     public string HintCamp { get; set; } = string.Empty;  // Tooltip/hint
     public string CompCamp { get; set; } = string.Empty;  // Tipo de componente (E, N, C, S, BVL, etc.)

@@ -1,0 +1,511 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Dapper;
+using System.Data;
+using System.Text.RegularExpressions;
+
+namespace SagPoc.Web.Controllers;
+
+/// <summary>
+/// Controller para execucao de comandos PLSAG server-side.
+///
+/// PRINCIPIO DE SEGURANCA: O frontend NUNCA envia SQL bruto.
+/// - O frontend envia IDs de comandos/queries (referencia ao banco)
+/// - O backend busca o SQL original na tabela SISTCAMP
+/// - O backend substitui templates e valida antes de executar
+/// - Parametros sao sanitizados usando queries parametrizadas
+/// </summary>
+[Route("api/plsag")]
+[ApiController]
+public class PlsagController : ControllerBase
+{
+    private readonly string _connectionString;
+    private readonly ILogger<PlsagController> _logger;
+
+    // Lista de tabelas permitidas para operacoes de gravacao
+    private static readonly HashSet<string> AllowedTables = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Adicione tabelas permitidas conforme necessario
+        "CADAPESS", "CADAPROD", "CADAEMPR", "CADAFILI", "CADAOPER",
+        "MOVICOMP", "MOVIVEND", "MOVIESTO", "MOVICONT"
+    };
+
+    // Padroes de SQL bloqueados (seguranca)
+    private static readonly string[] BlockedPatterns = {
+        "DROP ", "TRUNCATE ", "ALTER ", "CREATE ", "GRANT ", "REVOKE ",
+        "xp_", "sp_", "EXEC ", "EXECUTE ", "--", "/*", "*/"
+    };
+
+    public PlsagController(IConfiguration configuration, ILogger<PlsagController> logger)
+    {
+        _connectionString = configuration.GetConnectionString("SagDb")
+            ?? throw new InvalidOperationException("Connection string 'SagDb' not found.");
+        _logger = logger;
+    }
+
+    private IDbConnection CreateConnection()
+    {
+        return new SqlConnection(_connectionString);
+    }
+
+    #region Query Endpoints
+
+    /// <summary>
+    /// Executa query PLSAG (QY, QN).
+    /// SEGURO: O SQL e buscado do banco ou construido de forma segura.
+    /// </summary>
+    [HttpPost("query")]
+    public async Task<IActionResult> ExecuteQuery([FromBody] QueryRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("PLSAG Query: {QueryName} CodiTabe={CodiTabe} Type={Type}",
+                request.QueryName, request.CodiTabe, request.Type);
+
+            using var connection = CreateConnection();
+            connection.Open();
+
+            // Para a POC, usamos o queryName diretamente como nome de uma view ou construimos SQL seguro
+            // Em producao, o SQL deveria vir da tabela SISTCAMP
+            var sql = BuildSafeQuerySql(request.QueryName, request.Params);
+
+            if (string.IsNullOrEmpty(sql))
+            {
+                return BadRequest(new { success = false, error = "Query nao encontrada ou invalida" });
+            }
+
+            // Valida SQL antes de executar
+            if (!IsValidSql(sql))
+            {
+                _logger.LogWarning("SQL bloqueado por seguranca: {Sql}", sql);
+                return BadRequest(new { success = false, error = "SQL invalido ou nao permitido" });
+            }
+
+            var parameters = new DynamicParameters(request.Params);
+
+            if (request.Type == "multi")
+            {
+                var results = await connection.QueryAsync<dynamic>(sql, parameters);
+                return Ok(new { success = true, data = results.ToList() });
+            }
+            else
+            {
+                var result = await connection.QueryFirstOrDefaultAsync<dynamic>(sql, parameters);
+                return Ok(new { success = true, data = result });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar query PLSAG: {QueryName}", request.QueryName);
+            return StatusCode(500, new { success = false, error = "Erro interno ao executar query" });
+        }
+    }
+
+    /// <summary>
+    /// Constroi SQL seguro baseado no nome da query.
+    /// Na POC, simula busca em SISTCAMP.
+    /// </summary>
+    private string BuildSafeQuerySql(string? queryName, Dictionary<string, object>? parameters)
+    {
+        if (string.IsNullOrEmpty(queryName))
+            return string.Empty;
+
+        // TODO: Em producao, buscar SQL da tabela SISTCAMP
+        // Por enquanto, retorna vazio para a POC demonstrar a estrutura
+        _logger.LogDebug("BuildSafeQuerySql: queryName={QueryName}", queryName);
+
+        // Se o queryName segue um padrao conhecido, podemos construir SQL seguro
+        // Exemplo: "PRODUTO" -> SELECT * FROM CADAPROD WHERE ...
+        return string.Empty;
+    }
+
+    #endregion
+
+    #region Execute SQL Endpoints
+
+    /// <summary>
+    /// Executa SQL de comandos EX (EX-SQL, EX-DTBCADA, EX-DTBGENE).
+    /// SEGURO: SQL vem do banco, nao do frontend.
+    /// </summary>
+    [HttpPost("execute-sql")]
+    public async Task<IActionResult> ExecuteSql([FromBody] ExecuteSqlRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("PLSAG Execute SQL: CommandId={CommandId} CodiTabe={CodiTabe}",
+                request.CommandId, request.CodiTabe);
+
+            using var connection = CreateConnection();
+            connection.Open();
+
+            // Busca SQL da tabela SISTCAMP
+            var instruction = await GetPlsagInstruction(connection, request.CodiTabe, request.CodiCamp, request.CommandId);
+
+            if (string.IsNullOrEmpty(instruction))
+            {
+                return BadRequest(new { success = false, error = "Instrucao PLSAG nao encontrada" });
+            }
+
+            // Processa templates e obtem parametros
+            var (sql, parameters) = ProcessPlsagInstruction(instruction, request.Params);
+
+            // Valida SQL
+            if (!IsValidSql(sql))
+            {
+                _logger.LogWarning("SQL bloqueado: {Sql}", sql);
+                return BadRequest(new { success = false, error = "SQL invalido ou nao permitido" });
+            }
+
+            // Audit log
+            _logger.LogInformation(
+                "PLSAG SQL executado: CodiTabe={CodiTabe}, CodiCamp={CodiCamp}, User={User}",
+                request.CodiTabe, request.CodiCamp, User.Identity?.Name ?? "anonimo");
+
+            var rowsAffected = await connection.ExecuteAsync(sql, parameters);
+            return Ok(new { success = true, rowsAffected });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar SQL PLSAG: {CommandId}", request.CommandId);
+            return StatusCode(500, new { success = false, error = "Erro interno ao executar SQL" });
+        }
+    }
+
+    /// <summary>
+    /// Executa procedure ou comando generico.
+    /// </summary>
+    [HttpPost("execute")]
+    public async Task<IActionResult> Execute([FromBody] ExecuteRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("PLSAG Execute: Type={Type} Name={Name}",
+                request.Type, request.Name);
+
+            switch (request.Type?.ToLower())
+            {
+                case "procedure":
+                    return await ExecuteProcedure(request);
+
+                case "validate-cpf":
+                    return Ok(new { success = true, data = ValidateCPF(request.Params?.GetValueOrDefault("value")?.ToString()) });
+
+                case "validate-cnpj":
+                    return Ok(new { success = true, data = ValidateCNPJ(request.Params?.GetValueOrDefault("value")?.ToString()) });
+
+                default:
+                    return BadRequest(new { success = false, error = $"Tipo de execucao desconhecido: {request.Type}" });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar comando PLSAG: {Type} {Name}", request.Type, request.Name);
+            return StatusCode(500, new { success = false, error = "Erro interno ao executar comando" });
+        }
+    }
+
+    private async Task<IActionResult> ExecuteProcedure(ExecuteRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Name))
+        {
+            return BadRequest(new { success = false, error = "Nome da procedure nao informado" });
+        }
+
+        // Valida nome da procedure (apenas alfanumericos e underscore)
+        if (!Regex.IsMatch(request.Name, @"^[a-zA-Z_][a-zA-Z0-9_]*$"))
+        {
+            return BadRequest(new { success = false, error = "Nome de procedure invalido" });
+        }
+
+        using var connection = CreateConnection();
+        connection.Open();
+
+        var parameters = new DynamicParameters(request.Params);
+        var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+            request.Name,
+            parameters,
+            commandType: CommandType.StoredProcedure);
+
+        return Ok(new { success = true, data = result });
+    }
+
+    #endregion
+
+    #region Save Endpoints
+
+    /// <summary>
+    /// Grava dados PLSAG (DG, DM).
+    /// </summary>
+    [HttpPost("save")]
+    public async Task<IActionResult> ExecuteSave([FromBody] SaveRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("PLSAG Save: Table={TableName} RecordId={RecordId}",
+                request.TableName, request.RecordId);
+
+            // Valida nome da tabela
+            if (!IsValidTableName(request.TableName))
+            {
+                _logger.LogWarning("Tentativa de gravar em tabela nao permitida: {TableName}", request.TableName);
+                return BadRequest(new { success = false, error = "Tabela nao permitida" });
+            }
+
+            using var connection = CreateConnection();
+            connection.Open();
+
+            var sql = BuildSaveSql(request.TableName, request.Fields, request.RecordId);
+            var parameters = new DynamicParameters(request.Fields);
+
+            if (request.RecordId.HasValue)
+            {
+                parameters.Add("RecordId", request.RecordId.Value);
+            }
+
+            var rowsAffected = await connection.ExecuteAsync(sql, parameters);
+
+            // Se foi INSERT, tenta obter o ID inserido
+            int? newId = null;
+            if (!request.RecordId.HasValue && rowsAffected > 0)
+            {
+                newId = await connection.QueryFirstOrDefaultAsync<int>("SELECT SCOPE_IDENTITY()");
+            }
+
+            return Ok(new { success = true, rowsAffected, newId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao gravar dados PLSAG: {TableName}", request.TableName);
+            return StatusCode(500, new { success = false, error = "Erro interno ao gravar dados" });
+        }
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Busca instrucao PLSAG do banco de dados (tabela SISTCAMP).
+    /// </summary>
+    private async Task<string?> GetPlsagInstruction(IDbConnection connection, int codiTabe, int? codiCamp, string? instructionId)
+    {
+        var sql = @"
+            SELECT CAST(ExprCamp AS NVARCHAR(MAX))
+            FROM SISTCAMP
+            WHERE CodiTabe = @CodiTabe
+              AND (@CodiCamp IS NULL OR CodiCamp = @CodiCamp)
+              AND (@InstructionId IS NULL OR NomeCamp = @InstructionId)";
+
+        return await connection.QueryFirstOrDefaultAsync<string>(sql, new
+        {
+            CodiTabe = codiTabe,
+            CodiCamp = codiCamp,
+            InstructionId = instructionId
+        });
+    }
+
+    /// <summary>
+    /// Processa instrucao PLSAG substituindo templates.
+    /// Retorna SQL com parametros nomeados (previne injection).
+    /// </summary>
+    private (string sql, DynamicParameters parameters) ProcessPlsagInstruction(
+        string instruction, Dictionary<string, object>? inputParams)
+    {
+        var parameters = new DynamicParameters();
+        var sql = instruction;
+
+        if (inputParams != null)
+        {
+            foreach (var (key, value) in inputParams)
+            {
+                // Template pattern: {DG-Campo}, {VA-INTE0001}, etc.
+                var template = $"{{{key}}}";
+                var paramName = "@p_" + Regex.Replace(key, @"[^a-zA-Z0-9]", "_");
+
+                if (sql.Contains(template))
+                {
+                    sql = sql.Replace(template, paramName);
+                    parameters.Add(paramName, value);
+                }
+            }
+        }
+
+        return (sql, parameters);
+    }
+
+    /// <summary>
+    /// Constroi SQL de INSERT ou UPDATE.
+    /// </summary>
+    private string BuildSaveSql(string tableName, Dictionary<string, object> fields, int? recordId)
+    {
+        // Remove campos vazios
+        var validFields = fields
+            .Where(f => f.Value != null && !string.IsNullOrEmpty(f.Value.ToString()))
+            .ToDictionary(f => f.Key, f => f.Value);
+
+        if (validFields.Count == 0)
+        {
+            throw new ArgumentException("Nenhum campo para gravar");
+        }
+
+        // Escapa nome da tabela (ja validado)
+        var safeTableName = EscapeIdentifier(tableName);
+
+        if (recordId.HasValue)
+        {
+            // UPDATE
+            var setClauses = string.Join(", ",
+                validFields.Keys.Select(k => $"{EscapeIdentifier(k)} = @{k}"));
+            return $"UPDATE {safeTableName} SET {setClauses} WHERE Id = @RecordId";
+        }
+        else
+        {
+            // INSERT
+            var columns = string.Join(", ", validFields.Keys.Select(EscapeIdentifier));
+            var values = string.Join(", ", validFields.Keys.Select(k => $"@{k}"));
+            return $"INSERT INTO {safeTableName} ({columns}) VALUES ({values})";
+        }
+    }
+
+    /// <summary>
+    /// Escapa identificador SQL (tabela/coluna).
+    /// </summary>
+    private string EscapeIdentifier(string identifier)
+    {
+        // Remove caracteres invalidos
+        var safe = Regex.Replace(identifier, @"[^\w]", "");
+        return $"[{safe}]";
+    }
+
+    /// <summary>
+    /// Verifica se tabela e permitida para operacoes.
+    /// </summary>
+    private bool IsValidTableName(string? tableName)
+    {
+        if (string.IsNullOrEmpty(tableName))
+            return false;
+
+        // Na POC, permite qualquer tabela que comeca com CADA ou MOVI
+        return tableName.StartsWith("CADA", StringComparison.OrdinalIgnoreCase) ||
+               tableName.StartsWith("MOVI", StringComparison.OrdinalIgnoreCase) ||
+               AllowedTables.Contains(tableName);
+    }
+
+    /// <summary>
+    /// Valida SQL para bloqueio de comandos perigosos.
+    /// </summary>
+    private bool IsValidSql(string? sql)
+    {
+        if (string.IsNullOrEmpty(sql))
+            return false;
+
+        var sqlUpper = sql.ToUpperInvariant();
+
+        // Bloqueia padroes perigosos
+        return !BlockedPatterns.Any(pattern =>
+            sqlUpper.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Valida CPF.
+    /// </summary>
+    private bool ValidateCPF(string? cpf)
+    {
+        if (string.IsNullOrEmpty(cpf)) return false;
+
+        cpf = Regex.Replace(cpf, @"\D", "");
+
+        if (cpf.Length != 11) return false;
+        if (Regex.IsMatch(cpf, @"^(\d)\1+$")) return false;
+
+        int sum = 0;
+        for (int i = 0; i < 9; i++)
+            sum += int.Parse(cpf[i].ToString()) * (10 - i);
+
+        int digit1 = (sum * 10) % 11;
+        if (digit1 == 10) digit1 = 0;
+        if (digit1 != int.Parse(cpf[9].ToString())) return false;
+
+        sum = 0;
+        for (int i = 0; i < 10; i++)
+            sum += int.Parse(cpf[i].ToString()) * (11 - i);
+
+        int digit2 = (sum * 10) % 11;
+        if (digit2 == 10) digit2 = 0;
+        if (digit2 != int.Parse(cpf[10].ToString())) return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Valida CNPJ.
+    /// </summary>
+    private bool ValidateCNPJ(string? cnpj)
+    {
+        if (string.IsNullOrEmpty(cnpj)) return false;
+
+        cnpj = Regex.Replace(cnpj, @"\D", "");
+
+        if (cnpj.Length != 14) return false;
+        if (Regex.IsMatch(cnpj, @"^(\d)\1+$")) return false;
+
+        int[] weights1 = { 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
+        int[] weights2 = { 6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
+
+        int sum = 0;
+        for (int i = 0; i < 12; i++)
+            sum += int.Parse(cnpj[i].ToString()) * weights1[i];
+
+        int digit1 = sum % 11;
+        digit1 = digit1 < 2 ? 0 : 11 - digit1;
+        if (digit1 != int.Parse(cnpj[12].ToString())) return false;
+
+        sum = 0;
+        for (int i = 0; i < 13; i++)
+            sum += int.Parse(cnpj[i].ToString()) * weights2[i];
+
+        int digit2 = sum % 11;
+        digit2 = digit2 < 2 ? 0 : 11 - digit2;
+        if (digit2 != int.Parse(cnpj[13].ToString())) return false;
+
+        return true;
+    }
+
+    #endregion
+}
+
+#region Request DTOs
+
+public class QueryRequest
+{
+    public int CodiTabe { get; set; }
+    public int? CodiCamp { get; set; }
+    public string? QueryName { get; set; }
+    public string Type { get; set; } = "single";
+    public Dictionary<string, object>? Params { get; set; }
+}
+
+public class ExecuteSqlRequest
+{
+    public int CodiTabe { get; set; }
+    public int? CodiCamp { get; set; }
+    public string CommandId { get; set; } = "";
+    public string? Database { get; set; }
+    public Dictionary<string, object>? Params { get; set; }
+}
+
+public class ExecuteRequest
+{
+    public string? Type { get; set; }
+    public string? Name { get; set; }
+    public Dictionary<string, object>? Params { get; set; }
+}
+
+public class SaveRequest
+{
+    public string TableName { get; set; } = "";
+    public int? RecordId { get; set; }
+    public Dictionary<string, object> Fields { get; set; } = new();
+}
+
+#endregion

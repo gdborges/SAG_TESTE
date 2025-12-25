@@ -46,4 +46,33 @@ public class FieldEventData
         !string.IsNullOrWhiteSpace(OnExitInstructions) ||
         !string.IsNullOrWhiteSpace(OnClickInstructions) ||
         !string.IsNullOrWhiteSpace(OnDblClickInstructions);
+
+    // =============================================
+    // Campos para InicValoCampPers (valores padrão)
+    // =============================================
+
+    /// <summary>
+    /// Tipo de componente (E, N, C, T, S, etc.)
+    /// </summary>
+    public string CompCamp { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Se deve inicializar o campo (1 = sim)
+    /// </summary>
+    public int InicCamp { get; set; }
+
+    /// <summary>
+    /// Valor padrão para texto (VaGrCamp)
+    /// </summary>
+    public string? DefaultText { get; set; }
+
+    /// <summary>
+    /// Valor padrão para números (PadrCamp)
+    /// </summary>
+    public double? DefaultNumber { get; set; }
+
+    /// <summary>
+    /// Indica se é campo sequencial (TagQCamp = 1)
+    /// </summary>
+    public bool IsSequential { get; set; }
 }

@@ -200,14 +200,15 @@
         (function() {
             var formEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FormEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
             var fieldEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FieldEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var isInsert = @(Model.EditingRecordId == null ? "true" : "false");
 
             // Inicializa após o DOM estar pronto
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function() {
-                    SagEvents.init(formEvents, fieldEvents);
+                    SagEvents.init(formEvents, fieldEvents, isInsert);
                 });
             } else {
-                SagEvents.init(formEvents, fieldEvents);
+                SagEvents.init(formEvents, fieldEvents, isInsert);
             }
         })();
     </script>
@@ -233,9 +234,13 @@
         // Funcao para salvar formulario
         async function saveForm(form) {
             // Dispara evento LancTabe (antes de salvar)
-            if (window.SagEvents && !SagEvents.beforeSave()) {
-                console.log('[saveForm] Operação cancelada por SagEvents.beforeSave()');
-                return;
+            // beforeSave() é async e retorna false se PA ou ME bloquear
+            if (window.SagEvents) {
+                const canSave = await SagEvents.beforeSave();
+                if (!canSave) {
+                    console.log('[saveForm] Operação cancelada por SagEvents.beforeSave()');
+                    return;
+                }
             }
 
             const formData = new FormData(form);

@@ -1188,7 +1188,7 @@ public class FormEventData
 CODICAMP: 1001
 NOMECAMP: NOMETPDO
 COMPCAMP: E
-EXPRCAMP: CS-SIGLTPDO-[#NOMETPDO#];IF-SIGLTPDO='';VA-MSG-'Nome obrigatorio!';FINA
+EXPRCAMP: CS-SIGLTPDO-{DG-NOMETPDO};IF-INIC0001-'{DG-SIGLTPDO}'='';VA-STRI0001-'Nome obrigatorio!';IF-FINA0001
 EPERCAMP: VA-LASTFIELD-NOMETPDO
 ```
 
@@ -1210,10 +1210,10 @@ EPERCAMP: VA-LASTFIELD-NOMETPDO
 │ OnExit: NOMETPDO                        │
 │ CodiCamp: 1001 | Valor: "Teste"         │
 │ ┌─────────────────────────────────────┐ │
-│ │ CS-SIGLTPDO-[#NOMETPDO#];           │ │
-│ │ IF-SIGLTPDO='';                     │ │
-│ │ VA-MSG-'Nome obrigatorio!';         │ │
-│ │ FINA                                │ │
+│ │ CS-SIGLTPDO-{DG-NOMETPDO};          │ │
+│ │ IF-INIC0001-'{DG-SIGLTPDO}'='';    │ │
+│ │ VA-STRI0001-'Nome obrigatorio!';   │ │
+│ │ IF-FINA0001                        │ │
 │ │ VA-LASTFIELD-NOMETPDO               │ │
 │ └─────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
@@ -1227,7 +1227,7 @@ CODICAMP: 1002
 NOMECAMP: BTNCALC
 COMPCAMP: BTN
 LABECAMP: Calcular
-EXPRCAMP: EX-SQL-UPDATE POCA SET TOTAL = QTD * PRECO WHERE ID = [#ID#]
+EXPRCAMP: EX-DTBGENE-UPDATE POCA SET TOTAL = QTD * PRECO WHERE ID = {DG-ID}
 ```
 
 **Renderizacao HTML:**
@@ -1248,7 +1248,7 @@ EXPRCAMP: EX-SQL-UPDATE POCA SET TOTAL = QTD * PRECO WHERE ID = [#ID#]
 │ CodiCamp: 1002                          │
 │ ┌─────────────────────────────────────┐ │
 │ │ EX-SQL-UPDATE POCA SET TOTAL =      │ │
-│ │ QTD * PRECO WHERE ID = [#ID#]       │ │
+│ │ QTD * PRECO WHERE ID = {DG-ID}      │ │
 │ └─────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
 ```
@@ -1258,8 +1258,8 @@ EXPRCAMP: EX-SQL-UPDATE POCA SET TOTAL = QTD * PRECO WHERE ID = [#ID#]
 **Configuracao no banco (SISTTABE):**
 ```
 CODITABE: 120
-SHOWTABE: VA-HOJE-[#DATAATUAL#];CS-DATAINI-[#HOJE#]
-EPERTABE: VA-USUARIO-[#CODUSUARIO#]
+SHOWTABE: VA-DATA0001-{VA-DATAATUA};CE-DATAINI-{VA-DATA0001}
+EPERTABE: VA-INTE0001-{VA-CODIUSUA}
 ```
 
 **Popup de Debug (Fase 1):**
@@ -1268,9 +1268,9 @@ EPERTABE: VA-USUARIO-[#CODUSUARIO#]
 │ Form: ShowTabe                          │
 │ CodiTabe: 120                           │
 │ ┌─────────────────────────────────────┐ │
-│ │ VA-HOJE-[#DATAATUAL#];              │ │
-│ │ CS-DATAINI-[#HOJE#];                │ │
-│ │ VA-USUARIO-[#CODUSUARIO#]           │ │
+│ │ VA-DATA0001-{VA-DATAATUA};          │ │
+│ │ CE-DATAINI-{VA-DATA0001};           │ │
+│ │ VA-INTE0001-{VA-CODIUSUA}           │ │
 │ └─────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
 ```
@@ -1286,7 +1286,7 @@ Apos a conclusao da Fase 1 (infraestrutura de eventos), a Fase 2 focara em:
 1. **Parser de Instrucoes**
    - Tokenizacao de comandos (CS, VA, IF, EX, etc.)
    - Arvore de sintaxe abstrata (AST)
-   - Tratamento de variaveis [#CAMPO#]
+   - Tratamento de variaveis {TIPO-CAMPO} (ex: {DG-NomeProd}, {VA-INTE0001})
 
 2. **Executor de Comandos**
    - CS (Component Set) - Setar valor em componente

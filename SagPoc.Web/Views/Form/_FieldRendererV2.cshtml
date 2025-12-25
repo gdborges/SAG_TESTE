@@ -69,7 +69,8 @@
 
     // Atributos data-sag-* para sistema de eventos PLSAG
     var sagCodicamp = field.CodiCamp.ToString();
-    var sagNomecamp = field.NomeCamp;
+    var sagNomecamp = field.NomeCamp;  // Nome do campo no banco (para name attribute e persistência)
+    var sagNamecamp = field.NameCamp;  // Nome do componente visual (usado pelo PLSAG para FindComponent)
     var sagComptype = field.CompCamp?.ToUpper()?.Trim() ?? "E";
 }
 
@@ -103,6 +104,7 @@
                    data-mask="@field.MascCamp"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -133,6 +135,7 @@
                    @(isDisabled ? "disabled" : "")
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -159,6 +162,7 @@
                    @(isDisabled ? "disabled" : "")
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -179,6 +183,7 @@
                        @(isDisabled ? "disabled" : "")
                        data-sag-codicamp="@sagCodicamp"
                        data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                        data-sag-comptype="@sagComptype" />
                 @if (hasLabel)
                 {
@@ -211,6 +216,7 @@
                     @(isDisabled ? "disabled" : "")
                     data-sag-codicamp="@sagCodicamp"
                     data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                     data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (!string.IsNullOrEmpty(field.VareCamp))
@@ -257,6 +263,7 @@
                     @(isDisabled || isInfoLookup ? "disabled" : "")
                     data-sag-codicamp="@sagCodicamp"
                     data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                     data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (field.LookupOptions != null && field.LookupOptions.Count > 0)
@@ -313,6 +320,7 @@
                        @(isDisabled || isInfoModal ? "readonly" : "")
                        data-sag-codicamp="@sagCodicamp"
                        data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                        data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-lookup"
@@ -349,6 +357,7 @@
                       @(isDisabled ? "disabled" : "")
                       data-sag-codicamp="@sagCodicamp"
                       data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                       data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
@@ -375,6 +384,7 @@
                    @(isDisabled ? "disabled" : "")
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -402,6 +412,7 @@
                    data-calc="true"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -424,6 +435,7 @@
                    data-calc="true"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -450,6 +462,7 @@
                    data-calc="true"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -474,6 +487,7 @@
                    data-calc="true"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -496,6 +510,7 @@
                    data-calc="true"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -517,6 +532,7 @@
                     data-calc="true"
                     data-sag-codicamp="@sagCodicamp"
                     data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                     data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (!string.IsNullOrEmpty(field.VareCamp))
@@ -557,6 +573,7 @@
                        data-calc="true"
                        data-sag-codicamp="@sagCodicamp"
                        data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                        data-sag-comptype="@sagComptype" />
                 @if (hasLabel)
                 {
@@ -588,6 +605,7 @@
                       data-calc="true"
                       data-sag-codicamp="@sagCodicamp"
                       data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                       data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
@@ -612,6 +630,7 @@
                        data-calc="true"
                        data-sag-codicamp="@sagCodicamp"
                        data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                        data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-file"
@@ -643,6 +662,7 @@
                        data-calc="true"
                        data-sag-codicamp="@sagCodicamp"
                        data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                        data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-directory"
@@ -676,6 +696,7 @@
                    data-info="true"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -698,6 +719,7 @@
                    data-info="true"
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                    data-sag-comptype="@sagComptype" />
         </div>
         break;
@@ -721,6 +743,7 @@
                       data-info="true"
                       data-sag-codicamp="@sagCodicamp"
                       data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                       data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
@@ -841,6 +864,7 @@
                     @(isDisabled ? "disabled" : "")
                     data-sag-codicamp="@sagCodicamp"
                     data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
                     data-sag-comptype="@sagComptype">
                 @label
             </button>
