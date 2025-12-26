@@ -42,6 +42,18 @@ public class ConsultaService : IConsultaService
     }
 
     /// <summary>
+    /// Verifica se uma coluna é IDENTITY (auto-increment).
+    /// </summary>
+    private async Task<bool> IsIdentityColumnAsync(IDbConnection connection, string tableName, string columnName)
+    {
+        var sql = @"
+            SELECT COLUMNPROPERTY(OBJECT_ID(@TableName), @ColumnName, 'IsIdentity')";
+
+        var result = await connection.QueryFirstOrDefaultAsync<int?>(sql, new { TableName = tableName, ColumnName = columnName });
+        return result == 1;
+    }
+
+    /// <summary>
     /// Converte um valor object (que pode ser JsonElement) para tipo primitivo.
     /// </summary>
     private static object? ConvertJsonElementToValue(object? value)
@@ -448,24 +460,38 @@ public class ConsultaService : IConsultaService
 
             if (request.IsNew)
             {
-                // INSERT - Gera próximo ID se não existir (SAG não usa IDENTITY)
-                var pkValue = filteredFields.TryGetValue(pkColumn, out var pk) ? ConvertJsonElementToValue(pk) : null;
+                // Verifica se a PK é IDENTITY (auto-increment)
+                var isIdentity = await IsIdentityColumnAsync(connection, tableName, pkColumn);
 
-                if (pkValue == null || (pkValue is int intVal && intVal == 0))
+                if (isIdentity)
                 {
-                    // Gera próximo ID baseado no MAX atual
-                    var maxIdSql = $"SELECT ISNULL(MAX([{pkColumn}]), 0) + 1 FROM [{tableName}]";
-                    var nextId = await connection.ExecuteScalarAsync<int>(maxIdSql);
-                    filteredFields[pkColumn] = nextId;
-                    _logger.LogInformation("Gerado próximo ID {NextId} para tabela {TableName}", nextId, tableName);
+                    // Remove a coluna IDENTITY do INSERT - o banco gerará automaticamente
+                    filteredFields.Remove(pkColumn);
+                    _logger.LogInformation("Coluna {PkColumn} é IDENTITY - será gerada automaticamente", pkColumn);
+                }
+                else
+                {
+                    // INSERT - Gera próximo ID se não existir (tabelas SAG sem IDENTITY)
+                    var pkValue = filteredFields.TryGetValue(pkColumn, out var pk) ? ConvertJsonElementToValue(pk) : null;
+
+                    if (pkValue == null || (pkValue is int intVal && intVal == 0))
+                    {
+                        // Gera próximo ID baseado no MAX atual
+                        var maxIdSql = $"SELECT ISNULL(MAX([{pkColumn}]), 0) + 1 FROM [{tableName}]";
+                        var nextId = await connection.ExecuteScalarAsync<int>(maxIdSql);
+                        filteredFields[pkColumn] = nextId;
+                        _logger.LogInformation("Gerado próximo ID {NextId} para tabela {TableName}", nextId, tableName);
+                    }
                 }
 
                 var columns = filteredFields.Keys.ToList();
                 var values = columns.Select(c => $"@{c}");
 
+                // Monta o INSERT simples (sem OUTPUT pois tabelas podem ter triggers)
                 var sql = $@"
                     INSERT INTO [{tableName}] ({string.Join(", ", columns.Select(c => $"[{c}]"))})
-                    VALUES ({string.Join(", ", values)});";
+                    VALUES ({string.Join(", ", values)});
+                    SELECT SCOPE_IDENTITY();";
 
                 var parameters = new DynamicParameters();
                 foreach (var field in filteredFields)
@@ -473,12 +499,22 @@ public class ConsultaService : IConsultaService
                     parameters.Add($"@{field.Key}", ConvertJsonElementToValue(field.Value));
                 }
 
-                await connection.ExecuteAsync(sql, parameters);
-
-                // Retorna o ID gerado
-                var newId = filteredFields.TryGetValue(pkColumn, out var generatedPk)
-                    ? Convert.ToInt32(generatedPk)
-                    : 0;
+                int newId;
+                if (isIdentity)
+                {
+                    // Executa INSERT e obtém o ID gerado pelo IDENTITY usando SCOPE_IDENTITY()
+                    var result = await connection.QuerySingleOrDefaultAsync<decimal?>(sql, parameters);
+                    newId = result.HasValue ? Convert.ToInt32(result.Value) : 0;
+                    _logger.LogInformation("IDENTITY gerou ID {NewId} para tabela {TableName}", newId, tableName);
+                }
+                else
+                {
+                    await connection.ExecuteAsync(sql, parameters);
+                    // Retorna o ID que foi inserido manualmente
+                    newId = filteredFields.TryGetValue(pkColumn, out var generatedPk)
+                        ? Convert.ToInt32(generatedPk)
+                        : 0;
+                }
 
                 return new SaveRecordResponse
                 {

@@ -501,6 +501,16 @@ const SagEvents = (function () {
             }
         });
 
+        // IMPORTANTE: Inclui a PK (editingRecordId) no formData
+        // Em modo EDIT, o template {DG-<PK>} precisa resolver para o ID do registro
+        const editingIdElement = document.getElementById('editingRecordId');
+        const pkFieldName = editingIdElement?.dataset?.pkField;
+        console.log('[SagEvents] collectFormData - editingId:', editingIdElement?.value, 'pkField:', pkFieldName);
+        if (editingIdElement?.value && pkFieldName) {
+            data[pkFieldName] = editingIdElement.value;
+            console.log('[SagEvents] collectFormData - Adicionado', pkFieldName, '=', editingIdElement.value);
+        }
+
         return data;
     }
 
@@ -537,6 +547,13 @@ const SagEvents = (function () {
             return true;
         }
 
+        // Determina se é INSERT ou EDIT baseado no editingRecordId
+        const editingIdElement = document.getElementById('editingRecordId');
+        const recordId = editingIdElement?.value ? parseInt(editingIdElement.value, 10) : null;
+        const isInsert = !recordId || recordId === 0;
+
+        console.log(`[SagEvents] beforeSave - recordId: ${recordId}, isInsert: ${isInsert}`);
+
         // Executa LancTabe e verifica se foi bloqueado
         if (typeof PlsagInterpreter !== 'undefined') {
             try {
@@ -544,7 +561,9 @@ const SagEvents = (function () {
                     type: 'form',
                     eventType: 'LancTabe',
                     codiTabe: formEvents?.codiTabe,
-                    formData: collectFormData()
+                    formData: collectFormData(),
+                    isInsert: isInsert,
+                    recordId: recordId
                 });
 
                 console.log(`[SagEvents] LancTabe executado:`, result);
@@ -624,6 +643,29 @@ const SagEvents = (function () {
     }
 
     // API publica
+    /**
+     * Reexecuta eventos de campo após carregar registro para edição.
+     * Deve ser chamado após fillForm() para aplicar regras de visibilidade/habilitação.
+     */
+    async function onRecordLoaded() {
+        console.log('[SagEvents] Registro carregado - executando eventos de campo');
+
+        // Atualiza contexto para modo EDIT
+        if (typeof PlsagInterpreter !== 'undefined') {
+            PlsagInterpreter.setInsertMode(false);
+        }
+
+        // Executa eventos Exit de todos os campos para aplicar regras
+        await execFieldEventsOnShow();
+
+        // Dispara DepoShow se existir (evento após mostrar dados)
+        if (formEvents.depoShowInstructions) {
+            await fireFormEvent('DepoShow', formEvents.depoShowInstructions);
+        }
+
+        console.log('[SagEvents] Eventos pós-carregamento concluídos');
+    }
+
     return {
         init,
         beforeSave,
@@ -635,7 +677,9 @@ const SagEvents = (function () {
         getFieldEvents,
         bindField,
         bindAllFields,
-        collectFormData
+        collectFormData,
+        execFieldEventsOnShow,
+        onRecordLoaded
     };
 })();
 

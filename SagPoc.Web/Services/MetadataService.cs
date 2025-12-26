@@ -33,13 +33,45 @@ public class MetadataService : IMetadataService
     {
         var fields = await GetFieldsByTableAsync(codiTabe);
 
+        // Busca informações da tabela (NomeTabe, GravTabe, SiglTabe)
+        var tableInfo = await GetTableInfoAsync(codiTabe);
+
         return new FormMetadata
         {
             TableId = codiTabe,
-            TableName = $"Tabela {codiTabe}",
-            Title = $"Formulário {codiTabe}",
+            TableName = tableInfo.GravTabe ?? $"Tabela{codiTabe}",  // Nome físico da tabela
+            SiglTabe = tableInfo.SiglTabe,  // Sufixo para PK (ex: "LESI" -> CODILESI)
+            Title = tableInfo.NomeTabe ?? $"Formulário {codiTabe}",  // Nome descritivo
             Fields = fields.ToList()
         };
+    }
+
+    /// <summary>
+    /// Busca informações da tabela do SISTTABE.
+    /// GravTabe = nome físico da tabela (ex: "POCALESI")
+    /// SIGLTABE = sufixo de 4 caracteres (ex: "LESI") usado para PK: CODI{SIGLTABE}
+    /// </summary>
+    private async Task<(string? NomeTabe, string? GravTabe, string? SiglTabe)> GetTableInfoAsync(int codiTabe)
+    {
+        var sql = @"SELECT NOMETABE, GravTabe, SIGLTABE FROM SISTTABE WHERE CODITABE = @CodiTabe";
+
+        try
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+            var result = await connection.QueryFirstOrDefaultAsync<dynamic>(sql, new { CodiTabe = codiTabe });
+
+            if (result != null)
+            {
+                return (result.NOMETABE?.ToString(), result.GravTabe?.ToString(), result.SIGLTABE?.ToString());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao buscar info da tabela {CodiTabe}", codiTabe);
+        }
+
+        return (null, null, null);
     }
 
     /// <inheritdoc/>

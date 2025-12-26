@@ -910,13 +910,36 @@ const PlsagCommands = (function() {
 
     /**
      * Executa comando de query
-     * QY = Query Yes (single row)
+     * QY = Query Yes (single row) ou navegacao
      * QN = Query N-lines (multi row)
      * QD = Query Delete
      * QM = Query Modify
+     *
+     * Comandos de navegacao (no parametro):
+     * - ABRE = Abre/reabre query
+     * - FECH = Fecha query
+     * - PRIM = First() - vai para primeiro registro
+     * - PROX = Next() - proximo registro
+     * - ANTE = Prior() - registro anterior
+     * - ULTI = FindLast() - ultimo registro
      */
     async function executeQueryCommand(prefix, identifier, parameter, context) {
         const queryName = identifier.trim();
+        const command = (parameter || '').trim().toUpperCase();
+
+        // Comandos de navegacao
+        const navCommands = ['ABRE', 'FECH', 'PRIM', 'PROX', 'ANTE', 'ULTI'];
+        if (navCommands.includes(command)) {
+            await executeQueryNavigation(queryName, command, context);
+            return;
+        }
+
+        // Se parametro parece um SELECT, e uma query normal
+        // Armazena SQL para permitir ABRE posteriormente
+        if (parameter && parameter.trim().toUpperCase().startsWith('SELECT')) {
+            context.queryDefinitions = context.queryDefinitions || {};
+            context.queryDefinitions[queryName] = parameter;
+        }
 
         // SEGURANCA: NAO enviamos SQL bruto do frontend
         // O backend deve buscar o SQL do banco pela referencia
@@ -957,6 +980,144 @@ const PlsagCommands = (function() {
             }
         } catch (error) {
             console.error(`[PLSAG] Erro ao executar query ${queryName}:`, error);
+        }
+    }
+
+    /**
+     * Executa comandos de navegacao de query
+     * @param {string} queryName - Nome da query
+     * @param {string} command - Comando (ABRE, FECH, PRIM, PROX, ANTE, ULTI)
+     * @param {object} context - Contexto de execucao
+     */
+    async function executeQueryNavigation(queryName, command, context) {
+        console.log(`[PLSAG] QY-${queryName}: ${command}`);
+
+        // Inicializa estruturas se nao existirem
+        context.queryCursors = context.queryCursors || {};
+        context.queryDefinitions = context.queryDefinitions || {};
+
+        let cursor = context.queryCursors[queryName];
+
+        // Reset flags
+        context.system.EOF = false;
+        context.system.BOF = false;
+
+        switch (command) {
+            case 'ABRE':
+                // Abre/reabre a query - busca dados do servidor
+                try {
+                    const querySql = context.queryDefinitions[queryName];
+                    if (!querySql) {
+                        console.warn(`[PLSAG] QY-${queryName}-ABRE: SQL da query nao encontrado`);
+                        return;
+                    }
+
+                    // Substitui templates no SQL
+                    const resolvedSql = PlsagInterpreter.substituteTemplatesForSQL
+                        ? PlsagInterpreter.substituteTemplatesForSQL(querySql)
+                        : querySql;
+
+                    const response = await fetch('/api/plsag/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sql: resolvedSql,
+                            type: 'multi',
+                            codiTabe: context.tableId,
+                            params: context.formData
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            const data = Array.isArray(result.data) ? result.data : [result.data];
+                            context.queryCursors[queryName] = {
+                                data: data,
+                                index: 0,
+                                isOpen: true,
+                                sql: querySql
+                            };
+
+                            // Carrega primeiro registro no contexto
+                            if (data.length > 0) {
+                                context.queryResults[queryName] = data[0];
+                            } else {
+                                context.queryResults[queryName] = {};
+                                context.system.EOF = true;
+                            }
+
+                            console.log(`[PLSAG] QY-${queryName}-ABRE: ${data.length} registros carregados`);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`[PLSAG] QY-${queryName}-ABRE: Erro`, error);
+                }
+                break;
+
+            case 'FECH':
+                // Fecha a query
+                if (cursor) {
+                    cursor.isOpen = false;
+                    delete context.queryCursors[queryName];
+                    delete context.queryResults[queryName];
+                    console.log(`[PLSAG] QY-${queryName}-FECH: Query fechada`);
+                }
+                break;
+
+            case 'PRIM':
+                // Primeiro registro
+                if (cursor && cursor.isOpen && cursor.data.length > 0) {
+                    cursor.index = 0;
+                    context.queryResults[queryName] = cursor.data[0];
+                    context.system.BOF = true;
+                    console.log(`[PLSAG] QY-${queryName}-PRIM: Registro 1/${cursor.data.length}`);
+                } else {
+                    context.system.EOF = true;
+                    context.system.BOF = true;
+                }
+                break;
+
+            case 'PROX':
+                // Proximo registro
+                if (cursor && cursor.isOpen) {
+                    if (cursor.index < cursor.data.length - 1) {
+                        cursor.index++;
+                        context.queryResults[queryName] = cursor.data[cursor.index];
+                        console.log(`[PLSAG] QY-${queryName}-PROX: Registro ${cursor.index + 1}/${cursor.data.length}`);
+                    } else {
+                        context.system.EOF = true;
+                        console.log(`[PLSAG] QY-${queryName}-PROX: Fim dos registros (EOF)`);
+                    }
+                }
+                break;
+
+            case 'ANTE':
+                // Registro anterior
+                if (cursor && cursor.isOpen) {
+                    if (cursor.index > 0) {
+                        cursor.index--;
+                        context.queryResults[queryName] = cursor.data[cursor.index];
+                        console.log(`[PLSAG] QY-${queryName}-ANTE: Registro ${cursor.index + 1}/${cursor.data.length}`);
+                    } else {
+                        context.system.BOF = true;
+                        console.log(`[PLSAG] QY-${queryName}-ANTE: Inicio dos registros (BOF)`);
+                    }
+                }
+                break;
+
+            case 'ULTI':
+                // Ultimo registro
+                if (cursor && cursor.isOpen && cursor.data.length > 0) {
+                    cursor.index = cursor.data.length - 1;
+                    context.queryResults[queryName] = cursor.data[cursor.index];
+                    context.system.EOF = true;
+                    console.log(`[PLSAG] QY-${queryName}-ULTI: Registro ${cursor.index + 1}/${cursor.data.length}`);
+                } else {
+                    context.system.EOF = true;
+                    context.system.BOF = true;
+                }
+                break;
         }
     }
 
@@ -1031,6 +1192,92 @@ const PlsagCommands = (function() {
 
         // Nota: A gravacao efetiva e feita no submit do formulario
         // Aqui apenas atualizamos o contexto
+    }
+
+    /**
+     * Executa comando de gravacao direta (DDG, DDM, DD2, DD3)
+     * Forca gravacao em dataset especifico independente do contexto.
+     *
+     * DDG = Forca DtsGrav (cabecalho)
+     * DDM = Forca DtsMov1 (movimento 1)
+     * DD2 = Forca DtsMov2 (movimento 2)
+     * DD3 = Forca DtsMov3 (movimento 3)
+     *
+     * @param {string} target - 'G' (cabecalho), 'M' (mov1), '2' (mov2), '3' (mov3)
+     * @param {string} identifier - Nome do campo
+     * @param {string} parameter - Valor ou SQL
+     * @param {object} context - Contexto de execucao
+     */
+    async function executeDataDiretoCommand(target, identifier, parameter, context) {
+        const fieldName = identifier.trim();
+        let value = null;
+        let queryExecuted = false;
+
+        // Mapeamento de target para nome do dataset
+        const targetDataset = {
+            'G': 'header',   // DtsGrav - cabecalho
+            'M': 'mov1',     // DtsMov1 - movimento 1
+            '2': 'mov2',     // DtsMov2 - movimento 2
+            '3': 'mov3'      // DtsMov3 - movimento 3
+        }[target] || 'header';
+
+        const prefixDisplay = 'DD' + target;
+
+        // Se o parametro for uma query SQL, executa no servidor
+        const paramStr = parameter !== null && parameter !== undefined ? String(parameter) : '';
+        if (paramStr.trim().toUpperCase().startsWith('SELECT')) {
+            try {
+                let sql = convertOracleToSqlServer(parameter);
+                console.log(`[PLSAG] ${prefixDisplay} (${targetDataset}): Executando query para ${fieldName}: ${sql}`);
+
+                const response = await fetch('/api/plsag/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sql: sql, singleRow: true })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        const firstKey = Object.keys(result.data)[0];
+                        value = result.data[firstKey];
+                        queryExecuted = true;
+                        console.log(`[PLSAG] ${prefixDisplay} (${targetDataset}): ${fieldName} = ${value} (via query)`);
+                    }
+                }
+            } catch (error) {
+                console.error(`[PLSAG] ${prefixDisplay}: Erro executando query:`, error);
+            }
+        } else if (parameter) {
+            value = parameter;
+        }
+
+        // Inicializa estrutura de datasets se nao existir
+        if (!context.datasetFields) {
+            context.datasetFields = {
+                header: {},
+                mov1: {},
+                mov2: {},
+                mov3: {}
+            };
+        }
+
+        // Armazena no dataset especifico (forcado)
+        context.datasetFields[targetDataset][fieldName] = value;
+
+        // Tambem atualiza formData para compatibilidade
+        context.formData[fieldName] = value;
+
+        // Atualiza o campo no DOM se query executou com sucesso
+        const element = findField(fieldName);
+        if (element && value !== undefined && value !== null) {
+            element.value = value;
+            // Dispara eventos para bindings
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        console.log(`[PLSAG] ${prefixDisplay} (${targetDataset}): ${fieldName} = ${value}`);
     }
 
     /**
@@ -1264,24 +1511,62 @@ const PlsagCommands = (function() {
         }
     }
 
-    async function executeServerSql(commandId, context) {
+    async function executeServerSql(sqlOrCommandId, context) {
         try {
-            const response = await fetch('/api/plsag/execute-sql', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    commandId: commandId,
-                    codiTabe: context.tableId,
-                    params: context.formData
-                })
-            });
+            // Verifica se e SQL direto (DELETE, UPDATE, INSERT) ou commandId
+            const sqlTrimmed = (sqlOrCommandId || '').trim();
+            const sqlUpper = sqlTrimmed.toUpperCase();
+            const isDirectSql = sqlUpper.startsWith('DELETE') ||
+                               sqlUpper.startsWith('UPDATE') ||
+                               sqlUpper.startsWith('INSERT');
 
-            const result = await response.json();
-            if (!result.success) {
-                console.error('[PLSAG] Erro SQL:', result.error);
+            if (isDirectSql) {
+                // SQL direto - usa novo endpoint execute-direct-sql
+                // Substitui templates antes de enviar
+                const resolvedSql = PlsagInterpreter.substituteTemplatesForSQL
+                    ? PlsagInterpreter.substituteTemplatesForSQL(sqlTrimmed)
+                    : sqlTrimmed;
+
+                console.log(`[PLSAG] EX-SQL (direto): ${resolvedSql.substring(0, 80)}...`);
+
+                const response = await fetch('/api/plsag/execute-direct-sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sql: resolvedSql,
+                        codiTabe: context.tableId,
+                        params: context.formData
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log(`[PLSAG] SQL executado: ${result.rowsAffected} linhas afetadas`);
+                    context.system.RETOFUNC = result.rowsAffected;
+                } else {
+                    console.error('[PLSAG] Erro SQL direto:', result.error);
+                    context.system.RETOFUNC = -1;
+                }
+            } else {
+                // CommandId - usa endpoint execute-sql (busca SQL do banco)
+                const response = await fetch('/api/plsag/execute-sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        commandId: sqlOrCommandId,
+                        codiTabe: context.tableId,
+                        params: context.formData
+                    })
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    console.error('[PLSAG] Erro SQL:', result.error);
+                }
             }
         } catch (error) {
             console.error('[PLSAG] Erro ao executar SQL:', error);
+            context.system.RETOFUNC = -1;
         }
     }
 
@@ -1406,6 +1691,7 @@ const PlsagCommands = (function() {
         executeMessageCommand,
         executeQueryCommand,
         executeDataCommand,
+        executeDataDiretoCommand,
         executeExCommand,
         executeLabelCommand,
         executeButtonCommand,

@@ -12,12 +12,18 @@ public class FormMetadata
     public int TableId { get; set; }
 
     /// <summary>
-    /// Nome da tabela (ex: "TipDoc")
+    /// Nome físico da tabela (GravTabe, ex: "POCALESI")
     /// </summary>
     public string TableName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Título do formulário
+    /// Sufixo da tabela (SIGLTABE, ex: "LESI")
+    /// Usado para calcular o nome da PK: CODI{SiglTabe}
+    /// </summary>
+    public string? SiglTabe { get; set; }
+
+    /// <summary>
+    /// Título do formulário (NOMETABE)
     /// </summary>
     public string Title { get; set; } = string.Empty;
 
@@ -47,6 +53,29 @@ public class FormMetadata
     /// Indica se o formulário tem movimentos (registros filhos).
     /// </summary>
     public bool HasMovements => MovementFields.Any();
+
+    /// <summary>
+    /// Nome da coluna PK (chave primária).
+    /// Segue o padrão SAG: CODI + SIGLTABE (ex: SIGLTABE="LESI" -> PK="CODILESI")
+    /// </summary>
+    public string PkColumnName
+    {
+        get
+        {
+            // Usa SIGLTABE se disponível
+            if (!string.IsNullOrEmpty(SiglTabe))
+            {
+                return $"CODI{SiglTabe}";
+            }
+
+            // Fallback: extrai do nome físico da tabela
+            if (string.IsNullOrEmpty(TableName)) return "ID";
+            var suffix = TableName
+                .Replace("POCA", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("POGE", "", StringComparison.OrdinalIgnoreCase);
+            return $"CODI{suffix}";
+        }
+    }
 
     /// <summary>
     /// Movimentos agrupados por tipo (cada GuiaCamp >= 10 é um tipo diferente).

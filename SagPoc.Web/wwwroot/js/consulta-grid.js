@@ -420,6 +420,12 @@ class ConsultaGrid {
             // Ativa tab de dados
             document.getElementById('tab-dados-tab')?.click();
 
+            // IMPORTANTE: Executa eventos de campo para aplicar regras de visibilidade/habilitação
+            // Similar ao comportamento do Delphi ao carregar um registro
+            if (typeof SagEvents !== 'undefined' && SagEvents.onRecordLoaded) {
+                await SagEvents.onRecordLoaded();
+            }
+
         } catch (error) {
             console.error('Erro ao carregar registro:', error);
             alert('Erro ao carregar registro para edicao');

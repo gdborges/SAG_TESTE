@@ -59,12 +59,18 @@ const PlsagInterpreter = (function() {
             'CODITABE': null,
             'REGISTRO': null,
             'ULTIMOID': null,
-            'RETOFUNC': null
+            'RETOFUNC': null,
+            'EOF': false,      // End of File - fim dos registros da query
+            'BOF': false       // Beginning of File - inicio dos registros da query
         },
 
         // Resultados de queries
         queryResults: {},
         queryMultiResults: {},
+
+        // Cursores de query para navegacao manual (ABRE, FECH, PRIM, PROX, ANTE, ULTI)
+        queryCursors: {},      // { queryName: { data: [], index: 0, isOpen: bool, sql: '' } }
+        queryDefinitions: {},  // { queryName: 'SELECT ...' } - armazena SQL das queries
 
         // Controle de fluxo
         control: {
@@ -214,12 +220,49 @@ const PlsagInterpreter = (function() {
         }
 
         const prefix = raw.substring(0, 2).toUpperCase();
+        const prefix3 = raw.substring(0, 3).toUpperCase();
+
+        // === Verifica comandos DD* (Data Direto): DDG, DDM, DD2, DD3 ===
+        // Forcam gravacao em dataset especifico independente do contexto
+        const isDataDiretoCommand = prefix === 'DD' && ['DDG', 'DDM', 'DD2', 'DD3'].includes(prefix3);
+        if (isDataDiretoCommand) {
+            const forcedTarget = prefix3.charAt(2); // 'G', 'M', '2', '3'
+            const startPos = 3;
+
+            // Parse do resto: DDG-CAMPO---valor ou DDG-CAMPO---SELECT...
+            let identifier, parameter;
+            if (raw.length > startPos && raw[startPos] === '-') {
+                const afterPrefix = raw.substring(startPos + 1);
+                const nextHyphen = afterPrefix.indexOf('-');
+                if (nextHyphen > 0) {
+                    identifier = afterPrefix.substring(0, nextHyphen);
+                    parameter = afterPrefix.substring(nextHyphen + 1);
+                } else {
+                    identifier = afterPrefix.substring(0, 8);
+                    parameter = afterPrefix.substring(8).replace(/^-/, '');
+                }
+            } else {
+                identifier = raw.substring(startPos, startPos + 8);
+                parameter = raw.substring(startPos + 8).replace(/^-/, '');
+            }
+
+            return {
+                raw: raw,
+                prefix: 'DD',              // Prefixo base e 'DD'
+                modifier: forcedTarget,    // G, M, 2, 3 indica dataset alvo
+                identifier: (identifier || '').trim(),
+                identifierPadded: (identifier || '').padEnd(8, ' '),
+                parameter: parameter || '',
+                hasParameter: !!parameter,
+                isDataDireto: true,        // Flag especial
+                forcedTarget: forcedTarget // G=header, M=mov1, 2=mov2, 3=mov3
+            };
+        }
 
         // Verifica se e um comando de 3 caracteres com modificador
         // Formatos: CE, CN, CS, CV, CF, CC, CM, CT, CI, CA, CR, CD, LN, LE, IL, EE, ES, ET, EC, ED, EA, EI, EL
         // com modificadores D, V, F, C, R
         // Exemplos: CED (Campo Enable + Disable), CNV (Campo Disable + Visible), CCD (Campo Combo + Disable)
-        const prefix3 = raw.substring(0, 3).toUpperCase();
         const validBaseCommands = [
             // Campos vinculados ao banco
             'CE', 'CN', 'CS', 'CV', 'CF', 'CC', 'CM', 'CT', 'CI', 'CA', 'CR', 'CD',
@@ -357,6 +400,14 @@ const PlsagInterpreter = (function() {
         return text.replace(templatePattern, (match, type, field) => {
             const value = resolveTemplate(type, field);
             if (value === undefined) {
+                // Em modo INSERT, campos de dados (DG/DM/D2/D3) nao resolvidos
+                // provavelmente sao PKs IDENTITY - usar -1 ao inves de NULL
+                // para evitar que validacoes ME bloqueiem incorretamente
+                // Nota: usar -1 porque no SQL Server 0 = '' é TRUE (conversao implicita)
+                if (context.system.INSERIND && ['DG', 'DM', 'D2', 'D3'].includes(type)) {
+                    console.warn(`[PLSAG] Template não resolvido em INSERT: ${match} -> -1 (PK IDENTITY)`);
+                    return '-1';
+                }
                 // Template não resolvido vira NULL em SQL
                 console.warn(`[PLSAG] Template não resolvido em SQL: ${match} -> NULL`);
                 return 'NULL';
@@ -1302,6 +1353,21 @@ const PlsagInterpreter = (function() {
                 return;
             }
 
+            // Comandos de gravacao direta (DDG, DDM, DD2, DD3)
+            // Forcam gravacao em dataset especifico independente do contexto
+            if (prefix === 'DD' && token.isDataDireto) {
+                const rawParam = token.parameter || '';
+                const isSQL = rawParam.trim().toUpperCase().startsWith('SELECT');
+                const dataParam = isSQL ? substituteTemplatesForSQL(rawParam) : parameter;
+                await PlsagCommands.executeDataDiretoCommand(
+                    token.forcedTarget, // G, M, 2, 3
+                    identifier,
+                    dataParam,
+                    context
+                );
+                return;
+            }
+
             // Comandos de gravacao (DG, DM, D2, D3)
             // Para SQL (SELECT...), usa substituicao SQL-aware com quotes em strings
             if (prefix === 'DG' || prefix === 'DM' || prefix === 'D2' || prefix === 'D3') {
@@ -1445,6 +1511,10 @@ const PlsagInterpreter = (function() {
         setVariable,
         getSystemVar: (name) => context.system[name],
         setSystemVar: (name, value) => { context.system[name] = value; },
+
+        // Modo INSERT/EDIT
+        setInsertMode: (isInsert) => { context.system.INSERIND = !!isInsert; },
+        isInsertMode: () => context.system.INSERIND,
 
         // Templates e Expressões
         substituteTemplates,

@@ -2,7 +2,7 @@
 @using SagPoc.Web.Models
 
 <form id="dynamicForm" class="needs-validation" novalidate>
-    <input type="hidden" id="editingRecordId" name="editingRecordId" value="" />
+    <input type="hidden" id="editingRecordId" name="editingRecordId" value="" data-pk-field="@Model.PkColumnName" />
 
     @{
         var bevelGroups = Model.GetBevelGroups();

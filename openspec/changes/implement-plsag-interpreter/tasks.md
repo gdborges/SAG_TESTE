@@ -97,7 +97,7 @@
 - [x] 6.3.1 Criar endpoint `POST /api/plsag/save`
 - [x] 6.3.2 Implementar INSERT operation
 - [x] 6.3.3 Implementar UPDATE operation
-- [ ] 6.3.4 Implementar DELETE operation
+- [x] 6.3.4 Implementar DELETE operation
 - [x] 6.3.5 Usar queries parametrizadas
 
 ### 6.4 Execute Endpoint
@@ -118,12 +118,12 @@
 - [x] 7.2 Implementar `QN` - Query N-lines (multi-row)
 - [x] 7.3 Implementar `QD` - Query Delete
 - [x] 7.4 Implementar `QM` - Query Modify (UPDATE)
-- [ ] 7.5 Implementar navegacao (ABRE, FECH, PRIM, PROX, ANTE, ULTI)
+- [x] 7.5 Implementar navegacao (ABRE, FECH, PRIM, PROX, ANTE, ULTI)
 
 ## 8. Comandos de Gravacao (Client -> Server)
 
 - [x] 8.1 Implementar `DG` - Data Grava (cabecalho, somente INSERT)
-- [ ] 8.2 Implementar `DDG` - Data Grava (forca em EDIT)
+- [x] 8.2 Implementar `DDG/DDM/DD2/DD3` - Data Direto (forca gravacao em dataset especifico)
 - [x] 8.3 Implementar `DM` - Data Movimento 1
 - [x] 8.4 Implementar `D2` - Data Movimento 2
 - [x] 8.5 Implementar `D3` - Data Movimento 3
