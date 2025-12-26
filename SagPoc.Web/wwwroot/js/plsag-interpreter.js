@@ -865,6 +865,11 @@ const PlsagInterpreter = (function() {
      * Verifica se deve executar instrucao atual
      */
     function shouldExecute() {
+        // Se ha loop marcado para pular, nao executa
+        if (context.control.loopStack.some(loop => loop.skipLoop)) {
+            return false;
+        }
+
         // Se nao ha blocos na pilha, executa normalmente
         if (context.control.blockStack.length === 0) {
             return true;
@@ -1123,10 +1128,97 @@ const PlsagInterpreter = (function() {
             return 'skip';
         }
 
-        // WH-INIC e WH-FINA (loops)
+        // WH-INIC<label>-<queryName> - Inicia loop com dados de query
+        if (prefix === 'WH' && identifier.startsWith('INIC')) {
+            const label = identifier.substring(4).trim() || '0001';
+            const queryName = token.parameter?.trim();
+
+            if (!queryName) {
+                console.warn(`[PLSAG] WH-INIC sem nome de query: ${token.raw}`);
+                return 'skip';
+            }
+
+            // Busca dados da query multi-resultado
+            const queryData = context.queryMultiResults[queryName];
+
+            if (!queryData || !Array.isArray(queryData) || queryData.length === 0) {
+                console.log(`[PLSAG] WH-INIC: Query ${queryName} sem dados, pulando loop`);
+                // Marca para pular ate o FINA correspondente
+                context.control.loopStack.push({
+                    type: 'WH',
+                    label: label,
+                    data: [],
+                    currentIndex: 0,
+                    startInstructionIndex: context.meta.instructionCount,
+                    skipLoop: true
+                });
+                return 'skip';
+            }
+
+            console.log(`[PLSAG] WH-INIC: Iniciando loop ${label} com ${queryData.length} registros da query ${queryName}`);
+
+            // Inicia loop
+            context.control.loopStack.push({
+                type: 'WH',
+                label: label,
+                queryName: queryName,
+                data: queryData,
+                currentIndex: 0,
+                startInstructionIndex: context.meta.instructionCount,
+                skipLoop: false
+            });
+
+            // Carrega primeiro registro no contexto da query
+            context.queryResults[queryName] = queryData[0];
+
+            return 'skip';
+        }
+
+        // WH-FINA<label> - Fim do loop
+        if (prefix === 'WH' && identifier.startsWith('FINA')) {
+            const label = identifier.substring(4).trim() || '0001';
+
+            // Encontra loop correspondente
+            const loopIdx = context.control.loopStack.findIndex(
+                l => l.type === 'WH' && l.label === label
+            );
+
+            if (loopIdx === -1) {
+                console.warn(`[PLSAG] WH-FINA sem WH-INIC correspondente: ${label}`);
+                return 'skip';
+            }
+
+            const loop = context.control.loopStack[loopIdx];
+
+            // Se loop estava marcado para pular, apenas remove da pilha
+            if (loop.skipLoop) {
+                context.control.loopStack.splice(loopIdx, 1);
+                console.log(`[PLSAG] WH-FINA: Loop ${label} finalizado (sem dados)`);
+                return 'skip';
+            }
+
+            // Avanca para proximo registro
+            loop.currentIndex++;
+
+            if (loop.currentIndex < loop.data.length) {
+                // Ainda tem registros - atualiza contexto com proximo registro
+                context.queryResults[loop.queryName] = loop.data[loop.currentIndex];
+
+                console.log(`[PLSAG] WH-FINA: Loop ${label} iteracao ${loop.currentIndex + 1}/${loop.data.length}`);
+
+                // Retorna indice para voltar ao inicio do loop
+                return loop.startInstructionIndex;
+            }
+
+            // Loop finalizado
+            context.control.loopStack.splice(loopIdx, 1);
+            console.log(`[PLSAG] WH-FINA: Loop ${label} finalizado apos ${loop.currentIndex} iteracoes`);
+            return 'skip';
+        }
+
+        // WH como prefixo generico (compatibilidade)
         if (prefix === 'WH') {
-            // TODO: Implementar loops WH na Fase 2B
-            console.log('[PLSAG] Loop WH nao implementado nesta versao');
+            console.warn(`[PLSAG] Comando WH nao reconhecido: ${token.raw}`);
             return 'skip';
         }
 

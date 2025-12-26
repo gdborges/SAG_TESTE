@@ -10,12 +10,21 @@
         <div class="col-md-8 col-lg-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Selecione um formulário</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Selecione um formulário</h5>
+                        <span id="countLabel" class="badge bg-secondary">@Model.Count itens</span>
+                    </div>
+                    <div class="mt-2">
+                        <input type="text" id="filterInput" class="form-control"
+                               placeholder="Filtrar por código ou nome (ex: 715, contrato...)"
+                               autofocus>
+                    </div>
                 </div>
-                <ul class="list-group list-group-flush">
+                <ul class="list-group list-group-flush" id="formList" style="max-height: 60vh; overflow-y: auto;">
                     @foreach (var table in Model.OrderBy(t => t.Key))
                     {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <li class="list-group-item d-flex justify-content-between align-items-center form-item"
+                            data-code="@table.Key" data-name="@table.Value.ToLower()">
                             <span>
                                 <strong>@table.Key</strong> - @table.Value
                             </span>
@@ -29,3 +38,42 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterInput = document.getElementById('filterInput');
+    const formItems = document.querySelectorAll('.form-item');
+    const countLabel = document.getElementById('countLabel');
+    const totalCount = formItems.length;
+
+    filterInput.addEventListener('input', function() {
+        const filter = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        formItems.forEach(function(item) {
+            const code = item.dataset.code;
+            const name = item.dataset.name;
+
+            // Filtra por código (início) ou nome (contém)
+            const matches = code.startsWith(filter) ||
+                           code.includes(filter) ||
+                           name.includes(filter);
+
+            item.style.display = matches ? '' : 'none';
+            if (matches) visibleCount++;
+        });
+
+        countLabel.textContent = filter ? `${visibleCount} de ${totalCount}` : `${totalCount} itens`;
+    });
+
+    // Enter no filtro abre o primeiro item visível
+    filterInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const firstVisible = document.querySelector('.form-item:not([style*="display: none"]) a');
+            if (firstVisible) {
+                firstVisible.click();
+            }
+        }
+    });
+});
+</script>

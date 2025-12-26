@@ -75,9 +75,9 @@
 - [ ] 5.1.6 Adicionar testes para blocos aninhados
 
 ### 5.2 WH Loop
-- [ ] 5.2.1 Implementar handler para `WH-ID-SQL` (inicia loop)
-- [ ] 5.2.2 Implementar handler para `WH-ID-` (fim do loop)
-- [ ] 5.2.3 Implementar navegacao pelos registros do loop
+- [x] 5.2.1 Implementar handler para `WH-INIC` (inicia loop com query)
+- [x] 5.2.2 Implementar handler para `WH-FINA` (fim do loop)
+- [x] 5.2.3 Implementar navegacao pelos registros do loop
 - [x] 5.2.4 Suportar PA dentro de loop (break)
 
 ## 6. API Backend (PlsagController.cs)
