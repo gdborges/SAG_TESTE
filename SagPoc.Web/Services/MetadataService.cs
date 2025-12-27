@@ -63,7 +63,8 @@ public class MetadataService : IMetadataService
 
             if (result != null)
             {
-                return (result.NOMETABE?.ToString(), result.GravTabe?.ToString(), result.SIGLTABE?.ToString());
+                // Aplica Trim() em SIGLTABE - pode conter espaços em branco no banco
+                return (result.NOMETABE?.ToString(), result.GravTabe?.ToString()?.Trim(), result.SIGLTABE?.ToString()?.Trim());
             }
         }
         catch (Exception ex)

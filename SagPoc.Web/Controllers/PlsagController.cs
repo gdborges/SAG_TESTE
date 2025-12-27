@@ -249,6 +249,120 @@ public class PlsagController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    /// <summary>
+    /// Executa SQL direto (DELETE, UPDATE, INSERT) via EX-SQL.
+    /// POC: Aceita SQL do frontend com validacoes de seguranca.
+    /// </summary>
+    [HttpPost("execute-direct-sql")]
+    public async Task<IActionResult> ExecuteDirectSql([FromBody] DirectSqlRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("PLSAG Direct SQL: Type={Type} Sql={Sql}",
+                request.SqlType, request.Sql?.Substring(0, Math.Min(80, request.Sql?.Length ?? 0)));
+
+            // Validacao basica
+            if (string.IsNullOrEmpty(request.Sql))
+            {
+                return BadRequest(new { success = false, error = "SQL nao fornecido" });
+            }
+
+            var sqlTrimmed = request.Sql.Trim();
+            var sqlUpper = sqlTrimmed.ToUpperInvariant();
+
+            // Determina tipo automaticamente se nao especificado
+            var sqlType = request.SqlType?.ToUpperInvariant() ?? "";
+            if (string.IsNullOrEmpty(sqlType))
+            {
+                if (sqlUpper.StartsWith("DELETE")) sqlType = "DELETE";
+                else if (sqlUpper.StartsWith("UPDATE")) sqlType = "UPDATE";
+                else if (sqlUpper.StartsWith("INSERT")) sqlType = "INSERT";
+                else
+                {
+                    _logger.LogWarning("Tipo SQL nao reconhecido: {Sql}", sqlTrimmed.Substring(0, Math.Min(50, sqlTrimmed.Length)));
+                    return BadRequest(new { success = false, error = "Tipo SQL nao reconhecido. Use DELETE, UPDATE ou INSERT." });
+                }
+            }
+
+            // Validacao de seguranca: DELETE DEVE ter WHERE
+            if (sqlType == "DELETE" && !sqlUpper.Contains("WHERE"))
+            {
+                _logger.LogWarning("DELETE sem WHERE bloqueado: {Sql}", request.Sql);
+                return BadRequest(new { success = false, error = "DELETE requer clausula WHERE por seguranca" });
+            }
+
+            // Valida SQL (bloqueia DROP, TRUNCATE, etc.)
+            if (!IsValidSql(request.Sql))
+            {
+                _logger.LogWarning("SQL bloqueado por padrao perigoso: {Sql}", request.Sql);
+                return BadRequest(new { success = false, error = "SQL contem padroes nao permitidos" });
+            }
+
+            // Extrai e valida nome da tabela
+            var tableName = ExtractTableName(request.Sql, sqlType);
+            if (string.IsNullOrEmpty(tableName))
+            {
+                _logger.LogWarning("Nao foi possivel extrair nome da tabela: {Sql}", request.Sql);
+                return BadRequest(new { success = false, error = "Nao foi possivel identificar a tabela" });
+            }
+
+            if (!IsValidTableName(tableName))
+            {
+                _logger.LogWarning("Tabela nao permitida para SQL direto: {Table}", tableName);
+                return BadRequest(new { success = false, error = $"Tabela '{tableName}' nao permitida para esta operacao" });
+            }
+
+            // Executa SQL
+            using var connection = CreateConnection();
+            connection.Open();
+
+            var parameters = new DynamicParameters(request.Params);
+            var rowsAffected = await connection.ExecuteAsync(request.Sql, parameters);
+
+            _logger.LogInformation("SQL executado: {Type} em {Table}, {Rows} linhas afetadas",
+                sqlType, tableName, rowsAffected);
+
+            return Ok(new { success = true, rowsAffected, sqlType, tableName });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar SQL direto: {Sql}", request.Sql?.Substring(0, Math.Min(100, request.Sql?.Length ?? 0)));
+            return StatusCode(500, new { success = false, error = $"Erro ao executar SQL: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Extrai nome da tabela de um comando SQL.
+    /// </summary>
+    private string? ExtractTableName(string sql, string sqlType)
+    {
+        var sqlUpper = sql.ToUpperInvariant();
+        Match match;
+
+        switch (sqlType)
+        {
+            case "DELETE":
+                // DELETE FROM tabela WHERE...
+                match = Regex.Match(sqlUpper, @"DELETE\s+FROM\s+\[?(\w+)\]?", RegexOptions.IgnoreCase);
+                break;
+
+            case "UPDATE":
+                // UPDATE tabela SET...
+                match = Regex.Match(sqlUpper, @"UPDATE\s+\[?(\w+)\]?", RegexOptions.IgnoreCase);
+                break;
+
+            case "INSERT":
+                // INSERT INTO tabela...
+                match = Regex.Match(sqlUpper, @"INSERT\s+INTO\s+\[?(\w+)\]?", RegexOptions.IgnoreCase);
+                break;
+
+            default:
+                return null;
+        }
+
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
     #endregion
 
     #region Save Endpoints
@@ -528,6 +642,14 @@ public class SaveRequest
     public string TableName { get; set; } = "";
     public int? RecordId { get; set; }
     public Dictionary<string, object> Fields { get; set; } = new();
+}
+
+public class DirectSqlRequest
+{
+    public string Sql { get; set; } = "";
+    public string? SqlType { get; set; }  // DELETE, UPDATE, INSERT (auto-detectado se nulo)
+    public int CodiTabe { get; set; }
+    public Dictionary<string, object>? Params { get; set; }
 }
 
 #endregion

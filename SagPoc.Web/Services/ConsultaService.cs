@@ -54,11 +54,71 @@ public class ConsultaService : IConsultaService
     }
 
     /// <summary>
+    /// Estratégia de geração de Primary Key.
+    /// </summary>
+    public enum PkStrategy
+    {
+        /// <summary>Banco gera via IDENTITY, usar SCOPE_IDENTITY()</summary>
+        Identity,
+        /// <summary>Aplicação gera via MAX()+1 (tabelas SAG legado)</summary>
+        MaxPlusOne,
+        /// <summary>Valor já fornecido pelo usuário/frontend</summary>
+        UserProvided
+    }
+
+    /// <summary>
+    /// Determina a estratégia de geração de PK para INSERT.
+    /// Encapsula a lógica de decisão baseada em metadados da tabela e valor fornecido.
+    /// </summary>
+    /// <param name="connection">Conexão com o banco</param>
+    /// <param name="tableName">Nome da tabela</param>
+    /// <param name="pkColumn">Nome da coluna PK</param>
+    /// <param name="providedPkValue">Valor de PK fornecido pelo frontend (pode ser null, 0, ou valor válido)</param>
+    /// <returns>Estratégia a ser usada e se precisa gerar novo ID</returns>
+    private async Task<(PkStrategy Strategy, bool NeedsNewId)> GetPkStrategyAsync(
+        IDbConnection connection,
+        string tableName,
+        string pkColumn,
+        object? providedPkValue)
+    {
+        // Verifica se a coluna é IDENTITY
+        var isIdentity = await IsIdentityColumnAsync(connection, tableName, pkColumn);
+
+        if (isIdentity)
+        {
+            // IDENTITY: banco gera automaticamente, não precisa de ID manual
+            return (PkStrategy.Identity, false);
+        }
+
+        // Tabela não-IDENTITY (legado SAG): verifica se valor foi fornecido
+        var needsNewId = providedPkValue == null
+            || providedPkValue.ToString() == "0"
+            || providedPkValue.ToString() == ""
+            || (providedPkValue is int intVal && intVal == 0)
+            || (providedPkValue is long longVal && longVal == 0);
+
+        if (needsNewId)
+        {
+            // Precisa gerar via MAX()+1
+            return (PkStrategy.MaxPlusOne, true);
+        }
+
+        // Valor válido fornecido pelo usuário
+        return (PkStrategy.UserProvided, false);
+    }
+
+    /// <summary>
     /// Converte um valor object (que pode ser JsonElement) para tipo primitivo.
     /// </summary>
     private static object? ConvertJsonElementToValue(object? value)
     {
         if (value == null) return null;
+
+        // Se já é um tipo primitivo, retorna diretamente (não converte para string!)
+        if (value is int or long or short or decimal or double or float or bool)
+        {
+            return value;
+        }
 
         if (value is JsonElement jsonElement)
         {
@@ -304,8 +364,8 @@ public class ConsultaService : IConsultaService
             sql = sql.Substring(0, orderByIndex).Trim();
         }
 
-        // Substitui FUN_LOGI por CASE
-        sql = Regex.Replace(sql, @"FUN_LOGI\(([^)]+)\)",
+        // Substitui FUN_LOGI por CASE (incluindo prefixo DBO. se existir)
+        sql = Regex.Replace(sql, @"(?:DBO\.)?FUN_LOGI\(([^)]+)\)",
             "CASE $1 WHEN 1 THEN 'S' ELSE 'N' END",
             RegexOptions.IgnoreCase);
 
@@ -460,68 +520,90 @@ public class ConsultaService : IConsultaService
 
             if (request.IsNew)
             {
-                // Verifica se a PK é IDENTITY (auto-increment)
-                var isIdentity = await IsIdentityColumnAsync(connection, tableName, pkColumn);
+                // Busca PK fornecida pelo frontend (case-insensitive)
+                var pkKey = filteredFields.Keys.FirstOrDefault(k => k.Equals(pkColumn, StringComparison.OrdinalIgnoreCase));
+                var providedPkValue = pkKey != null ? ConvertJsonElementToValue(filteredFields[pkKey]) : null;
 
-                if (isIdentity)
-                {
-                    // Remove a coluna IDENTITY do INSERT - o banco gerará automaticamente
-                    filteredFields.Remove(pkColumn);
-                    _logger.LogInformation("Coluna {PkColumn} é IDENTITY - será gerada automaticamente", pkColumn);
-                }
-                else
-                {
-                    // INSERT - Gera próximo ID se não existir (tabelas SAG sem IDENTITY)
-                    var pkValue = filteredFields.TryGetValue(pkColumn, out var pk) ? ConvertJsonElementToValue(pk) : null;
+                // Determina estratégia de PK usando método centralizado
+                var (strategy, needsNewId) = await GetPkStrategyAsync(connection, tableName, pkColumn, providedPkValue);
+                _logger.LogInformation("Tabela {TableName}: estratégia PK = {Strategy}, needsNewId = {NeedsNewId}",
+                    tableName, strategy, needsNewId);
 
-                    if (pkValue == null || (pkValue is int intVal && intVal == 0))
+                // Usa transação para garantir atomicidade: MAX()+1 → INSERT → SCOPE_IDENTITY()
+                using var transaction = connection.BeginTransaction();
+                try
+                {
+                    switch (strategy)
                     {
-                        // Gera próximo ID baseado no MAX atual
-                        var maxIdSql = $"SELECT ISNULL(MAX([{pkColumn}]), 0) + 1 FROM [{tableName}]";
-                        var nextId = await connection.ExecuteScalarAsync<int>(maxIdSql);
-                        filteredFields[pkColumn] = nextId;
-                        _logger.LogInformation("Gerado próximo ID {NextId} para tabela {TableName}", nextId, tableName);
+                        case PkStrategy.Identity:
+                            // Remove a coluna IDENTITY do INSERT - o banco gerará automaticamente
+                            filteredFields.Remove(pkColumn);
+                            break;
+
+                        case PkStrategy.MaxPlusOne:
+                            // Remove entrada existente da PK (evita duplicação por diferença de case)
+                            if (pkKey != null) filteredFields.Remove(pkKey);
+
+                            // Gera próximo ID baseado no MAX atual (dentro da transação)
+                            // TABLOCKX + HOLDLOCK previne race condition: bloqueia tabela até commit
+                            var maxIdSql = $"SELECT ISNULL(MAX([{pkColumn}]), 0) + 1 FROM [{tableName}] WITH (TABLOCKX, HOLDLOCK)";
+                            var nextId = await connection.ExecuteScalarAsync<int>(maxIdSql, transaction: transaction);
+                            filteredFields[pkColumn] = nextId;
+                            _logger.LogInformation("Gerado próximo ID {NextId} para tabela {TableName}", nextId, tableName);
+                            break;
+
+                        case PkStrategy.UserProvided:
+                            // Mantém valor fornecido pelo usuário
+                            break;
                     }
+
+                    var columns = filteredFields.Keys.ToList();
+                    var values = columns.Select(c => $"@{c}");
+
+                    // Monta o INSERT simples (sem OUTPUT pois tabelas podem ter triggers)
+                    var sql = $@"
+                        INSERT INTO [{tableName}] ({string.Join(", ", columns.Select(c => $"[{c}]"))})
+                        VALUES ({string.Join(", ", values)});
+                        SELECT SCOPE_IDENTITY();";
+
+                    var parameters = new DynamicParameters();
+                    foreach (var field in filteredFields)
+                    {
+                        var convertedValue = ConvertJsonElementToValue(field.Value);
+                        parameters.Add($"@{field.Key}", convertedValue);
+                    }
+
+                    int newId;
+                    if (strategy == PkStrategy.Identity)
+                    {
+                        // Executa INSERT e obtém o ID gerado pelo IDENTITY usando SCOPE_IDENTITY()
+                        var result = await connection.QuerySingleOrDefaultAsync<decimal?>(sql, parameters, transaction: transaction);
+                        newId = result.HasValue ? Convert.ToInt32(result.Value) : 0;
+                        _logger.LogInformation("IDENTITY gerou ID {NewId} para tabela {TableName}", newId, tableName);
+                    }
+                    else
+                    {
+                        await connection.ExecuteAsync(sql, parameters, transaction: transaction);
+                        // Retorna o ID que foi inserido (gerado ou fornecido)
+                        newId = filteredFields.TryGetValue(pkColumn, out var generatedPk)
+                            ? Convert.ToInt32(generatedPk)
+                            : 0;
+                    }
+
+                    transaction.Commit();
+
+                    return new SaveRecordResponse
+                    {
+                        Success = true,
+                        Message = "Registro inserido com sucesso",
+                        RecordId = newId
+                    };
                 }
-
-                var columns = filteredFields.Keys.ToList();
-                var values = columns.Select(c => $"@{c}");
-
-                // Monta o INSERT simples (sem OUTPUT pois tabelas podem ter triggers)
-                var sql = $@"
-                    INSERT INTO [{tableName}] ({string.Join(", ", columns.Select(c => $"[{c}]"))})
-                    VALUES ({string.Join(", ", values)});
-                    SELECT SCOPE_IDENTITY();";
-
-                var parameters = new DynamicParameters();
-                foreach (var field in filteredFields)
+                catch
                 {
-                    parameters.Add($"@{field.Key}", ConvertJsonElementToValue(field.Value));
+                    transaction.Rollback();
+                    throw;
                 }
-
-                int newId;
-                if (isIdentity)
-                {
-                    // Executa INSERT e obtém o ID gerado pelo IDENTITY usando SCOPE_IDENTITY()
-                    var result = await connection.QuerySingleOrDefaultAsync<decimal?>(sql, parameters);
-                    newId = result.HasValue ? Convert.ToInt32(result.Value) : 0;
-                    _logger.LogInformation("IDENTITY gerou ID {NewId} para tabela {TableName}", newId, tableName);
-                }
-                else
-                {
-                    await connection.ExecuteAsync(sql, parameters);
-                    // Retorna o ID que foi inserido manualmente
-                    newId = filteredFields.TryGetValue(pkColumn, out var generatedPk)
-                        ? Convert.ToInt32(generatedPk)
-                        : 0;
-                }
-
-                return new SaveRecordResponse
-                {
-                    Success = true,
-                    Message = "Registro inserido com sucesso",
-                    RecordId = newId
-                };
             }
             else
             {
@@ -542,7 +624,16 @@ public class ConsultaService : IConsultaService
                     parameters.Add($"@{field.Key}", ConvertJsonElementToValue(field.Value));
                 }
 
-                await connection.ExecuteAsync(sql, parameters);
+                var affected = await connection.ExecuteAsync(sql, parameters);
+
+                if (affected == 0)
+                {
+                    return new SaveRecordResponse
+                    {
+                        Success = false,
+                        Message = $"Registro {request.RecordId} não encontrado na tabela {tableName}"
+                    };
+                }
 
                 return new SaveRecordResponse
                 {
