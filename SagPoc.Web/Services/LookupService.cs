@@ -1,29 +1,23 @@
 using Dapper;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using SagPoc.Web.Models;
+using SagPoc.Web.Services.Database;
 
 namespace SagPoc.Web.Services;
 
 /// <summary>
 /// Serviço para executar queries SQL_CAMP e popular combos T/IT.
-/// Conecta ao SQL Server Azure.
+/// Suporta SQL Server e Oracle via IDbProvider.
 /// </summary>
 public class LookupService : ILookupService
 {
-    private readonly string _connectionString;
+    private readonly IDbProvider _dbProvider;
     private readonly ILogger<LookupService> _logger;
 
-    public LookupService(IConfiguration configuration, ILogger<LookupService> logger)
+    public LookupService(IDbProvider dbProvider, ILogger<LookupService> logger)
     {
-        _connectionString = configuration.GetConnectionString("SagDb")
-            ?? throw new InvalidOperationException("Connection string 'SagDb' not found.");
+        _dbProvider = dbProvider;
         _logger = logger;
-    }
-
-    private IDbConnection CreateConnection()
-    {
-        return new SqlConnection(_connectionString);
     }
 
     /// <inheritdoc/>
@@ -36,22 +30,19 @@ public class LookupService : ILookupService
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
-            // Executar query dinamicamente - pode ter 1 ou mais colunas
             var results = await connection.QueryAsync(sql);
             var items = new List<LookupItem>();
 
             foreach (var row in results)
             {
-                // row é um dynamic (DapperRow)
                 var dict = (IDictionary<string, object>)row;
                 var values = dict.Values.ToList();
 
                 if (values.Count >= 2)
                 {
-                    // Padrão SQL_CAMP: Coluna 0 = Key, Coluna 1 = Value
                     items.Add(new LookupItem
                     {
                         Key = values[0]?.ToString() ?? string.Empty,
@@ -60,7 +51,6 @@ public class LookupService : ILookupService
                 }
                 else if (values.Count == 1)
                 {
-                    // Se só tem uma coluna, usa como Key e Value
                     var val = values[0]?.ToString() ?? string.Empty;
                     items.Add(new LookupItem { Key = val, Value = val });
                 }

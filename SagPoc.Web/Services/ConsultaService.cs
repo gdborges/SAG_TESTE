@@ -1,6 +1,6 @@
 using Dapper;
-using Microsoft.Data.SqlClient;
 using SagPoc.Web.Models;
+using SagPoc.Web.Services.Database;
 using System.Data;
 using System.Text;
 using System.Text.Json;
@@ -9,21 +9,20 @@ using System.Text.RegularExpressions;
 namespace SagPoc.Web.Services;
 
 /// <summary>
-/// Serviço de consultas e CRUD usando Dapper com MSSQL.
+/// Serviço de consultas e CRUD usando Dapper.
+/// Suporta SQL Server e Oracle via IDbProvider.
 /// </summary>
 public class ConsultaService : IConsultaService
 {
-    private readonly string _connectionString;
+    private readonly IDbProvider _dbProvider;
     private readonly ILogger<ConsultaService> _logger;
 
-    public ConsultaService(IConfiguration configuration, ILogger<ConsultaService> logger)
+    public ConsultaService(IDbProvider dbProvider, ILogger<ConsultaService> logger)
     {
-        _connectionString = configuration.GetConnectionString("SagDb")
-            ?? throw new InvalidOperationException("Connection string 'SagDb' not found.");
+        _dbProvider = dbProvider;
         _logger = logger;
+        _logger.LogInformation("ConsultaService inicializado com provider {Provider}", _dbProvider.ProviderName);
     }
-
-    private IDbConnection CreateConnection() => new SqlConnection(_connectionString);
 
     /// <summary>
     /// Obtém o nome real da coluna de chave primária (primeira coluna da tabela).
@@ -31,25 +30,26 @@ public class ConsultaService : IConsultaService
     /// </summary>
     private async Task<string> GetPrimaryKeyColumnAsync(IDbConnection connection, string tableName)
     {
-        var sql = @"
-            SELECT TOP 1 COLUMN_NAME
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = @TableName
-            ORDER BY ORDINAL_POSITION";
-
-        var pkColumn = await connection.QueryFirstOrDefaultAsync<string>(sql, new { TableName = tableName });
+        var sql = _dbProvider.GetFirstColumnQuery(tableName);
+        var pkColumn = await connection.QueryFirstOrDefaultAsync<string>(
+            sql,
+            new { TableName = tableName.ToUpper() });  // Oracle é case-sensitive em metadados
         return pkColumn ?? $"CODI{tableName.Replace("POCA", "").Replace("POGE", "")}"; // Fallback
     }
 
     /// <summary>
     /// Verifica se uma coluna é IDENTITY (auto-increment).
+    /// Retorna false no Oracle (não suporta IDENTITY em 11g).
     /// </summary>
     private async Task<bool> IsIdentityColumnAsync(IDbConnection connection, string tableName, string columnName)
     {
-        var sql = @"
-            SELECT COLUMNPROPERTY(OBJECT_ID(@TableName), @ColumnName, 'IsIdentity')";
+        if (!_dbProvider.SupportsIdentity)
+            return false;
 
-        var result = await connection.QueryFirstOrDefaultAsync<int?>(sql, new { TableName = tableName, ColumnName = columnName });
+        var sql = _dbProvider.GetIdentityCheckQuery(tableName, columnName);
+        var result = await connection.QueryFirstOrDefaultAsync<int?>(
+            sql,
+            new { TableName = tableName, ColumnName = columnName });
         return result == 1;
     }
 
@@ -60,8 +60,8 @@ public class ConsultaService : IConsultaService
     {
         /// <summary>Banco gera via IDENTITY, usar SCOPE_IDENTITY()</summary>
         Identity,
-        /// <summary>Aplicação gera via MAX()+1 (tabelas SAG legado)</summary>
-        MaxPlusOne,
+        /// <summary>Aplicação gera via MAX()+1 (SQL Server) ou SEQUENCE (Oracle)</summary>
+        MaxPlusOneOrSequence,
         /// <summary>Valor já fornecido pelo usuário/frontend</summary>
         UserProvided
     }
@@ -70,27 +70,21 @@ public class ConsultaService : IConsultaService
     /// Determina a estratégia de geração de PK para INSERT.
     /// Encapsula a lógica de decisão baseada em metadados da tabela e valor fornecido.
     /// </summary>
-    /// <param name="connection">Conexão com o banco</param>
-    /// <param name="tableName">Nome da tabela</param>
-    /// <param name="pkColumn">Nome da coluna PK</param>
-    /// <param name="providedPkValue">Valor de PK fornecido pelo frontend (pode ser null, 0, ou valor válido)</param>
-    /// <returns>Estratégia a ser usada e se precisa gerar novo ID</returns>
     private async Task<(PkStrategy Strategy, bool NeedsNewId)> GetPkStrategyAsync(
         IDbConnection connection,
         string tableName,
         string pkColumn,
         object? providedPkValue)
     {
-        // Verifica se a coluna é IDENTITY
+        // Verifica se a coluna é IDENTITY (só SQL Server)
         var isIdentity = await IsIdentityColumnAsync(connection, tableName, pkColumn);
 
         if (isIdentity)
         {
-            // IDENTITY: banco gera automaticamente, não precisa de ID manual
             return (PkStrategy.Identity, false);
         }
 
-        // Tabela não-IDENTITY (legado SAG): verifica se valor foi fornecido
+        // Tabela não-IDENTITY: verifica se valor foi fornecido
         var needsNewId = providedPkValue == null
             || providedPkValue.ToString() == "0"
             || providedPkValue.ToString() == ""
@@ -99,11 +93,9 @@ public class ConsultaService : IConsultaService
 
         if (needsNewId)
         {
-            // Precisa gerar via MAX()+1
-            return (PkStrategy.MaxPlusOne, true);
+            return (PkStrategy.MaxPlusOneOrSequence, true);
         }
 
-        // Valor válido fornecido pelo usuário
         return (PkStrategy.UserProvided, false);
     }
 
@@ -114,7 +106,6 @@ public class ConsultaService : IConsultaService
     {
         if (value == null) return null;
 
-        // Se já é um tipo primitivo, retorna diretamente (não converte para string!)
         if (value is int or long or short or decimal or double or float or bool)
         {
             return value;
@@ -143,14 +134,9 @@ public class ConsultaService : IConsultaService
     {
         if (value == null) return null;
 
-        // Checkbox HTML envia "on" quando marcado
         if (value.Equals("on", StringComparison.OrdinalIgnoreCase)) return 1;
-
-        // Valores booleanos em texto
         if (value.Equals("true", StringComparison.OrdinalIgnoreCase)) return 1;
         if (value.Equals("false", StringComparison.OrdinalIgnoreCase)) return 0;
-
-        // String vazia para campos numéricos deve ser null
         if (string.IsNullOrWhiteSpace(value)) return null;
 
         return value;
@@ -159,28 +145,29 @@ public class ConsultaService : IConsultaService
     /// <inheritdoc/>
     public async Task<TableMetadata?> GetTableMetadataAsync(int tableId)
     {
-        const string sql = @"
+        // SQL com funções abstraídas via provider
+        var sql = $@"
             SELECT
                 CODITABE as CodiTabe,
-                ISNULL(NOMETABE, '') as NomeTabe,
-                ISNULL(FORMTABE, '') as FormTabe,
-                ISNULL(CAPTTABE, '') as CaptTabe,
-                ISNULL(HINTTABE, '') as HintTabe,
-                ISNULL(GRAVTABE, '') as GravTabe,
-                ISNULL(CHAVTABE, 1) as ChavTabe,
-                ISNULL(GUI1TABE, '') as Gui1Tabe,
-                ISNULL(GUI2TABE, '') as Gui2Tabe,
-                CAST(PARATABE as NVARCHAR(MAX)) as ParaTabe,
-                CAST(GRIDTABE as NVARCHAR(MAX)) as GridTabe,
-                ISNULL(ALTUTABE, 400) as AltuTabe,
-                ISNULL(TAMATABE, 600) as TamaTabe,
-                ISNULL(SIGLTABE, '') as SiglTabe
+                {_dbProvider.NullFunction("NOMETABE", "''")} as NomeTabe,
+                {_dbProvider.NullFunction("FORMTABE", "''")} as FormTabe,
+                {_dbProvider.NullFunction("CAPTTABE", "''")} as CaptTabe,
+                {_dbProvider.NullFunction("HINTTABE", "''")} as HintTabe,
+                {_dbProvider.NullFunction("GRAVTABE", "''")} as GravTabe,
+                {_dbProvider.NullFunction("CHAVTABE", "1")} as ChavTabe,
+                {_dbProvider.NullFunction("GUI1TABE", "''")} as Gui1Tabe,
+                {_dbProvider.NullFunction("GUI2TABE", "''")} as Gui2Tabe,
+                PARATABE as ParaTabe,
+                GRIDTABE as GridTabe,
+                {_dbProvider.NullFunction("ALTUTABE", "400")} as AltuTabe,
+                {_dbProvider.NullFunction("TAMATABE", "600")} as TamaTabe,
+                {_dbProvider.NullFunction("SIGLTABE", "''")} as SiglTabe
             FROM SISTTABE
-            WHERE CODITABE = @TableId";
+            WHERE CODITABE = {_dbProvider.FormatParameter("TableId")}";
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             return await connection.QueryFirstOrDefaultAsync<TableMetadata>(sql, new { TableId = tableId });
         }
@@ -194,26 +181,26 @@ public class ConsultaService : IConsultaService
     /// <inheritdoc/>
     public async Task<List<ConsultaMetadata>> GetConsultasByTableAsync(int tableId)
     {
-        const string sql = @"
+        var sql = $@"
             SELECT
                 CODICONS as CodiCons,
                 CODITABE as CodiTabe,
-                ISNULL(NOMECONS, '') as NomeCons,
-                ISNULL(BUSCCONS, '') as BuscCons,
-                CAST(SQL_CONS as NVARCHAR(MAX)) as SqlCons,
-                CAST(FILTCONS as NVARCHAR(MAX)) as FiltCons,
-                CAST(WHERCONS as NVARCHAR(MAX)) as WherCons,
-                CAST(ORBYCONS as NVARCHAR(MAX)) as OrByCons,
-                ISNULL(ACCECONS, 1) as AcceCons,
-                ISNULL(ATIVCONS, 1) as AtivCons
+                {_dbProvider.NullFunction("NOMECONS", "''")} as NomeCons,
+                {_dbProvider.NullFunction("BUSCCONS", "''")} as BuscCons,
+                SQL_CONS as SqlCons,
+                FILTCONS as FiltCons,
+                WHERCONS as WherCons,
+                ORBYCONS as OrByCons,
+                {_dbProvider.NullFunction("ACCECONS", "1")} as AcceCons,
+                {_dbProvider.NullFunction("ATIVCONS", "1")} as AtivCons
             FROM SISTCONS
-            WHERE CODITABE = @TableId
-              AND ISNULL(ATIVCONS, 1) = 1
+            WHERE CODITABE = {_dbProvider.FormatParameter("TableId")}
+              AND {_dbProvider.NullFunction("ATIVCONS", "1")} = 1
             ORDER BY NOMECONS";
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             var consultas = await connection.QueryAsync<ConsultaMetadata>(sql, new { TableId = tableId });
             return consultas.ToList();
@@ -228,24 +215,24 @@ public class ConsultaService : IConsultaService
     /// <inheritdoc/>
     public async Task<ConsultaMetadata?> GetConsultaAsync(int consultaId)
     {
-        const string sql = @"
+        var sql = $@"
             SELECT
                 CODICONS as CodiCons,
                 CODITABE as CodiTabe,
-                ISNULL(NOMECONS, '') as NomeCons,
-                ISNULL(BUSCCONS, '') as BuscCons,
-                CAST(SQL_CONS as NVARCHAR(MAX)) as SqlCons,
-                CAST(FILTCONS as NVARCHAR(MAX)) as FiltCons,
-                CAST(WHERCONS as NVARCHAR(MAX)) as WherCons,
-                CAST(ORBYCONS as NVARCHAR(MAX)) as OrByCons,
-                ISNULL(ACCECONS, 1) as AcceCons,
-                ISNULL(ATIVCONS, 1) as AtivCons
+                {_dbProvider.NullFunction("NOMECONS", "''")} as NomeCons,
+                {_dbProvider.NullFunction("BUSCCONS", "''")} as BuscCons,
+                SQL_CONS as SqlCons,
+                FILTCONS as FiltCons,
+                WHERCONS as WherCons,
+                ORBYCONS as OrByCons,
+                {_dbProvider.NullFunction("ACCECONS", "1")} as AcceCons,
+                {_dbProvider.NullFunction("ATIVCONS", "1")} as AtivCons
             FROM SISTCONS
-            WHERE CODICONS = @ConsultaId";
+            WHERE CODICONS = {_dbProvider.FormatParameter("ConsultaId")}";
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             return await connection.QueryFirstOrDefaultAsync<ConsultaMetadata>(sql, new { ConsultaId = consultaId });
         }
@@ -272,45 +259,35 @@ public class ConsultaService : IConsultaService
             };
         }
 
-        // Prepara o SQL base e extrai ORDER BY original
         var (baseSql, extractedOrderBy) = PrepareBaseSql(consulta.SqlCons ?? "");
-
-        // Aplica filtros
         var (filterSql, parameters) = BuildFilterClause(request.Filters);
-
-        // Monta SQL com filtros
         var filteredSql = ApplyFiltersToSql(baseSql, filterSql);
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
-            // Conta total de registros
-            var countSql = $"SELECT COUNT(*) FROM ({filteredSql}) AS CountQuery";
+            // Count total
+            var countSql = $"SELECT COUNT(*) FROM ({filteredSql}) CountQuery";
             var totalRecords = await connection.ExecuteScalarAsync<int>(countSql, parameters);
 
-            // Calcula paginação
             var totalPages = (int)Math.Ceiling((double)totalRecords / request.PageSize);
             var offset = (request.Page - 1) * request.PageSize;
 
-            // Aplica ordenação e paginação
-            // Quando há filtros, a query é envolvida em subquery e o ORDER BY original pode referenciar
-            // colunas internas que não são visíveis na query externa (só os aliases são visíveis)
             var hasFilters = request.Filters.Any(f => !string.IsNullOrEmpty(f.Field) && !string.IsNullOrEmpty(f.Value));
             var orderByClause = hasFilters && string.IsNullOrEmpty(request.SortField)
-                ? "(SELECT NULL)"  // Não pode usar ORDER BY extraído quando há subquery wrapper
+                ? "(SELECT NULL)"
                 : GetOrderByClause(request, consulta, hasFilters ? null : extractedOrderBy);
 
+            // Paginação com sintaxe do provider
             var pagedSql = $@"
                 {filteredSql}
                 ORDER BY {orderByClause}
-                OFFSET {offset} ROWS
-                FETCH NEXT {request.PageSize} ROWS ONLY";
+                {_dbProvider.GetPaginationClause(offset, request.PageSize)}";
 
             var data = await connection.QueryAsync(pagedSql, parameters);
 
-            // Converte para lista de dicionários
             var dataList = data.Select(row =>
             {
                 var dict = new Dictionary<string, object?>();
@@ -321,11 +298,9 @@ public class ConsultaService : IConsultaService
                 return dict;
             }).ToList();
 
-            // Obtém colunas do FILTCONS ou gera a partir dos dados
             var columns = consulta.GetColumns();
             if (columns.Count == 0 && dataList.Count > 0)
             {
-                // Fallback: gera colunas a partir das chaves do primeiro registro
                 columns = dataList[0].Keys.Select(key => new GridColumn
                 {
                     FieldName = key,
@@ -355,16 +330,14 @@ public class ConsultaService : IConsultaService
     {
         string? orderByClause = null;
 
-        // Extrai e remove ORDER BY existente (será adicionado depois com paginação)
         var orderByIndex = sql.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
         if (orderByIndex > 0)
         {
-            // Extrai a cláusula ORDER BY original (ex: "maqulesi" de "ORDER BY maqulesi")
-            orderByClause = sql.Substring(orderByIndex + 8).Trim(); // +8 para pular "ORDER BY"
+            orderByClause = sql.Substring(orderByIndex + 8).Trim();
             sql = sql.Substring(0, orderByIndex).Trim();
         }
 
-        // Substitui FUN_LOGI por CASE (incluindo prefixo DBO. se existir)
+        // Substitui FUN_LOGI por CASE (funciona em ambos os bancos)
         sql = Regex.Replace(sql, @"(?:DBO\.)?FUN_LOGI\(([^)]+)\)",
             "CASE $1 WHEN 1 THEN 'S' ELSE 'N' END",
             RegexOptions.IgnoreCase);
@@ -386,17 +359,21 @@ public class ConsultaService : IConsultaService
             if (string.IsNullOrEmpty(filter.Field) || string.IsNullOrEmpty(filter.Value))
                 continue;
 
-            var paramName = $"@filter{paramIndex++}";
+            var paramName = $"filter{paramIndex++}";
+            var formattedParam = _dbProvider.FormatParameter(paramName);
             var fieldName = SanitizeFieldName(filter.Field);
+            var quotedField = _dbProvider.QuoteIdentifier(fieldName);
 
-            // Constrói a condição baseada no tipo de filtro
+            // Oracle usa || para concat, SQL Server usa +
+            var concatOp = _dbProvider.ProviderName == "Oracle" ? "||" : "+";
+
             var condition = filter.Condition.ToLower() switch
             {
-                "startswith" => $"[{fieldName}] LIKE {paramName} + '%'",
-                "contains" => $"[{fieldName}] LIKE '%' + {paramName} + '%'",
-                "equals" => $"[{fieldName}] = {paramName}",
-                "notequals" => $"[{fieldName}] <> {paramName}",
-                _ => $"[{fieldName}] LIKE '%' + {paramName} + '%'"
+                "startswith" => $"{quotedField} LIKE {formattedParam} {concatOp} '%'",
+                "contains" => $"{quotedField} LIKE '%' {concatOp} {formattedParam} {concatOp} '%'",
+                "equals" => $"{quotedField} = {formattedParam}",
+                "notequals" => $"{quotedField} <> {formattedParam}",
+                _ => $"{quotedField} LIKE '%' {concatOp} {formattedParam} {concatOp} '%'"
             };
 
             if (conditions.Length > 0)
@@ -411,8 +388,6 @@ public class ConsultaService : IConsultaService
 
     private string SanitizeFieldName(string fieldName)
     {
-        // Remove caracteres inválidos para prevenir SQL injection
-        // Preserva letras acentuadas (á, é, í, ó, ú, ã, õ, ç, etc.)
         return Regex.Replace(fieldName, @"[^\p{L}\p{N}\s_]", "");
     }
 
@@ -421,9 +396,7 @@ public class ConsultaService : IConsultaService
         if (string.IsNullOrEmpty(filterClause))
             return baseSql;
 
-        // Envolve a query em uma subquery para filtrar pelos aliases
-        // Isso permite filtrar por nomes de colunas como "Tipo" que são aliases no SELECT
-        return $"SELECT * FROM ({baseSql}) AS BaseQuery WHERE {filterClause}";
+        return $"SELECT * FROM ({baseSql}) BaseQuery WHERE {filterClause}";
     }
 
     private string GetOrderByClause(GridFilterRequest request, ConsultaMetadata consulta, string? extractedOrderBy = null)
@@ -431,16 +404,15 @@ public class ConsultaService : IConsultaService
         if (!string.IsNullOrEmpty(request.SortField))
         {
             var direction = request.SortDirection?.ToUpper() == "DESC" ? "DESC" : "ASC";
-            return $"[{SanitizeFieldName(request.SortField)}] {direction}";
+            var quotedField = _dbProvider.QuoteIdentifier(SanitizeFieldName(request.SortField));
+            return $"{quotedField} {direction}";
         }
 
-        // Usa ORDER BY extraído do SQL original (mais confiável que ORBYCONS)
         if (!string.IsNullOrEmpty(extractedOrderBy))
         {
             return extractedOrderBy;
         }
 
-        // Default: primeira coluna (sem ordenação específica)
         return "(SELECT NULL)";
     }
 
@@ -455,13 +427,15 @@ public class ConsultaService : IConsultaService
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
-            // Obtém o nome real da coluna PK da tabela
             var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
+            var quotedTable = _dbProvider.QuoteIdentifier(tableName);
+            var quotedPk = _dbProvider.QuoteIdentifier(pkColumn);
+            var param = _dbProvider.FormatParameter("RecordId");
 
-            var sql = $"SELECT * FROM [{tableName}] WHERE [{pkColumn}] = @RecordId";
+            var sql = $"SELECT * FROM {quotedTable} WHERE {quotedPk} = {param}";
             var result = await connection.QueryFirstOrDefaultAsync(sql, new { RecordId = recordId });
 
             if (result == null)
@@ -498,96 +472,89 @@ public class ConsultaService : IConsultaService
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
-            // Obtém o nome real da coluna PK da tabela
             var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
 
-            // Obtém as colunas válidas da tabela para filtrar campos inválidos
-            var validColumnsSql = @"
-                SELECT COLUMN_NAME
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_NAME = @TableName";
-            var validColumns = (await connection.QueryAsync<string>(validColumnsSql, new { TableName = tableName }))
-                .Select(c => c.ToUpperInvariant())
+            // Obtém colunas válidas da tabela
+            var validColumnsSql = _dbProvider.GetColumnsMetadataQuery(tableName);
+            var columnsResult = await connection.QueryAsync<dynamic>(validColumnsSql, new { TableName = tableName.ToUpper() });
+            var validColumns = columnsResult
+                .Select(c => ((string)c.COLUMN_NAME).ToUpperInvariant())
                 .ToHashSet();
 
-            // Filtra apenas campos que existem na tabela
             var filteredFields = request.Fields
                 .Where(f => validColumns.Contains(f.Key.ToUpperInvariant()))
                 .ToDictionary(f => f.Key, f => f.Value);
 
             if (request.IsNew)
             {
-                // Busca PK fornecida pelo frontend (case-insensitive)
                 var pkKey = filteredFields.Keys.FirstOrDefault(k => k.Equals(pkColumn, StringComparison.OrdinalIgnoreCase));
                 var providedPkValue = pkKey != null ? ConvertJsonElementToValue(filteredFields[pkKey]) : null;
 
-                // Determina estratégia de PK usando método centralizado
                 var (strategy, needsNewId) = await GetPkStrategyAsync(connection, tableName, pkColumn, providedPkValue);
                 _logger.LogInformation("Tabela {TableName}: estratégia PK = {Strategy}, needsNewId = {NeedsNewId}",
                     tableName, strategy, needsNewId);
 
-                // Usa transação para garantir atomicidade: MAX()+1 → INSERT → SCOPE_IDENTITY()
                 using var transaction = connection.BeginTransaction();
                 try
                 {
+                    int? generatedPkValue = null;
+
                     switch (strategy)
                     {
                         case PkStrategy.Identity:
-                            // Remove a coluna IDENTITY do INSERT - o banco gerará automaticamente
                             filteredFields.Remove(pkColumn);
                             break;
 
-                        case PkStrategy.MaxPlusOne:
-                            // Remove entrada existente da PK (evita duplicação por diferença de case)
+                        case PkStrategy.MaxPlusOneOrSequence:
                             if (pkKey != null) filteredFields.Remove(pkKey);
-
-                            // Gera próximo ID baseado no MAX atual (dentro da transação)
-                            // TABLOCKX + HOLDLOCK previne race condition: bloqueia tabela até commit
-                            var maxIdSql = $"SELECT ISNULL(MAX([{pkColumn}]), 0) + 1 FROM [{tableName}] WITH (TABLOCKX, HOLDLOCK)";
-                            var nextId = await connection.ExecuteScalarAsync<int>(maxIdSql, transaction: transaction);
-                            filteredFields[pkColumn] = nextId;
-                            _logger.LogInformation("Gerado próximo ID {NextId} para tabela {TableName}", nextId, tableName);
+                            // Usa provider para gerar próximo ID (MAX+1 ou SEQUENCE)
+                            generatedPkValue = await _dbProvider.GetNextIdAsync(
+                                connection, tableName, pkColumn, false, transaction);
+                            _logger.LogInformation("Gerado próximo ID {NextId} para tabela {TableName}",
+                                generatedPkValue, tableName);
                             break;
 
                         case PkStrategy.UserProvided:
-                            // Mantém valor fornecido pelo usuário
                             break;
                     }
 
                     var columns = filteredFields.Keys.ToList();
-                    var values = columns.Select(c => $"@{c}");
-
-                    // Monta o INSERT simples (sem OUTPUT pois tabelas podem ter triggers)
-                    var sql = $@"
-                        INSERT INTO [{tableName}] ({string.Join(", ", columns.Select(c => $"[{c}]"))})
-                        VALUES ({string.Join(", ", values)});
-                        SELECT SCOPE_IDENTITY();";
-
                     var parameters = new DynamicParameters();
+
                     foreach (var field in filteredFields)
                     {
                         var convertedValue = ConvertJsonElementToValue(field.Value);
-                        parameters.Add($"@{field.Key}", convertedValue);
+                        parameters.Add(field.Key, convertedValue);
                     }
+
+                    if (strategy == PkStrategy.MaxPlusOneOrSequence && generatedPkValue.HasValue)
+                    {
+                        columns.Add(pkColumn);
+                        parameters.Add(pkColumn, generatedPkValue.Value);
+                    }
+
+                    // Monta INSERT com sintaxe do provider
+                    var quotedTable = _dbProvider.QuoteIdentifier(tableName);
+                    var columnList = string.Join(", ", columns.Select(c => _dbProvider.QuoteIdentifier(c)));
+                    var valueList = string.Join(", ", columns.Select(c => _dbProvider.FormatParameter(c)));
+
+                    var sql = $"INSERT INTO {quotedTable} ({columnList}) VALUES ({valueList})";
 
                     int newId;
                     if (strategy == PkStrategy.Identity)
                     {
-                        // Executa INSERT e obtém o ID gerado pelo IDENTITY usando SCOPE_IDENTITY()
-                        var result = await connection.QuerySingleOrDefaultAsync<decimal?>(sql, parameters, transaction: transaction);
-                        newId = result.HasValue ? Convert.ToInt32(result.Value) : 0;
+                        // SQL Server: executa e obtém SCOPE_IDENTITY()
+                        await connection.ExecuteAsync(sql, parameters, transaction: transaction);
+                        newId = await _dbProvider.GetLastInsertedIdAsync(connection, transaction);
                         _logger.LogInformation("IDENTITY gerou ID {NewId} para tabela {TableName}", newId, tableName);
                     }
                     else
                     {
                         await connection.ExecuteAsync(sql, parameters, transaction: transaction);
-                        // Retorna o ID que foi inserido (gerado ou fornecido)
-                        newId = filteredFields.TryGetValue(pkColumn, out var generatedPk)
-                            ? Convert.ToInt32(generatedPk)
-                            : 0;
+                        newId = generatedPkValue ?? (int)(providedPkValue ?? 0);
                     }
 
                     transaction.Commit();
@@ -610,18 +577,20 @@ public class ConsultaService : IConsultaService
                 // UPDATE
                 var setClauses = filteredFields.Keys
                     .Where(k => !k.Equals(pkColumn, StringComparison.OrdinalIgnoreCase))
-                    .Select(k => $"[{k}] = @{k}");
+                    .Select(k => $"{_dbProvider.QuoteIdentifier(k)} = {_dbProvider.FormatParameter(k)}");
 
+                var quotedTable = _dbProvider.QuoteIdentifier(tableName);
+                var quotedPk = _dbProvider.QuoteIdentifier(pkColumn);
                 var sql = $@"
-                    UPDATE [{tableName}]
+                    UPDATE {quotedTable}
                     SET {string.Join(", ", setClauses)}
-                    WHERE [{pkColumn}] = @RecordId";
+                    WHERE {quotedPk} = {_dbProvider.FormatParameter("RecordId")}";
 
                 var parameters = new DynamicParameters();
-                parameters.Add("@RecordId", request.RecordId);
+                parameters.Add("RecordId", request.RecordId);
                 foreach (var field in filteredFields)
                 {
-                    parameters.Add($"@{field.Key}", ConvertJsonElementToValue(field.Value));
+                    parameters.Add(field.Key, ConvertJsonElementToValue(field.Value));
                 }
 
                 var affected = await connection.ExecuteAsync(sql, parameters);
@@ -671,13 +640,15 @@ public class ConsultaService : IConsultaService
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
-            // Obtém o nome real da coluna PK da tabela
             var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
+            var quotedTable = _dbProvider.QuoteIdentifier(tableName);
+            var quotedPk = _dbProvider.QuoteIdentifier(pkColumn);
+            var param = _dbProvider.FormatParameter("RecordId");
 
-            var sql = $"DELETE FROM [{tableName}] WHERE [{pkColumn}] = @RecordId";
+            var sql = $"DELETE FROM {quotedTable} WHERE {quotedPk} = {param}";
             var affected = await connection.ExecuteAsync(sql, new { RecordId = recordId });
 
             return new SaveRecordResponse

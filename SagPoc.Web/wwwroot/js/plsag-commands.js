@@ -19,6 +19,35 @@ const PlsagCommands = (function() {
     // ============================================================
 
     /**
+     * Encontra ou cria um campo hidden no formulário.
+     * Usado quando um comando PLSAG (ex: DG-TIPOGERA) tenta setar um campo que não existe no form.
+     * @param {string} fieldName - Nome do campo
+     * @returns {HTMLElement} Campo hidden existente ou recém-criado
+     */
+    function getOrCreateHiddenField(fieldName) {
+        const name = fieldName.trim().toUpperCase();
+        const form = document.getElementById('dynamicForm') || document.querySelector('form');
+
+        // Primeiro verifica se já existe um hidden com esse nome
+        let hidden = form?.querySelector(`input[type="hidden"][name="${name}"]`);
+        if (hidden) return hidden;
+
+        // Cria um novo campo hidden
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = name;
+        hidden.dataset.sagNomecamp = name;
+        hidden.dataset.sagAutoCreated = 'true'; // Marca como criado automaticamente
+
+        if (form) {
+            form.appendChild(hidden);
+            console.log(`[PLSAG] Campo hidden criado automaticamente: ${name}`);
+        }
+
+        return hidden;
+    }
+
+    /**
      * Encontra um campo no formulario pelo nome
      * IMPORTANTE: Usa NAMECAMP (nome do componente visual) para busca, não NOMECAMP (nome do campo no banco)
      * No Delphi, FindComponent usa NAMECAMP. Campos duplicados (mesmo NOMECAMP) têm NAMECAMP diferentes.
@@ -186,15 +215,22 @@ const PlsagCommands = (function() {
      */
     async function executeFieldCommand(prefix, identifier, parameter, context, modifierFromParser) {
         const fieldName = identifier;
-        const element = findField(fieldName);
+        let element = findField(fieldName);
+
+        // Detecta tipo base para decidir se deve criar campo hidden
+        const baseType = prefix.substring(0, 2);
+        const valueCommands = ['CE', 'CN', 'CS', 'CM', 'CT', 'CV', 'CC', 'CD', 'IE', 'IN', 'IT', 'IM'];
 
         if (!element) {
-            console.warn(`[PLSAG] Campo nao encontrado: ${fieldName}`);
-            return;
+            // Para comandos que definem valor, cria um campo hidden automaticamente
+            if (valueCommands.includes(baseType) && !modifierFromParser) {
+                element = getOrCreateHiddenField(fieldName);
+            } else {
+                console.warn(`[PLSAG] Campo nao encontrado: ${fieldName}`);
+                return;
+            }
         }
 
-        // Detecta tipo base e modificador
-        const baseType = prefix.substring(0, 2); // CE, CN, CS, CM, CT, CF, CV, IE, IN, etc.
         // Usa modificador do parser se disponivel (verifica se é string não-vazia), senao tenta extrair do prefix
         const modifier = (modifierFromParser && modifierFromParser.length > 0) ? modifierFromParser : (prefix.length > 2 ? prefix.charAt(2) : null);
 
@@ -1182,13 +1218,19 @@ const PlsagCommands = (function() {
         // Atualiza no contexto
         context.formData[fieldName] = value;
 
-        // Atualiza o campo no DOM tambem (apenas se query foi executada com sucesso)
-        const element = findField(fieldName);
-        if (element && queryExecuted && value !== undefined && value !== null) {
-            element.value = value;
+        // Atualiza o campo no DOM (ou cria hidden field se não existe)
+        let element = findField(fieldName);
+        if (!element) {
+            // Campo não existe no DOM - cria hidden field para enviar no POST
+            element = getOrCreateHiddenField(fieldName);
         }
 
-        console.log(`[PLSAG] ${prefix}: ${fieldName} = ${value}`);
+        if (element && value !== undefined && value !== null) {
+            element.value = value;
+            console.log(`[PLSAG] ${prefix}: ${fieldName} = ${value} (campo atualizado no DOM)`);
+        } else {
+            console.log(`[PLSAG] ${prefix}: ${fieldName} = ${value} (apenas contexto)`);
+        }
 
         // Nota: A gravacao efetiva e feita no submit do formulario
         // Aqui apenas atualizamos o contexto

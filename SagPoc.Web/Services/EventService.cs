@@ -1,58 +1,54 @@
 using Dapper;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using SagPoc.Web.Models;
+using SagPoc.Web.Services.Database;
 
 namespace SagPoc.Web.Services;
 
 /// <summary>
 /// Serviço para carregar dados de eventos PLSAG do banco.
 /// Consulta SISTTABE para eventos de formulário e SISTCAMP para eventos de campo.
+/// Suporta SQL Server e Oracle via IDbProvider.
 /// </summary>
 public class EventService : IEventService
 {
-    private readonly string _connectionString;
+    private readonly IDbProvider _dbProvider;
     private readonly ILogger<EventService> _logger;
 
-    public EventService(IConfiguration configuration, ILogger<EventService> logger)
+    public EventService(IDbProvider dbProvider, ILogger<EventService> logger)
     {
-        _connectionString = configuration.GetConnectionString("SagDb")
-            ?? throw new InvalidOperationException("Connection string 'SagDb' not found.");
+        _dbProvider = dbProvider;
         _logger = logger;
     }
-
-    private IDbConnection CreateConnection() => new SqlConnection(_connectionString);
 
     /// <inheritdoc/>
     public async Task<FormEventData> GetFormEventsAsync(int codiTabe)
     {
-        var sql = @"
+        var sql = $@"
             SELECT
                 CODITABE as CodiTabe,
-                ISNULL(NOMETABE, '') as NomeTabe,
-                CAST(SHOWTABE as NVARCHAR(MAX)) as ShowTabeInstructions,
-                CAST(LANCTABE as NVARCHAR(MAX)) as LancTabeInstructions,
-                CAST(EGRATABE as NVARCHAR(MAX)) as EGraTabeInstructions,
-                CAST(APOSTABE as NVARCHAR(MAX)) as AposTabeInstructions,
-                CAST(EPERTABE as NVARCHAR(MAX)) as EPerTabeInstructions
+                {_dbProvider.NullFunction("NOMETABE", "''")} as NomeTabe,
+                SHOWTABE as ShowTabeInstructions,
+                LANCTABE as LancTabeInstructions,
+                EGRATABE as EGraTabeInstructions,
+                APOSTABE as AposTabeInstructions,
+                EPERTABE as EPerTabeInstructions
             FROM SISTTABE
-            WHERE CODITABE = @CodiTabe";
+            WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}";
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             var result = await connection.QueryFirstOrDefaultAsync<FormEventData>(sql, new { CodiTabe = codiTabe });
 
             if (result != null)
             {
-                // Mescla EPerTabe com cada instrução (similar ao Delphi)
                 result.ShowTabeInstructions = MergeInstructions(result.ShowTabeInstructions, result.EPerTabeInstructions);
                 result.LancTabeInstructions = MergeInstructions(result.LancTabeInstructions, result.EPerTabeInstructions);
                 result.EGraTabeInstructions = MergeInstructions(result.EGraTabeInstructions, result.EPerTabeInstructions);
                 result.AposTabeInstructions = MergeInstructions(result.AposTabeInstructions, result.EPerTabeInstructions);
 
-                // Carrega AnteCria e DepoCria do SISTCAMP
                 await LoadSpecialFieldEventsAsync(connection, codiTabe, result);
             }
 
@@ -69,53 +65,69 @@ public class EventService : IEventService
     /// <inheritdoc/>
     public async Task<Dictionary<int, FieldEventData>> GetFieldEventsAsync(int codiTabe)
     {
-        var sql = @"
+        var sql = $@"
             SELECT
                 CODICAMP as CodiCamp,
-                ISNULL(NOMECAMP, '') as NomeCamp,
-                ISNULL(COMPCAMP, 'E') as CompCamp,
-                ISNULL(OBRICAMP, 0) as ObriCamp,
-                CAST(EXPRCAMP as NVARCHAR(MAX)) as ExprCamp,
-                CAST(EPERCAMP as NVARCHAR(MAX)) as EPerCamp,
-                CAST(EXP1CAMP as NVARCHAR(MAX)) as Exp1Camp,
-                ISNULL(INICCAMP, 0) as InicCamp,
-                CAST(VAGRCAMP as NVARCHAR(MAX)) as VaGrCamp,
+                {_dbProvider.NullFunction("NOMECAMP", "''")} as NomeCamp,
+                {_dbProvider.NullFunction("COMPCAMP", "'E'")} as CompCamp,
+                {_dbProvider.NullFunction("OBRICAMP", "0")} as ObriCamp,
+                EXPRCAMP as ExprCamp,
+                EPERCAMP as EPerCamp,
+                EXP1CAMP as Exp1Camp,
+                {_dbProvider.NullFunction("INICCAMP", "0")} as InicCamp,
+                VAGRCAMP as VaGrCamp,
                 PADRCAMP as PadrCamp,
-                ISNULL(TAGQCAMP, 0) as TagQCamp
+                {_dbProvider.NullFunction("TAGQCAMP", "0")} as TagQCamp
             FROM SISTCAMP
-            WHERE CODITABE = @CodiTabe
+            WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}
               AND NOMECAMP NOT IN ('AnteCria', 'DepoCria', 'DEPOSHOW', 'ATUAGRID')
             ORDER BY ORDECAMP";
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             var fields = await connection.QueryAsync<dynamic>(sql, new { CodiTabe = codiTabe });
 
+            var fieldsList = fields.ToList();
+            _logger.LogInformation("Query retornou {Count} registros para tabela {CodiTabe}", fieldsList.Count, codiTabe);
+
             var result = new Dictionary<int, FieldEventData>();
 
-            foreach (var field in fields)
+            foreach (var field in fieldsList)
             {
-                var compType = ((string)(field.CompCamp ?? "E"))?.ToUpper()?.Trim() ?? "E";
+                // Oracle retorna colunas em MAIÚSCULO, SQL Server mantém o alias
+                var fieldDict = (IDictionary<string, object>)field;
+
+                var codiCamp = fieldDict.ContainsKey("CodiCamp") ? fieldDict["CodiCamp"] : fieldDict["CODICAMP"];
+                var nomeCamp = fieldDict.ContainsKey("NomeCamp") ? fieldDict["NomeCamp"] : fieldDict["NOMECAMP"];
+                var compCamp = fieldDict.ContainsKey("CompCamp") ? fieldDict["CompCamp"] : fieldDict["COMPCAMP"];
+                var obriCamp = fieldDict.ContainsKey("ObriCamp") ? fieldDict["ObriCamp"] : fieldDict["OBRICAMP"];
+                var exprCamp = fieldDict.ContainsKey("ExprCamp") ? fieldDict["ExprCamp"] : fieldDict["EXPRCAMP"];
+                var ePerCamp = fieldDict.ContainsKey("EPerCamp") ? fieldDict["EPerCamp"] : fieldDict["EPERCAMP"];
+                var exp1Camp = fieldDict.ContainsKey("Exp1Camp") ? fieldDict["Exp1Camp"] : fieldDict["EXP1CAMP"];
+                var inicCamp = fieldDict.ContainsKey("InicCamp") ? fieldDict["InicCamp"] : fieldDict["INICCAMP"];
+                var vaGrCamp = fieldDict.ContainsKey("VaGrCamp") ? fieldDict["VaGrCamp"] : fieldDict["VAGRCAMP"];
+                var padrCamp = fieldDict.ContainsKey("PadrCamp") ? fieldDict["PadrCamp"] : fieldDict["PADRCAMP"];
+                var tagQCamp = fieldDict.ContainsKey("TagQCamp") ? fieldDict["TagQCamp"] : fieldDict["TAGQCAMP"];
+
+                var compType = ((string)(compCamp ?? "E"))?.ToUpper()?.Trim() ?? "E";
 
                 var eventData = new FieldEventData
                 {
-                    CodiCamp = (int)field.CodiCamp,
-                    NomeCamp = (string)(field.NomeCamp ?? ""),
-                    IsRequired = (int)field.ObriCamp != 0,
-                    // Campos para InicValoCampPers
+                    CodiCamp = codiCamp != null ? Convert.ToInt32(codiCamp) : 0,
+                    NomeCamp = (string)(nomeCamp ?? ""),
+                    IsRequired = obriCamp != null && Convert.ToInt32(obriCamp) != 0,
                     CompCamp = compType,
-                    InicCamp = (int)(field.InicCamp ?? 0),
-                    DefaultText = (string?)(field.VaGrCamp),
-                    DefaultNumber = field.PadrCamp != null ? (double?)Convert.ToDouble(field.PadrCamp) : null,
-                    IsSequential = (int)(field.TagQCamp ?? 0) == 1
+                    InicCamp = inicCamp != null ? Convert.ToInt32(inicCamp) : 0,
+                    DefaultText = (string?)(vaGrCamp),
+                    DefaultNumber = padrCamp != null ? (double?)Convert.ToDouble(padrCamp) : null,
+                    IsSequential = tagQCamp != null && Convert.ToInt32(tagQCamp) == 1
                 };
 
-                // Mescla ExprCamp + EPerCamp
                 var instructions = MergeInstructions(
-                    (string)(field.ExprCamp ?? ""),
-                    (string)(field.EPerCamp ?? ""));
+                    (string)(exprCamp ?? ""),
+                    (string)(ePerCamp ?? ""));
 
                 if (IsClickComponent(compType))
                 {
@@ -126,14 +138,15 @@ public class EventService : IEventService
                     eventData.OnExitInstructions = instructions;
                 }
 
-                // Grid usa Exp1Camp para DblClick
                 if (compType == "DBG")
                 {
                     eventData.OnDblClickInstructions = MergeInstructions(
-                        (string)(field.Exp1Camp ?? ""),
-                        (string)(field.EPerCamp ?? ""));
+                        (string)(exp1Camp ?? ""),
+                        (string)(ePerCamp ?? ""));
                 }
 
+                _logger.LogDebug("Campo {CodiCamp} ({NomeCamp}) adicionado ao resultado",
+                    eventData.CodiCamp, eventData.NomeCamp);
                 result[eventData.CodiCamp] = eventData;
             }
 
@@ -154,12 +167,12 @@ public class EventService : IEventService
     /// </summary>
     private async Task LoadSpecialFieldEventsAsync(IDbConnection connection, int codiTabe, FormEventData result)
     {
-        var sql = @"
+        var sql = $@"
             SELECT
                 NOMECAMP as NomeCamp,
-                CAST(EXPRCAMP as NVARCHAR(MAX)) as ExprCamp
+                EXPRCAMP as ExprCamp
             FROM SISTCAMP
-            WHERE CODITABE = @CodiTabe
+            WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}
               AND UPPER(NOMECAMP) IN ('ANTECRIA', 'DEPOCRIA', 'DEPOSHOW', 'ATUAGRID')";
 
         var specialFields = await connection.QueryAsync<dynamic>(sql, new { CodiTabe = codiTabe });
@@ -182,7 +195,6 @@ public class EventService : IEventService
 
     /// <summary>
     /// Mescla instruções primárias com instruções permanentes.
-    /// Similar ao CampPers_TratExec do Delphi.
     /// </summary>
     private string MergeInstructions(string primary, string permanent)
     {
@@ -195,21 +207,19 @@ public class EventService : IEventService
         if (string.IsNullOrWhiteSpace(permanent))
             return primary?.Trim() ?? string.Empty;
 
-        // Mescla: primary primeiro, depois permanent
         return $"{primary.Trim()}\n{permanent.Trim()}";
     }
 
     /// <summary>
     /// Determina se o componente usa OnClick ao invés de OnExit.
-    /// Baseado na tabela de mapeamento do Delphi.
     /// </summary>
     private bool IsClickComponent(string compType)
     {
         return compType switch
         {
-            "S" or "ES" => true,   // Checkbox
-            "BTN" => true,          // Botão
-            "LC" => true,           // Lista de checkboxes
+            "S" or "ES" => true,
+            "BTN" => true,
+            "LC" => true,
             _ => false
         };
     }

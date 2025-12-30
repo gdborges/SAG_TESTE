@@ -1,47 +1,38 @@
 using Dapper;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using SagPoc.Web.Models;
+using SagPoc.Web.Services.Database;
 
 namespace SagPoc.Web.Services;
 
 /// <summary>
 /// Serviço de leitura de metadados do banco SAG usando Dapper.
-/// Conecta ao SQL Server Azure.
+/// Suporta SQL Server e Oracle via IDbProvider.
 /// </summary>
 public class MetadataService : IMetadataService
 {
-    private readonly string _connectionString;
+    private readonly IDbProvider _dbProvider;
     private readonly ILogger<MetadataService> _logger;
 
-    public MetadataService(IConfiguration configuration, ILogger<MetadataService> logger)
+    public MetadataService(IDbProvider dbProvider, ILogger<MetadataService> logger)
     {
-        _connectionString = configuration.GetConnectionString("SagDb")
-            ?? throw new InvalidOperationException("Connection string 'SagDb' not found.");
+        _dbProvider = dbProvider;
         _logger = logger;
-
-        _logger.LogInformation("MetadataService inicializado - SQL Server Azure");
-    }
-
-    private IDbConnection CreateConnection()
-    {
-        return new SqlConnection(_connectionString);
+        _logger.LogInformation("MetadataService inicializado com provider {Provider}", _dbProvider.ProviderName);
     }
 
     /// <inheritdoc/>
     public async Task<FormMetadata> GetFormMetadataAsync(int codiTabe)
     {
         var fields = await GetFieldsByTableAsync(codiTabe);
-
-        // Busca informações da tabela (NomeTabe, GravTabe, SiglTabe)
         var tableInfo = await GetTableInfoAsync(codiTabe);
 
         return new FormMetadata
         {
             TableId = codiTabe,
-            TableName = tableInfo.GravTabe ?? $"Tabela{codiTabe}",  // Nome físico da tabela
-            SiglTabe = tableInfo.SiglTabe,  // Sufixo para PK (ex: "LESI" -> CODILESI)
-            Title = tableInfo.NomeTabe ?? $"Formulário {codiTabe}",  // Nome descritivo
+            TableName = tableInfo.GravTabe ?? $"Tabela{codiTabe}",
+            SiglTabe = tableInfo.SiglTabe,
+            Title = tableInfo.NomeTabe ?? $"Formulário {codiTabe}",
             Fields = fields.ToList()
         };
     }
@@ -53,18 +44,21 @@ public class MetadataService : IMetadataService
     /// </summary>
     private async Task<(string? NomeTabe, string? GravTabe, string? SiglTabe)> GetTableInfoAsync(int codiTabe)
     {
-        var sql = @"SELECT NOMETABE, GravTabe, SIGLTABE FROM SISTTABE WHERE CODITABE = @CodiTabe";
+        var sql = $"SELECT NOMETABE, GravTabe, SIGLTABE FROM SISTTABE WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}";
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             var result = await connection.QueryFirstOrDefaultAsync<dynamic>(sql, new { CodiTabe = codiTabe });
 
             if (result != null)
             {
-                // Aplica Trim() em SIGLTABE - pode conter espaços em branco no banco
-                return (result.NOMETABE?.ToString(), result.GravTabe?.ToString()?.Trim(), result.SIGLTABE?.ToString()?.Trim());
+                return (
+                    result.NOMETABE?.ToString(),
+                    result.GravTabe?.ToString()?.Trim(),
+                    result.SIGLTABE?.ToString()?.Trim()
+                );
             }
         }
         catch (Exception ex)
@@ -82,7 +76,7 @@ public class MetadataService : IMetadataService
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             var fields = await connection.QueryAsync<FieldMetadata>(sql, new { CodiTabe = codiTabe });
 
@@ -98,44 +92,49 @@ public class MetadataService : IMetadataService
         }
     }
 
-    private string GetFieldsQuery() => @"
+    private string GetFieldsQuery()
+    {
+        var param = _dbProvider.FormatParameter("CodiTabe");
+
+        return $@"
         SELECT
             CODICAMP as CodiCamp,
             CODITABE as CodiTabe,
             NOMECAMP as NomeCamp,
-            ISNULL(NAMECAMP, NOMECAMP) as NameCamp,
-            ISNULL(LABECAMP, '') as LabeCamp,
-            ISNULL(HINTCAMP, '') as HintCamp,
-            ISNULL(COMPCAMP, 'E') as CompCamp,
-            ISNULL(TOPOCAMP, 0) as TopoCamp,
-            ISNULL(ESQUCAMP, 0) as EsquCamp,
-            ISNULL(TAMACAMP, 100) as TamaCamp,
-            ISNULL(ALTUCAMP, 21) as AltuCamp,
-            ISNULL(GUIACAMP, 0) as GuiaCamp,
-            ISNULL(ORDECAMP, 0) as OrdeCamp,
-            ISNULL(OBRICAMP, 0) as ObriCamp,
-            ISNULL(DESACAMP, 0) as DesaCamp,
-            ISNULL(INICCAMP, 0) as InicCamp,
-            ISNULL(LBCXCAMP, 0) as LbcxCamp,
-            ISNULL(MASCCAMP, '') as MascCamp,
+            {_dbProvider.NullFunction("NAMECAMP", "NOMECAMP")} as NameCamp,
+            {_dbProvider.NullFunction("LABECAMP", "''")} as LabeCamp,
+            {_dbProvider.NullFunction("HINTCAMP", "''")} as HintCamp,
+            {_dbProvider.NullFunction("COMPCAMP", "'E'")} as CompCamp,
+            {_dbProvider.NullFunction("TOPOCAMP", "0")} as TopoCamp,
+            {_dbProvider.NullFunction("ESQUCAMP", "0")} as EsquCamp,
+            {_dbProvider.NullFunction("TAMACAMP", "100")} as TamaCamp,
+            {_dbProvider.NullFunction("ALTUCAMP", "21")} as AltuCamp,
+            {_dbProvider.NullFunction("GUIACAMP", "0")} as GuiaCamp,
+            {_dbProvider.NullFunction("ORDECAMP", "0")} as OrdeCamp,
+            {_dbProvider.NullFunction("OBRICAMP", "0")} as ObriCamp,
+            {_dbProvider.NullFunction("DESACAMP", "0")} as DesaCamp,
+            {_dbProvider.NullFunction("INICCAMP", "0")} as InicCamp,
+            {_dbProvider.NullFunction("LBCXCAMP", "0")} as LbcxCamp,
+            {_dbProvider.NullFunction("MASCCAMP", "''")} as MascCamp,
             MINICAMP as MiniCamp,
             MAXICAMP as MaxiCamp,
-            ISNULL(DECICAMP, 0) as DeciCamp,
+            {_dbProvider.NullFunction("DECICAMP", "0")} as DeciCamp,
             PADRCAMP as PadrCamp,
-            CAST(SQL_CAMP as NVARCHAR(MAX)) as SqlCamp,
-            CAST(VARECAMP as NVARCHAR(MAX)) as VareCamp,
-            CAST(VAGRCAMP as NVARCHAR(MAX)) as VaGrCamp,
+            SQL_CAMP as SqlCamp,
+            VARECAMP as VareCamp,
+            VAGRCAMP as VaGrCamp,
             CFONCAMP as CfonCamp,
             CTAMCAMP as CtamCamp,
             CCORCAMP as CcorCamp,
             LFONCAMP as LfonCamp,
             LTAMCAMP as LtamCamp,
             LCORCAMP as LcorCamp,
-            CAST(EXPRCAMP as NVARCHAR(MAX)) as ExprCamp,
-            CAST(EPERCAMP as NVARCHAR(MAX)) as EperCamp
+            EXPRCAMP as ExprCamp,
+            EPERCAMP as EperCamp
         FROM SISTCAMP
-        WHERE CODITABE = @CodiTabe
+        WHERE CODITABE = {param}
         ORDER BY OrdeCamp, TopoCamp, EsquCamp";
+    }
 
     /// <inheritdoc/>
     public async Task<Dictionary<int, string>> GetAvailableTablesAsync()
@@ -144,7 +143,7 @@ public class MetadataService : IMetadataService
 
         try
         {
-            using var connection = CreateConnection();
+            using var connection = _dbProvider.CreateConnection();
             connection.Open();
             var tableIds = await connection.QueryAsync<int>(sql);
 

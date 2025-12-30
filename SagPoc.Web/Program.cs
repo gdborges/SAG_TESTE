@@ -1,9 +1,13 @@
 using SagPoc.Web.Services;
+using SagPoc.Web.Services.Database;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Register DbProvider (SQL Server ou Oracle baseado em appsettings.json)
+builder.Services.AddDbProvider(builder.Configuration);
 
 // Register MetadataService
 builder.Services.AddScoped<IMetadataService, MetadataService>();
@@ -18,6 +22,10 @@ builder.Services.AddScoped<IConsultaService, ConsultaService>();
 builder.Services.AddScoped<IEventService, EventService>();
 
 var app = builder.Build();
+
+// Log do provider selecionado
+var dbProvider = app.Services.GetRequiredService<IDbProvider>();
+app.Logger.LogInformation("Banco de dados configurado: {Provider}", dbProvider.ProviderName);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

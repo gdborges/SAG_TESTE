@@ -62,17 +62,21 @@ public class FormMetadata
     {
         get
         {
-            // Usa SIGLTABE se disponível
-            if (!string.IsNullOrEmpty(SiglTabe))
+            // Usa SIGLTABE se disponível (ignora espaços em branco)
+            if (!string.IsNullOrWhiteSpace(SiglTabe))
             {
-                return $"CODI{SiglTabe}";
+                return $"CODI{SiglTabe.Trim()}";
             }
 
             // Fallback: extrai do nome físico da tabela
-            if (string.IsNullOrEmpty(TableName)) return "ID";
+            if (string.IsNullOrWhiteSpace(TableName)) return "ID";
+
+            // Remove prefixos comuns de tabelas SAG
             var suffix = TableName
                 .Replace("POCA", "", StringComparison.OrdinalIgnoreCase)
-                .Replace("POGE", "", StringComparison.OrdinalIgnoreCase);
+                .Replace("POGE", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("FPCA", "", StringComparison.OrdinalIgnoreCase)  // Folha de Pagamento
+                .Replace("ADMN", "", StringComparison.OrdinalIgnoreCase); // Administração
             return $"CODI{suffix}";
         }
     }
