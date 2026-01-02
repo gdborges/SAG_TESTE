@@ -1,6 +1,6 @@
 # Tasks: Implement Missing Delphi Features
 
-**Status Geral:** 52/82 tarefas concluidas
+**Status Geral:** 58/82 tarefas concluidas
 **Ultima Atualizacao:** 2026-01-02
 
 ---
@@ -159,18 +159,29 @@
 
 ---
 
-## Fase 5: DuplCliq - Duplo Clique (Baixa)
+## Fase 5: DuplCliq - Duplo Clique (Baixa) - CONCLUIDA
 
 **Objetivo:** Abrir lookup expandido ao duplo-clicar em campos T/IT/L/IL
 **Arquivos:** sag-events.js, _FieldRendererV2.cshtml
 **Estimativa:** 2 horas
 
-- [ ] 5.1 Adicionar data-has-duplcliq em campos T/IT/L/IL em _FieldRendererV2.cshtml
-- [ ] 5.2 Criar funcao openExpandedLookup(fieldId, sqlCamp) em sag-events.js
-- [ ] 5.3 Registrar evento dblclick em campos com data-has-duplcliq
-- [ ] 5.4 Criar modal de lookup expandido (reutilizar consulta-grid)
-- [ ] 5.5 Ao selecionar, preencher campo e campos IE associados
-- [ ] 5.6 Fechar modal apos selecao
+- [x] 5.1 Adicionar data-has-duplcliq em campos T/IT/L/IL em _FieldRendererV2.cshtml
+- [x] 5.2 Criar funcao openExpandedLookup(fieldId, sqlCamp) em sag-events.js
+- [x] 5.3 Registrar evento dblclick em campos com data-has-duplcliq
+- [x] 5.4 Criar modal de lookup expandido (reutilizar consulta-grid)
+- [x] 5.5 Ao selecionar, preencher campo e campos IE associados
+- [x] 5.6 Fechar modal apos selecao
+
+**Alteracoes realizadas:**
+- _FieldRendererV2.cshtml: Adicionado `data-has-duplcliq="true"` em campos T/IT (LookupCombo) e L/IL (LookupModal)
+- _FieldRendererV2.cshtml: Adicionado `data-lookup-sql` em campos T/IT para busca direta do SQL
+- sag-events.js: Nova funcao `bindDuplCliq()` para registrar evento dblclick
+- sag-events.js: Nova funcao `openExpandedLookup()` para abrir modal com busca
+- sag-events.js: Nova funcao `showExpandedLookupModal()` com grid filtravel
+- sag-events.js: Nova funcao `selectLookupRecord()` para processar selecao
+- sag-events.js: Nova funcao `fillLinkedIEFields()` para preencher campos IE associados
+- Observador DOM atualizado para bind em elementos dinamicos
+- Todas as funcoes exportadas na API publica do modulo
 
 ---
 
@@ -228,10 +239,10 @@
 | 2 | InicCampSequ | **Impl. Concluida** | 15/17 |
 | 3 | BtnConf_CampModi | **Concluida** | 14/14 |
 | 4 | Tipos Componente | **Concluida** | 17/17 |
-| 5 | DuplCliq | Pendente | 0/6 |
+| 5 | DuplCliq | **Concluida** | 6/6 |
 | 6 | Eventos Movimento | Pendente | 0/14 |
 | 7 | MudaTab2 | Pendente | 0/8 |
-| **TOTAL** | | | **52/82** |
+| **TOTAL** | | | **58/82** |
 
 ---
 

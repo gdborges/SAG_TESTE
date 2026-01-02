@@ -57,6 +57,9 @@ const SagEvents = (function () {
         // Bind nos botões SAG (BTN) com ExprCamp
         bindSagButtons();
 
+        // Bind de duplo clique em campos lookup (T, IT, L, IL)
+        bindDuplCliq();
+
         // Observa novos campos adicionados dinamicamente
         observeDom();
 
@@ -285,6 +288,379 @@ const SagEvents = (function () {
         }
     }
 
+    // ============================================
+    // DUPLCLIQ - Duplo Clique em Campos Lookup
+    // ============================================
+
+    /**
+     * Faz bind do evento de duplo clique em campos de lookup (T, IT, L, IL).
+     * Ao dar duplo clique, abre um modal expandido de pesquisa.
+     * @param {HTMLElement} container - Container onde buscar os campos (default: document)
+     */
+    function bindDuplCliq(container = document) {
+        const fields = container.querySelectorAll('[data-has-duplcliq="true"]');
+        let count = 0;
+
+        fields.forEach(field => {
+            // Evita duplo bind
+            if (field.dataset.duplcliqBound) return;
+            field.dataset.duplcliqBound = 'true';
+
+            field.addEventListener('dblclick', function(e) {
+                // Previne seleção de texto no duplo clique
+                e.preventDefault();
+
+                // Não abre se campo estiver desabilitado
+                if (this.disabled || this.readOnly) {
+                    console.log('[SagEvents] DuplCliq ignorado - campo desabilitado/readonly');
+                    return;
+                }
+
+                const codicamp = this.dataset.sagCodicamp;
+                const compType = (this.dataset.sagComptype || '').toUpperCase();
+                const namecamp = this.dataset.sagNamecamp || this.dataset.sagNomecamp;
+
+                console.log(`[SagEvents] DuplCliq em campo ${namecamp} (${compType}), codicamp:`, codicamp);
+
+                if (codicamp) {
+                    openExpandedLookup(codicamp, this);
+                } else {
+                    console.warn('[SagEvents] Campo sem data-sag-codicamp para DuplCliq');
+                }
+            });
+            count++;
+        });
+
+        if (count > 0) {
+            console.log('[SagEvents] DuplCliq vinculado em', count, 'campos');
+        }
+    }
+
+    /**
+     * Abre o modal de lookup expandido para um campo.
+     * Funciona para campos tipo T/IT (select) e L/IL (input).
+     * @param {string|number} codiCamp - ID do campo (CodiCamp)
+     * @param {HTMLElement} fieldElement - Elemento do campo que disparou o evento
+     */
+    async function openExpandedLookup(codiCamp, fieldElement) {
+        console.log('[SagEvents] openExpandedLookup para campo', codiCamp);
+
+        // Se não passou o elemento, busca pelo codiCamp
+        if (!fieldElement) {
+            fieldElement = document.querySelector(`[data-sag-codicamp="${codiCamp}"]`);
+        }
+
+        if (!fieldElement) {
+            console.warn('[SagEvents] Campo não encontrado para DuplCliq:', codiCamp);
+            return;
+        }
+
+        // Verifica se tem SQL de lookup no atributo data ou busca do servidor
+        let sql = fieldElement.dataset.lookupSql;
+
+        if (!sql) {
+            // Busca o SQL do campo via endpoint
+            try {
+                const sqlResponse = await fetch(`/Form/GetFieldLookupSql?codiCamp=${codiCamp}`);
+                if (!sqlResponse.ok) {
+                    console.warn('[SagEvents] Campo não tem SQL de lookup configurado');
+                    // Se for um select (T/IT) que não tem SQL, não faz nada
+                    // pois já tem as opções no dropdown
+                    if (fieldElement.tagName === 'SELECT') {
+                        console.log('[SagEvents] Campo SELECT sem SQL - usando dropdown nativo');
+                        fieldElement.focus();
+                        // Abre o dropdown programaticamente
+                        fieldElement.showPicker?.();
+                        return;
+                    }
+                    return;
+                }
+
+                const sqlData = await sqlResponse.json();
+                if (!sqlData.success || !sqlData.sql) {
+                    console.warn('[SagEvents] SQL de lookup não encontrado para campo', codiCamp);
+                    return;
+                }
+                sql = sqlData.sql;
+            } catch (error) {
+                console.error('[SagEvents] Erro ao buscar SQL de lookup:', error);
+                return;
+            }
+        }
+
+        try {
+            // Executa o SQL para obter as opções
+            const lookupResponse = await fetch('/Form/ExecuteLookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sql: sql, filter: '' })
+            });
+
+            if (!lookupResponse.ok) {
+                throw new Error('Erro ao executar lookup');
+            }
+
+            const lookupData = await lookupResponse.json();
+            if (!lookupData.success) {
+                throw new Error(lookupData.error || 'Erro ao executar lookup');
+            }
+
+            // Mostra o modal de lookup expandido
+            showExpandedLookupModal(fieldElement, lookupData.columns, lookupData.records, sql);
+
+        } catch (error) {
+            console.error('[SagEvents] Erro ao abrir lookup expandido:', error);
+            alert('Erro ao abrir pesquisa: ' + error.message);
+        }
+    }
+
+    /**
+     * Mostra o modal de lookup expandido com pesquisa e grid.
+     * Funciona para campos tipo T/IT (select) e L/IL (input).
+     *
+     * @param {HTMLElement} fieldElement - Elemento do campo (select ou input)
+     * @param {Array<string>} columns - Lista de nomes das colunas
+     * @param {Array} records - Lista de registros {key, value, data}
+     * @param {string} sql - SQL para refetch com filtro
+     */
+    function showExpandedLookupModal(fieldElement, columns, records, sql) {
+        // Remove modal anterior se existir
+        const existingModal = document.getElementById('sagExpandedLookupModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Prepara cabeçalhos da tabela (até 6 colunas para não ficar muito largo)
+        const displayColumns = columns.slice(0, 6);
+        const headerHtml = displayColumns.map(col =>
+            `<th>${escapeHtml(col)}</th>`
+        ).join('');
+
+        // Obtém o label do campo
+        const fieldName = fieldElement.dataset.sagNomecamp || fieldElement.name || 'Campo';
+        const label = fieldElement.closest('.field-wrapper')?.querySelector('label')?.textContent || fieldName;
+
+        const modalHtml = `
+            <div class="modal fade" id="sagExpandedLookupModal" tabindex="-1">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="bi bi-search me-2"></i>Pesquisar: ${escapeHtml(label)}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+                                    <input type="text" class="form-control" id="expandedLookupFilter"
+                                           placeholder="Digite para filtrar..." autocomplete="off">
+                                    <button class="btn btn-outline-secondary" type="button" id="expandedLookupClear">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-hover table-sm table-striped" id="expandedLookupTable">
+                                    <thead class="table-light sticky-top">
+                                        <tr>${headerHtml}</tr>
+                                    </thead>
+                                    <tbody id="expandedLookupTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <span class="text-muted me-auto" id="expandedLookupRecordCount"></span>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="bi bi-x-circle me-1"></i>Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const modal = document.getElementById('sagExpandedLookupModal');
+        const bsModal = new bootstrap.Modal(modal);
+        const tableBody = document.getElementById('expandedLookupTableBody');
+        const filterInput = document.getElementById('expandedLookupFilter');
+        const clearBtn = document.getElementById('expandedLookupClear');
+        const recordCount = document.getElementById('expandedLookupRecordCount');
+
+        // Função para renderizar registros
+        function renderRecords(recordList) {
+            tableBody.innerHTML = '';
+            recordCount.textContent = `${recordList.length} registro(s)`;
+
+            if (!recordList || recordList.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="${displayColumns.length}" class="text-muted text-center py-4">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum registro encontrado
+                </td></tr>`;
+                return;
+            }
+
+            recordList.forEach(record => {
+                const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+                row.classList.add('lookup-row');
+
+                // Renderiza células para cada coluna
+                let cellsHtml = '';
+                displayColumns.forEach(col => {
+                    const value = record.data[col] ?? '';
+                    cellsHtml += `<td>${escapeHtml(String(value))}</td>`;
+                });
+                row.innerHTML = cellsHtml;
+
+                // Ao clicar na linha, seleciona o registro
+                row.addEventListener('click', () => {
+                    selectLookupRecord(fieldElement, record);
+                    bsModal.hide();
+                });
+
+                // Destaque na linha ao passar o mouse (hover)
+                row.addEventListener('mouseenter', () => row.classList.add('table-active'));
+                row.addEventListener('mouseleave', () => row.classList.remove('table-active'));
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Renderiza registros iniciais
+        renderRecords(records);
+
+        // Filtro em tempo real
+        let filterTimeout = null;
+        filterInput.addEventListener('input', () => {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                const filter = filterInput.value.trim().toLowerCase();
+                if (filter.length === 0) {
+                    renderRecords(records);
+                    return;
+                }
+
+                // Filtra por qualquer coluna exibida
+                const filtered = records.filter(record =>
+                    displayColumns.some(col => {
+                        const value = String(record.data[col] || '');
+                        return value.toLowerCase().includes(filter);
+                    })
+                );
+                renderRecords(filtered);
+            }, 200);
+        });
+
+        // Botão de limpar filtro
+        clearBtn.addEventListener('click', () => {
+            filterInput.value = '';
+            renderRecords(records);
+            filterInput.focus();
+        });
+
+        // Foca no input de filtro ao abrir
+        modal.addEventListener('shown.bs.modal', () => {
+            filterInput.focus();
+        });
+
+        // Limpa modal ao fechar
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.remove();
+        });
+
+        // Abre o modal
+        bsModal.show();
+    }
+
+    /**
+     * Seleciona um registro do lookup e preenche o campo e campos IE associados.
+     * @param {HTMLElement} fieldElement - Elemento do campo (select ou input)
+     * @param {Object} record - Registro selecionado {key, value, data}
+     */
+    function selectLookupRecord(fieldElement, record) {
+        const isSelect = fieldElement.tagName === 'SELECT';
+        const fieldName = fieldElement.dataset.sagNomecamp || fieldElement.name;
+
+        console.log('[SagEvents] Selecionado registro para', fieldName, ':', record);
+
+        // 1. Preenche o campo principal com o valor da chave
+        if (isSelect) {
+            // Para select, precisa selecionar a opção correspondente ou adicionar se não existir
+            let optionFound = false;
+            for (const option of fieldElement.options) {
+                if (option.value == record.key) {
+                    fieldElement.value = record.key;
+                    optionFound = true;
+                    break;
+                }
+            }
+            // Se a opção não existe no select, adiciona temporariamente
+            if (!optionFound) {
+                const newOption = new Option(record.value || record.key, record.key, true, true);
+                fieldElement.add(newOption);
+            }
+        } else {
+            // Para input, simplesmente define o valor
+            fieldElement.value = record.key;
+        }
+
+        // 2. Preenche o campo de descrição automático (para campos L/IL)
+        const descId = fieldElement.dataset.lookupDescId;
+        if (descId) {
+            const descField = document.getElementById(descId);
+            if (descField) {
+                descField.value = record.value || '';
+            }
+        }
+
+        // 3. Armazena TODOS os dados no cache para campos IE
+        setLookupData(fieldName, record.data);
+
+        // 4. Preenche campos IE que referenciam este lookup
+        fillLinkedIEFields(fieldElement, record.data);
+
+        // 5. Dispara eventos change e blur para processar OnExit
+        fieldElement.dispatchEvent(new Event('change', { bubbles: true }));
+        fieldElement.dispatchEvent(new Event('blur', { bubbles: true }));
+
+        console.log('[SagEvents] Campo', fieldName, 'preenchido com:', record.key);
+    }
+
+    /**
+     * Preenche campos IE que estão vinculados a um campo de lookup.
+     * Campos IE têm data-sag-linked-lookup apontando para o campo lookup.
+     * @param {HTMLElement} lookupField - Campo de lookup que foi selecionado
+     * @param {Object} recordData - Dados completos do registro selecionado
+     */
+    function fillLinkedIEFields(lookupField, recordData) {
+        const lookupFieldName = (lookupField.dataset.sagNomecamp || lookupField.name || '').toUpperCase();
+        if (!lookupFieldName) return;
+
+        // Encontra todos os campos IE que referenciam este lookup
+        const linkedFields = document.querySelectorAll(`[data-sag-linked-lookup="${lookupFieldName}"]`);
+
+        linkedFields.forEach(ieField => {
+            const sourceColumn = (ieField.dataset.sagSourceColumn || '').toUpperCase();
+            if (!sourceColumn) return;
+
+            // Busca o valor no registro (case-insensitive)
+            let value = null;
+            for (const [key, val] of Object.entries(recordData)) {
+                if (key.toUpperCase() === sourceColumn) {
+                    value = val;
+                    break;
+                }
+            }
+
+            if (value !== null && value !== undefined) {
+                ieField.value = value;
+                console.log(`[SagEvents] Campo IE ${ieField.dataset.sagNomecamp} preenchido com ${sourceColumn}:`, value);
+            }
+        });
+    }
+
     /**
      * Faz bind em um campo específico.
      * @param {HTMLElement} element - Elemento do campo
@@ -365,6 +741,11 @@ const SagEvents = (function () {
                         const lookupButtons = node.querySelectorAll?.('.btn-lookup');
                         if (lookupButtons && lookupButtons.length > 0) {
                             bindLookupButtons(node);
+                        }
+                        // Verifica filhos - campos com duplo clique
+                        const duplCliqFields = node.querySelectorAll?.('[data-has-duplcliq="true"]');
+                        if (duplCliqFields && duplCliqFields.length > 0) {
+                            bindDuplCliq(node);
                         }
                     }
                 });
@@ -1753,16 +2134,19 @@ const SagEvents = (function () {
         bindAllFields,
         bindLookupButtons,
         bindSagButtons,
+        bindDuplCliq,
         collectFormData,
         execFieldEventsOnShow,
         onRecordLoaded,
         // Lookup API
         openLookup,
+        openExpandedLookup,
         setLookupData,
         getLookupData,
         clearLookupCache,
         populateLookupDescriptions,
         clearLookupDescriptions,
+        fillLinkedIEFields,
         // Field Exit API
         onFieldExit,
         // Movement Events API

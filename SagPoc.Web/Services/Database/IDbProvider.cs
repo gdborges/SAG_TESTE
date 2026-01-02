@@ -100,4 +100,11 @@ public interface IDbProvider
     /// Oracle: TO_CHAR(coluna) ou DBMS_LOB.SUBSTR(coluna, 4000)
     /// </summary>
     string CastTextToString(string columnName);
+
+    /// <summary>
+    /// Trata coluna que pode não existir em todos os bancos.
+    /// Retorna NullFunction se a coluna existe, ou apenas o valor default se não existe.
+    /// Usado para colunas adicionadas em versões mais recentes do schema.
+    /// </summary>
+    string OptionalColumn(string column, string defaultValue);
 }

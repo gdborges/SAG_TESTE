@@ -10,7 +10,8 @@ public interface IValidationService
 {
     /// <summary>
     /// Obtém a lista de campos protegidos para uma tabela.
-    /// Campos protegidos: MarcCamp=1 OU campos que começam com "ApAt{FinaTabe}".
+    /// Campos protegidos: InteCamp=0 (gerados por processo) OU campos que começam com "ApAt{FinaTabe}".
+    /// Baseado em BtnConf_CampModi do Delphi (POHeCam6.pas).
     /// </summary>
     /// <param name="tableId">ID da tabela (CodiTabe)</param>
     /// <returns>Lista de campos protegidos com seus metadados</returns>
@@ -74,7 +75,8 @@ public class ProtectedFieldInfo
     public bool IsApAtField { get; set; }
 
     /// <summary>
-    /// Indica se o campo está marcado como protegido (MarcCamp=1)
+    /// Indica se o campo é gerado por processo (InteCamp=0).
+    /// Nome mantido para compatibilidade, mas representa InteCamp=0 no Delphi.
     /// </summary>
     public bool IsMarcCamp { get; set; }
 }
@@ -85,7 +87,7 @@ public class ProtectedFieldInfo
 public enum ProtectionReason
 {
     /// <summary>
-    /// Campo marcado como protegido na configuração (MarcCamp=1)
+    /// Campo marcado como protegido/gerado por processo (InteCamp=0)
     /// </summary>
     MarkedAsProtected,
 

@@ -117,4 +117,10 @@ public class SqlServerProvider : IDbProvider
         // Campos TEXT precisam de CAST para NVARCHAR(MAX) para Dapper mapear corretamente
         return $"CAST({columnName} AS NVARCHAR(MAX))";
     }
+
+    public string OptionalColumn(string column, string defaultValue)
+    {
+        // SQL Server: assume que todas as colunas existem (usa NullFunction normalmente)
+        return NullFunction(column, defaultValue);
+    }
 }

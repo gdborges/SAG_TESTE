@@ -54,15 +54,17 @@ public class ValidationService : IValidationService
                     continue;
 
                 // Verifica se o campo é protegido
+                // InteCamp=0 significa campo gerado por processo (não pode ser modificado manualmente)
+                // Baseado em BtnConf_CampModi do Delphi (POHeCam6.pas linha 470)
                 var isApAt = !string.IsNullOrEmpty(finaTabe) &&
                              field.NomeCamp.StartsWith($"ApAt{finaTabe}", StringComparison.OrdinalIgnoreCase);
-                var isMarcCamp = field.MarcCamp == 1;
+                var isGeneratedField = field.InteCamp == 0;
                 var isCalculated = CalculatedComponentTypes.Contains(field.CompCamp);
 
-                if (isApAt || isMarcCamp || isCalculated)
+                if (isApAt || isGeneratedField || isCalculated)
                 {
                     var reason = isApAt ? ProtectionReason.AutoFinalization
-                               : isMarcCamp ? ProtectionReason.MarkedAsProtected
+                               : isGeneratedField ? ProtectionReason.MarkedAsProtected  // InteCamp=0
                                : ProtectionReason.Calculated;
 
                     result.Add(new ProtectedFieldInfo
@@ -72,7 +74,7 @@ public class ValidationService : IValidationService
                         ComponentType = field.CompCamp,
                         Reason = reason,
                         IsApAtField = isApAt,
-                        IsMarcCamp = isMarcCamp
+                        IsMarcCamp = isGeneratedField  // Mantém nome para compatibilidade, mas significa InteCamp=0
                     });
                 }
             }

@@ -255,6 +255,9 @@
                     }
                 </label>
             }
+            @{
+                var hasLookupSqlCombo = !string.IsNullOrEmpty(field.SqlCamp);
+            }
             <select class="form-select @(isInfoLookup ? "form-select-info" : "")"
                     id="@fieldId"
                     name="@fieldName"
@@ -263,8 +266,12 @@
                     @(isDisabled || isInfoLookup ? "disabled" : "")
                     data-sag-codicamp="@sagCodicamp"
                     data-sag-nomecamp="@sagNomecamp"
-                   data-sag-namecamp="@sagNamecamp"
-                    data-sag-comptype="@sagComptype">
+                    data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype"
+                    data-has-duplcliq="true"
+                    @if (hasLookupSqlCombo) {
+                        <text>data-lookup-sql="@field.SqlCamp"</text>
+                    }>
                 <option value="">Selecione...</option>
                 @if (field.LookupOptions != null && field.LookupOptions.Count > 0)
                 {
@@ -327,6 +334,7 @@
                            data-sag-namecamp="@sagNamecamp"
                            data-sag-comptype="@sagComptype"
                            data-lookup-desc-id="@lookupDescId"
+                           data-has-duplcliq="true"
                            @if (hasLookupSql) {
                                <text>data-lookup-sql="@field.SqlCamp"</text>
                            } />

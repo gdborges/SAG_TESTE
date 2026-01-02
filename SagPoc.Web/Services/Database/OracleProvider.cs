@@ -148,4 +148,10 @@ public class OracleProvider : IDbProvider
         // DBMS_LOB.SUBSTR extrai até 4000 caracteres (limite do VARCHAR2)
         return $"DBMS_LOB.SUBSTR({columnName}, 4000, 1)";
     }
+
+    public string OptionalColumn(string column, string defaultValue)
+    {
+        // Oracle: usa NullFunction normalmente (mesma estrutura que SQL Server)
+        return NullFunction(column, defaultValue);
+    }
 }

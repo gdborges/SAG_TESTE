@@ -34,8 +34,7 @@ public class FieldMetadata
     public int LbcxCamp { get; set; }      // Label Box - Mostra caption em Bevel (1=sim)
     public int TagQCamp { get; set; }      // Flag para numeração sequencial (1=gerar sequência)
     public int ExisCamp { get; set; }      // Flag campo já existe (0=novo, permite gerar sequência)
-    public int MarcCamp { get; set; }      // Flag campo protegido (1=não pode ser modificado manualmente)
-    public int InteCamp { get; set; }      // Flag integridade (0=validar modificação, 1=pode modificar livremente)
+    public int InteCamp { get; set; }      // Flag integridade (0=validar modificação/protegido, 1=pode modificar livremente)
 
     // Formatação
     public string MascCamp { get; set; } = string.Empty;  // Máscara de entrada
@@ -90,10 +89,10 @@ public class FieldMetadata
 
     /// <summary>
     /// Indica se o campo é protegido contra modificação manual.
-    /// Campos protegidos: MarcCamp=1 OU campos que começam com "ApAt".
-    /// Na validação, InteCamp=0 significa que deve validar modificação.
+    /// Campos protegidos: InteCamp=0 (campos gerados/calculados) OU campos que começam com "ApAt".
+    /// Baseado na lógica BtnConf_CampModi do Delphi (POHeCam6.pas).
     /// </summary>
-    public bool IsProtected => MarcCamp == 1 || NomeCamp?.StartsWith("ApAt", StringComparison.OrdinalIgnoreCase) == true;
+    public bool IsProtected => InteCamp == 0 || NomeCamp?.StartsWith("ApAt", StringComparison.OrdinalIgnoreCase) == true;
 
     /// <summary>
     /// Indica se o campo deve ter sua modificação validada.
