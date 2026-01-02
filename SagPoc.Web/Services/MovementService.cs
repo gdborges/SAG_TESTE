@@ -104,6 +104,9 @@ public class MovementService : IMovementService
             _logger.LogInformation("Carregados {Count} registros do movimento {MovementId} para pai {ParentId}",
                 result.Data.Count, movementTableId, parentId);
 
+            // Calcula totais para campos do cabeçalho (TOQTMVCT, TOVLMVCT, etc.)
+            result.Totals = await CalculateMovementTotalsAsync(connection, metadata, fkColumnName, parentId);
+
             return result;
         }
         catch (Exception ex)
@@ -439,6 +442,7 @@ public class MovementService : IMovementService
     {
         var param = _dbProvider.FormatParameter("CodiTabe");
 
+        // GRIDTABE e GRCOTABE são campos TEXT (tipo legado) - precisam de CAST para Dapper mapear
         var sql = $@"
             SELECT
                 CODITABE as CodiTabe,
@@ -449,11 +453,11 @@ public class MovementService : IMovementService
                 {_dbProvider.NullFunction("SERITABE", "0")} as SeriTabe,
                 GETATABE as GeTaTabe,
                 {_dbProvider.NullFunction("GUI1TABE", "''")} as Gui1Tabe,
-                GRIDTABE as GridTabe,
-                GRCOTABE as GrCoTabe,
+                {_dbProvider.CastTextToString("GRIDTABE")} as GridTabe,
+                {_dbProvider.CastTextToString("GRCOTABE")} as GrCoTabe,
                 {_dbProvider.NullFunction("ALTUTABE", "400")} as AltuTabe,
                 {_dbProvider.NullFunction("TAMATABE", "600")} as TamaTabe,
-                PARATABE as ParaTabe
+                {_dbProvider.CastTextToString("PARATABE")} as ParaTabe
             FROM SISTTABE
             WHERE CODITABE = {param}";
 
@@ -546,6 +550,15 @@ public class MovementService : IMovementService
                 "CASE $1 WHEN 1 THEN 'S' ELSE 'N' END",
                 RegexOptions.IgnoreCase);
 
+            // Adiciona prefixo dbo. às funções SAG que não têm schema (apenas SQL Server)
+            // Oracle não usa prefixo dbo, funções ficam no schema do usuário
+            if (_dbProvider.ProviderName == "SqlServer")
+            {
+                sql = Regex.Replace(sql, @"(?<![.\w])(FUN_\w+|NULO)\s*\(",
+                    "dbo.$1(",
+                    RegexOptions.IgnoreCase);
+            }
+
             return sql;
         }
 
@@ -601,5 +614,91 @@ public class MovementService : IMovementService
         if (value.Equals("false", StringComparison.OrdinalIgnoreCase)) return 0;
         if (string.IsNullOrWhiteSpace(value)) return null;
         return value;
+    }
+
+    /// <summary>
+    /// Calcula totais para campos calculados do cabeçalho.
+    /// Convenção SAG: campos TO+NomeCampoMovimento (ex: TOQTMVCT = SUM(QTDEMVCT))
+    /// </summary>
+    private async Task<Dictionary<string, object?>> CalculateMovementTotalsAsync(
+        System.Data.IDbConnection connection,
+        MovementMetadata metadata,
+        string fkColumnName,
+        int parentId)
+    {
+        var totals = new Dictionary<string, object?>();
+
+        try
+        {
+            // Mapeamento de campos calculados comuns:
+            // TO + sufixo do movimento = SUM(campo original)
+            // Ex: movimento 125 (POCAMVCT) → TOQTMVCT = SUM(QTDEMVCT), TOVLMVCT = SUM(VALOMVCT)
+            var sumFields = new Dictionary<string, string>
+            {
+                { "TOQTMVCT", "QTDEMVCT" },  // Total Quantidade
+                { "TOVLMVCT", "VALOMVCT" },  // Total Valor
+                { "TOPEMVCT", "PESOMVCT" },  // Total Peso (se existir)
+                { "TOQTMOVE", "QTDEMOVE" },  // Outros movimentos
+                { "TOVLMOVE", "VALOMOVE" }
+            };
+
+            var quotedTable = _dbProvider.QuoteIdentifier(metadata.GravTabe);
+            var quotedFk = _dbProvider.QuoteIdentifier(fkColumnName);
+            var param = _dbProvider.FormatParameter("ParentId");
+
+            // Verifica quais campos existem na tabela do movimento
+            var columnsQuery = _dbProvider.GetColumnsMetadataQuery(metadata.GravTabe);
+            var columnsResult = await connection.QueryAsync<dynamic>(columnsQuery,
+                new { TableName = metadata.GravTabe.ToUpper() });
+            var existingColumns = columnsResult
+                .Select(c => ((string)c.COLUMN_NAME).ToUpperInvariant())
+                .ToHashSet();
+
+            // Monta SELECT com SUMs apenas para campos que existem
+            var sumClauses = new List<string>();
+            var fieldMapping = new List<(string TotalField, string SumField)>();
+
+            foreach (var mapping in sumFields)
+            {
+                if (existingColumns.Contains(mapping.Value.ToUpperInvariant()))
+                {
+                    sumClauses.Add($"{_dbProvider.NullFunction($"SUM({mapping.Value})", "0")} AS {mapping.Key}");
+                    fieldMapping.Add((mapping.Key, mapping.Value));
+                }
+            }
+
+            if (sumClauses.Count == 0)
+            {
+                _logger.LogDebug("Nenhum campo de total encontrado para movimento {MovementId}", metadata.CodiTabe);
+                return totals;
+            }
+
+            var sql = $@"
+                SELECT {string.Join(", ", sumClauses)}
+                FROM {quotedTable}
+                WHERE {quotedFk} = {param}";
+
+            _logger.LogDebug("SQL de totais: {Sql}", sql);
+
+            var result = await connection.QueryFirstOrDefaultAsync(sql, new { ParentId = parentId });
+
+            if (result != null)
+            {
+                foreach (var prop in (IDictionary<string, object>)result)
+                {
+                    totals[prop.Key] = prop.Value;
+                }
+            }
+
+            _logger.LogDebug("Totais calculados para movimento {MovementId}: {Totals}",
+                metadata.CodiTabe, string.Join(", ", totals.Select(t => $"{t.Key}={t.Value}")));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao calcular totais para movimento {MovementId}", metadata.CodiTabe);
+            // Não propaga erro - totais são opcionais
+        }
+
+        return totals;
     }
 }

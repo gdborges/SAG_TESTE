@@ -106,6 +106,13 @@ public class MovementGridData
     /// Nome da coluna PK
     /// </summary>
     public string PkColumnName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Totais calculados para campos do cabeçalho (ex: soma de quantidades/valores).
+    /// Chave: nome do campo do cabeçalho (ex: TOQTMVCT)
+    /// Valor: valor calculado
+    /// </summary>
+    public Dictionary<string, object?> Totals { get; set; } = new();
 }
 
 /// <summary>

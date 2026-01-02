@@ -186,6 +186,7 @@ public class MetadataService : IMetadataService
     {
         var param = _dbProvider.FormatParameter("CabeTabe");
 
+        // GRIDTABE, GRCOTABE e PARATABE são campos TEXT (tipo legado) - precisam de CAST para Dapper mapear
         var sql = $@"
             SELECT
                 CODITABE as CodiTabe,
@@ -196,11 +197,11 @@ public class MetadataService : IMetadataService
                 {_dbProvider.NullFunction("SERITABE", "0")} as SeriTabe,
                 GETATABE as GeTaTabe,
                 {_dbProvider.NullFunction("GUI1TABE", "''")} as Gui1Tabe,
-                GRIDTABE as GridTabe,
-                GRCOTABE as GrCoTabe,
+                {_dbProvider.CastTextToString("GRIDTABE")} as GridTabe,
+                {_dbProvider.CastTextToString("GRCOTABE")} as GrCoTabe,
                 {_dbProvider.NullFunction("ALTUTABE", "400")} as AltuTabe,
                 {_dbProvider.NullFunction("TAMATABE", "600")} as TamaTabe,
-                PARATABE as ParaTabe
+                {_dbProvider.CastTextToString("PARATABE")} as ParaTabe
             FROM SISTTABE
             WHERE CABETABE = {param}
             ORDER BY SERITABE, CODITABE";

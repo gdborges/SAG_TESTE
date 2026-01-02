@@ -302,6 +302,48 @@ var MovementManager = (function() {
         if (summary && records.length > 0) {
             summary.style.display = 'block';
         }
+
+        // Atualiza campos de totais (TOQTMVCT, TOVLMVCT, etc.)
+        updateTotalsFields(apiData.totals || {});
+    }
+
+    /**
+     * Atualiza os campos de totais no formulário do cabeçalho
+     * @param {object} totals - Objeto com nome do campo e valor calculado
+     */
+    function updateTotalsFields(totals) {
+        if (!totals || Object.keys(totals).length === 0) {
+            return;
+        }
+
+        console.log('[MovementManager] Atualizando totais:', totals);
+
+        Object.keys(totals).forEach(function(fieldName) {
+            var value = totals[fieldName];
+
+            // Busca o campo pelo name ou data-sag-nomecamp
+            var field = document.querySelector('input[name="' + fieldName + '"]') ||
+                        document.querySelector('input[data-sag-nomecamp="' + fieldName + '"]') ||
+                        document.querySelector('[name="' + fieldName.toUpperCase() + '"]') ||
+                        document.querySelector('[name="' + fieldName.toLowerCase() + '"]');
+
+            if (field) {
+                // Formata o valor (números com decimais)
+                var formattedValue = value;
+                if (typeof value === 'number') {
+                    formattedValue = value.toFixed(2);
+                } else if (value !== null && value !== undefined) {
+                    formattedValue = String(value);
+                } else {
+                    formattedValue = '0';
+                }
+
+                field.value = formattedValue;
+                console.log('[MovementManager] Campo ' + fieldName + ' atualizado para:', formattedValue);
+            } else {
+                console.log('[MovementManager] Campo ' + fieldName + ' não encontrado no DOM');
+            }
+        });
     }
 
     /**

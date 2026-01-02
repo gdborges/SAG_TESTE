@@ -262,6 +262,10 @@ public class MovementMetadata
         // Divide por vírgulas, mas respeitando parênteses (funções)
         var columnDefs = SplitSqlColumns(selectPart);
 
+        // Rastreia colunas fonte que já foram aliasadas para evitar duplicatas
+        // Ex: se QTDEMVCT AS "Quantidade" apareceu, ignoramos QTDEMVCT quando aparecer depois
+        var aliasedSourceColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var colDef in columnDefs)
         {
             var trimmed = colDef.Trim();
@@ -270,6 +274,7 @@ public class MovementMetadata
 
             string fieldName;
             string displayName;
+            string? sourceColumn = null;
 
             // Verifica se tem alias com AS "Nome"
             var asMatch = System.Text.RegularExpressions.Regex.Match(
@@ -279,20 +284,36 @@ public class MovementMetadata
 
             if (asMatch.Success)
             {
+                // Quando há alias com aspas, o Oracle retorna o alias como nome da coluna
+                // Então fieldName DEVE ser o alias para acessar corretamente os dados
                 displayName = asMatch.Groups[1].Value;
-                // Extrai o nome do campo (última parte antes do AS)
+                fieldName = displayName;  // Usa o alias como fieldName
+
+                // Extrai a coluna fonte antes do AS para rastrear
                 var beforeAs = trimmed.Substring(0, asMatch.Index).Trim();
-                fieldName = ExtractFieldName(beforeAs);
+                sourceColumn = ExtractFieldName(beforeAs).ToUpperInvariant();
+                aliasedSourceColumns.Add(sourceColumn);
             }
             else
             {
-                // Sem alias - usa o nome do campo
-                fieldName = ExtractFieldName(trimmed);
+                // Sem alias - usa o nome do campo (Oracle converte para maiúsculo)
+                fieldName = ExtractFieldName(trimmed).ToUpperInvariant();
                 displayName = fieldName;
+
+                // Se esta coluna já foi aliasada antes, ignora a versão raw
+                if (aliasedSourceColumns.Contains(fieldName))
+                    continue;
             }
 
             // Ignora a primeira coluna se for PK (CODI*)
             if (columns.Count == 0 && fieldName.StartsWith("CODI", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            // Ignora campos técnicos/internos que não devem aparecer no grid
+            // SGCH* = chaves secundárias/hash
+            // MARC* = marcadores de status interno
+            if (fieldName.StartsWith("SGCH", StringComparison.OrdinalIgnoreCase) ||
+                fieldName.StartsWith("MARC", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             // Ignora se já existe (duplicatas)

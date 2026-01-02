@@ -111,4 +111,10 @@ public class SqlServerProvider : IDbProvider
             return parameterName;
         return $"@{parameterName}";
     }
+
+    public string CastTextToString(string columnName)
+    {
+        // Campos TEXT precisam de CAST para NVARCHAR(MAX) para Dapper mapear corretamente
+        return $"CAST({columnName} AS NVARCHAR(MAX))";
+    }
 }

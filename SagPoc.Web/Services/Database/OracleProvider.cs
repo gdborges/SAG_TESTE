@@ -141,4 +141,11 @@ public class OracleProvider : IDbProvider
             return ":" + parameterName.Substring(1);
         return $":{parameterName}";
     }
+
+    public string CastTextToString(string columnName)
+    {
+        // Oracle CLOB precisa de conversão explícita para Dapper mapear corretamente
+        // DBMS_LOB.SUBSTR extrai até 4000 caracteres (limite do VARCHAR2)
+        return $"DBMS_LOB.SUBSTR({columnName}, 4000, 1)";
+    }
 }

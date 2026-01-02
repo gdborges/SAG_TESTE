@@ -93,4 +93,11 @@ public interface IDbProvider
     /// Formata nome de parâmetro com prefixo correto
     /// </summary>
     string FormatParameter(string parameterName);
+
+    /// <summary>
+    /// Converte campo TEXT/CLOB para VARCHAR/NVARCHAR para Dapper mapear corretamente.
+    /// SQL Server: CAST(coluna AS NVARCHAR(MAX))
+    /// Oracle: TO_CHAR(coluna) ou DBMS_LOB.SUBSTR(coluna, 4000)
+    /// </summary>
+    string CastTextToString(string columnName);
 }
