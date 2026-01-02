@@ -13,6 +13,7 @@ public class FormController : Controller
     private readonly ILookupService _lookupService;
     private readonly IConsultaService _consultaService;
     private readonly IEventService _eventService;
+    private readonly IValidationService _validationService;
     private readonly ILogger<FormController> _logger;
 
     public FormController(
@@ -20,12 +21,14 @@ public class FormController : Controller
         ILookupService lookupService,
         IConsultaService consultaService,
         IEventService eventService,
+        IValidationService validationService,
         ILogger<FormController> logger)
     {
         _metadataService = metadataService;
         _lookupService = lookupService;
         _consultaService = consultaService;
         _eventService = eventService;
+        _validationService = validationService;
         _logger = logger;
     }
 
@@ -271,6 +274,26 @@ public class FormController : Controller
     }
 
     /// <summary>
+    /// Obtém os valores default para campos de uma tabela.
+    /// Usado para popular o formulário quando o usuário clica em "Novo".
+    /// GET /Form/GetFieldDefaults?tableId={id}
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetFieldDefaults(int tableId)
+    {
+        try
+        {
+            var defaults = await _consultaService.GetFieldDefaultsAsync(tableId);
+            return Json(new { success = true, defaults });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter defaults da tabela {TableId}", tableId);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Cancela uma inclusão excluindo o registro e seus movimentos (Saga Pattern).
     /// Usado quando o usuário inicia um novo registro mas desiste de salvar.
     /// </summary>
@@ -365,6 +388,89 @@ public class FormController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao obter SQL de lookup do campo {CodiCamp}", codiCamp);
+            return StatusCode(500, new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Retorna os campos protegidos de uma tabela.
+    /// GET /Form/GetProtectedFields?tableId={id}
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetProtectedFields(int tableId)
+    {
+        try
+        {
+            var protectedFields = await _validationService.GetProtectedFieldsAsync(tableId);
+            return Json(new
+            {
+                success = true,
+                fields = protectedFields.Select(f => new
+                {
+                    fieldName = f.FieldName,
+                    label = f.Label,
+                    componentType = f.ComponentType,
+                    reason = f.Reason.ToString(),
+                    isApAtField = f.IsApAtField,
+                    isMarcCamp = f.IsMarcCamp
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter campos protegidos da tabela {TableId}", tableId);
+            return StatusCode(500, new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Valida se modificações em campos protegidos são permitidas.
+    /// POST /Form/ValidateModifications
+    /// Body: { tableId, originalData, newData }
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ValidateModifications([FromBody] ValidateModificationsRequest request)
+    {
+        try
+        {
+            // Verifica se o registro está finalizado
+            var isFinalized = await _validationService.IsRecordFinalizedAsync(
+                request.TableId, request.OriginalData);
+
+            // Valida modificações
+            var result = await _validationService.ValidateModificationsAsync(
+                request.TableId,
+                request.OriginalData,
+                request.NewData,
+                isFinalized);
+
+            if (result.IsValid)
+            {
+                return Json(new { success = true, isValid = true });
+            }
+            else
+            {
+                return Json(new
+                {
+                    success = true,
+                    isValid = false,
+                    isFinalized,
+                    message = result.SummaryMessage,
+                    violations = result.Violations.Select(v => new
+                    {
+                        fieldName = v.FieldName,
+                        label = v.Label,
+                        originalValue = v.OriginalValue?.ToString(),
+                        newValue = v.NewValue?.ToString(),
+                        reason = v.Reason.ToString(),
+                        errorMessage = v.ErrorMessage
+                    })
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao validar modificações da tabela {TableId}", request.TableId);
             return StatusCode(500, new { success = false, error = ex.Message });
         }
     }

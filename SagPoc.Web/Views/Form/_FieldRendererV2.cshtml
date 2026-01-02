@@ -916,16 +916,21 @@
 
     case ComponentType.Button:
         // BTN - Botão
+        // No Delphi, ExprCamp contém as instruções PLSAG a executar no OnClick
+        var btnExprCamp = field.ExprCamp ?? "";
         <div class="field-wrapper field-button d-flex align-items-end" style="@wrapperStyle">
             <button type="button"
-                    class="btn btn-secondary"
+                    class="btn btn-secondary sag-btn"
                     id="@fieldId"
                     title="@hint"
                     @(isDisabled ? "disabled" : "")
                     data-sag-codicamp="@sagCodicamp"
                     data-sag-nomecamp="@sagNomecamp"
-                   data-sag-namecamp="@sagNamecamp"
-                    data-sag-comptype="@sagComptype">
+                    data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype"
+                    @if (!string.IsNullOrEmpty(btnExprCamp)) {
+                        <text>data-plsag-onclick="@btnExprCamp"</text>
+                    }>
                 @label
             </button>
         </div>

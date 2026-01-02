@@ -27,6 +27,9 @@ builder.Services.AddScoped<IMovementService, MovementService>();
 // Register SequenceService for automatic sequence number generation
 builder.Services.AddScoped<ISequenceService, SequenceService>();
 
+// Register ValidationService for protected field modification validation
+builder.Services.AddScoped<IValidationService, ValidationService>();
+
 var app = builder.Build();
 
 // Log do provider selecionado

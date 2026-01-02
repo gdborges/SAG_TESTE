@@ -23,6 +23,13 @@ public class FormMetadata
     public string? SiglTabe { get; set; }
 
     /// <summary>
+    /// Sufixo de finalização (FINATABE, ex: "NOTA", "PECE")
+    /// Usado para identificar campos de proteção: ApAt{FinaTabe}
+    /// Quando preenchido, indica que a tabela tem controle de finalização.
+    /// </summary>
+    public string? FinaTabe { get; set; }
+
+    /// <summary>
     /// Título do formulário (NOMETABE)
     /// </summary>
     public string Title { get; set; } = string.Empty;

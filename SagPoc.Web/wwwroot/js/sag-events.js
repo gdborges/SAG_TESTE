@@ -54,6 +54,9 @@ const SagEvents = (function () {
         // Bind nos botões de lookup existentes
         bindLookupButtons();
 
+        // Bind nos botões SAG (BTN) com ExprCamp
+        bindSagButtons();
+
         // Observa novos campos adicionados dinamicamente
         observeDom();
 
@@ -231,6 +234,54 @@ const SagEvents = (function () {
 
         if (count > 0) {
             console.log('[SagEvents] Botões de lookup vinculados:', count);
+        }
+    }
+
+    /**
+     * Inicializa os botões SAG (BTN) com instruções PLSAG no ExprCamp.
+     * No Delphi, ExprCamp contém as instruções a executar no OnClick do botão.
+     * @param {HTMLElement} container - Container onde buscar os botões (default: document)
+     */
+    function bindSagButtons(container = document) {
+        const buttons = container.querySelectorAll('.sag-btn[data-plsag-onclick]');
+        let count = 0;
+
+        buttons.forEach(btn => {
+            // Evita duplo bind
+            if (btn.dataset.sagBtnBound) return;
+            btn.dataset.sagBtnBound = 'true';
+
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+
+                const instructions = this.dataset.plsagOnclick;
+                const codicamp = this.dataset.sagCodicamp;
+                const namecamp = this.dataset.sagNamecamp || this.dataset.sagNomecamp;
+
+                if (!instructions) {
+                    console.warn('[SagEvents] Botão sem instruções PLSAG:', namecamp);
+                    return;
+                }
+
+                console.log(`[SagEvents] Botão ${namecamp} clicado, executando ExprCamp:`, instructions.substring(0, 100));
+
+                try {
+                    // Executa as instruções PLSAG
+                    if (window.PlsagInterpreter) {
+                        const result = await window.PlsagInterpreter.execute(instructions);
+                        console.log(`[SagEvents] Botão ${namecamp} resultado:`, result);
+                    } else {
+                        console.error('[SagEvents] PlsagInterpreter não disponível');
+                    }
+                } catch (error) {
+                    console.error(`[SagEvents] Erro ao executar ExprCamp do botão ${namecamp}:`, error);
+                }
+            });
+            count++;
+        });
+
+        if (count > 0) {
+            console.log('[SagEvents] Botões SAG vinculados:', count);
         }
     }
 
@@ -1502,6 +1553,193 @@ const SagEvents = (function () {
         });
     }
 
+    // ============================================
+    // PROTECTED FIELDS - Validação de Campos Protegidos
+    // Similar ao BtnConf_CampModi do Delphi
+    // ============================================
+
+    // Cache de dados originais do registro (para comparação)
+    let originalRecordData = null;
+
+    /**
+     * Armazena os dados originais do registro para comparação posterior.
+     * Deve ser chamado após carregar um registro para edição.
+     * @param {Object} data - Dados originais do registro
+     */
+    function setOriginalRecordData(data) {
+        originalRecordData = data ? { ...data } : null;
+        console.log('[SagEvents] Dados originais armazenados:', originalRecordData ? Object.keys(originalRecordData).length + ' campos' : 'null');
+    }
+
+    /**
+     * Obtém os dados originais do registro.
+     * @returns {Object|null} Dados originais ou null
+     */
+    function getOriginalRecordData() {
+        return originalRecordData;
+    }
+
+    /**
+     * Limpa os dados originais do registro.
+     * Chamado ao limpar formulário ou iniciar novo registro.
+     */
+    function clearOriginalRecordData() {
+        originalRecordData = null;
+        console.log('[SagEvents] Dados originais limpos');
+    }
+
+    /**
+     * Obtém campos protegidos de uma tabela.
+     * @param {number} tableId - ID da tabela (CodiTabe)
+     * @returns {Promise<Array>} Lista de campos protegidos
+     */
+    async function getProtectedFields(tableId) {
+        try {
+            const response = await fetch(`/Form/GetProtectedFields?tableId=${tableId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                return data.fields || [];
+            }
+            return [];
+        } catch (error) {
+            console.error('[SagEvents] Erro ao obter campos protegidos:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Valida se modificações em campos protegidos são permitidas.
+     * Implementa a lógica do BtnConf_CampModi do Delphi.
+     *
+     * @param {number} tableId - ID da tabela (CodiTabe)
+     * @returns {Promise<{isValid: boolean, violations: Array, message: string}>}
+     */
+    async function validateProtectedFields(tableId) {
+        // Em modo INSERT, não precisa validar (não há dados originais)
+        if (!originalRecordData || isInsertMode) {
+            console.log('[SagEvents] Validação não necessária (INSERT ou sem dados originais)');
+            return { isValid: true, violations: [], message: null };
+        }
+
+        const currentData = collectFormData();
+
+        try {
+            const response = await fetch('/Form/ValidateModifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tableId: tableId,
+                    originalData: originalRecordData,
+                    newData: currentData
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Erro na validação');
+            }
+
+            if (!result.isValid) {
+                console.warn('[SagEvents] Campos protegidos modificados:', result.violations);
+            }
+
+            return {
+                isValid: result.isValid,
+                violations: result.violations || [],
+                message: result.message,
+                isFinalized: result.isFinalized
+            };
+        } catch (error) {
+            console.error('[SagEvents] Erro ao validar campos protegidos:', error);
+            // Em caso de erro, permite continuar (comportamento seguro)
+            return { isValid: true, violations: [], message: null };
+        }
+    }
+
+    /**
+     * Exibe mensagem de violação de campos protegidos.
+     * @param {Object} validationResult - Resultado da validação
+     * @returns {boolean} false sempre (para cancelar operação)
+     */
+    function showProtectedFieldsError(validationResult) {
+        if (!validationResult.violations || validationResult.violations.length === 0) {
+            return false;
+        }
+
+        // Monta mensagem detalhada
+        let message = validationResult.message || 'Campos protegidos foram modificados:';
+        message += '\n\n';
+
+        validationResult.violations.forEach((v, i) => {
+            message += `${i + 1}. ${v.errorMessage}\n`;
+            if (v.originalValue !== undefined && v.newValue !== undefined) {
+                message += `   Original: "${v.originalValue}" → Novo: "${v.newValue}"\n`;
+            }
+        });
+
+        if (validationResult.isFinalized) {
+            message += '\nEste registro foi gerado por outro processo e não pode ser modificado diretamente.';
+        }
+
+        // Exibe alerta
+        alert(message);
+
+        // Destaca campos violados
+        highlightViolatedFields(validationResult.violations);
+
+        return false;
+    }
+
+    /**
+     * Destaca visualmente os campos que violaram a regra de proteção.
+     * @param {Array} violations - Lista de violações
+     */
+    function highlightViolatedFields(violations) {
+        // Remove destaque anterior
+        document.querySelectorAll('.field-violation').forEach(el => {
+            el.classList.remove('field-violation');
+        });
+
+        // Adiciona destaque nos campos violados
+        violations.forEach(v => {
+            const field = document.querySelector(`[data-sag-nomecamp="${v.fieldName}"]`) ||
+                         document.querySelector(`[name="${v.fieldName}"]`);
+            if (field) {
+                field.classList.add('field-violation');
+                // Remove destaque após 5 segundos
+                setTimeout(() => {
+                    field.classList.remove('field-violation');
+                }, 5000);
+            }
+        });
+    }
+
+    /**
+     * Valida campos protegidos antes de salvar.
+     * Deve ser chamado antes de beforeSave().
+     * @param {number} tableId - ID da tabela
+     * @returns {Promise<boolean>} true se pode continuar, false para cancelar
+     */
+    async function validateBeforeSave(tableId) {
+        const validation = await validateProtectedFields(tableId);
+
+        if (!validation.isValid) {
+            showProtectedFieldsError(validation);
+            return false;
+        }
+
+        return true;
+    }
+
     return {
         init,
         beforeSave,
@@ -1514,6 +1752,7 @@ const SagEvents = (function () {
         bindField,
         bindAllFields,
         bindLookupButtons,
+        bindSagButtons,
         collectFormData,
         execFieldEventsOnShow,
         onRecordLoaded,
@@ -1536,7 +1775,14 @@ const SagEvents = (function () {
         setActiveMovementContext,
         getActiveMovementContext,
         clearMovementContext,
-        getMovementEvents
+        getMovementEvents,
+        // Protected Fields API
+        setOriginalRecordData,
+        getOriginalRecordData,
+        clearOriginalRecordData,
+        getProtectedFields,
+        validateProtectedFields,
+        validateBeforeSave
     };
 })();
 
