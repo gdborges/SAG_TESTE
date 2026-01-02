@@ -1,6 +1,6 @@
 # Tasks: Implement Missing Delphi Features
 
-**Status Geral:** 58/82 tarefas concluidas
+**Status Geral:** 68/82 tarefas concluidas
 **Ultima Atualizacao:** 2026-01-02
 
 ---
@@ -185,32 +185,47 @@
 
 ---
 
-## Fase 6: Eventos de Movimento Completos (Media)
+## Fase 6: Eventos de Movimento Completos (Media) - CONCLUIDA
 
 **Objetivo:** Completar sistema de eventos de movimento
 **Arquivos:** movement-manager.js, EventService.cs, sag-events.js
 **Estimativa:** 3-4 horas
 
-### 6.1 Backend
-- [ ] 6.1.1 Verificar se EventService carrega AnteIAE_Movi_{CodiTabe}
-- [ ] 6.1.2 Verificar carregamento de AnteIncl_{CodiTabe}
-- [ ] 6.1.3 Verificar carregamento de DepoIncl_{CodiTabe}
-- [ ] 6.1.4 Verificar carregamento de AtuaGrid_{CodiTabe}
-- [ ] 6.1.5 Adicionar endpoint GET /api/movement/{tableId}/events
+### 6.1 Backend - CONCLUIDO
+- [x] 6.1.1 Verificar se EventService carrega AnteIAE_Movi_{CodiTabe}
+- [x] 6.1.2 Verificar carregamento de AnteIncl_{CodiTabe}
+- [x] 6.1.3 Verificar carregamento de DepoIncl_{CodiTabe}
+- [x] 6.1.4 Verificar carregamento de AtuaGrid_{CodiTabe}
+- [x] 6.1.5 Adicionar endpoint GET /api/movement/{tableId}/events
 
-### 6.2 Frontend - Execucao
-- [ ] 6.2.1 Implementar fireAnteIAE em movement-manager.js
-- [ ] 6.2.2 Executar AnteIAE antes de qualquer operacao CRUD
-- [ ] 6.2.3 Bloquear operacao se AnteIAE retornar false
-- [ ] 6.2.4 Implementar fireAnteIncl antes de INSERT
-- [ ] 6.2.5 Implementar fireDepoIncl apos INSERT bem-sucedido
-- [ ] 6.2.6 Implementar fireAtuaGrid apos refresh do grid
+### 6.2 Frontend - Execucao - CONCLUIDO
+- [x] 6.2.1 Implementar fireAnteIAE em movement-manager.js
+- [x] 6.2.2 Executar AnteIAE antes de qualquer operacao CRUD
+- [x] 6.2.3 Bloquear operacao se AnteIAE retornar false
+- [x] 6.2.4 Implementar fireAnteIncl antes de INSERT
+- [x] 6.2.5 Implementar fireDepoIncl apos INSERT bem-sucedido
+- [x] 6.2.6 Implementar fireAtuaGrid apos refresh do grid
 
-### 6.3 Testes
+### 6.3 Testes - PENDENTE (requer teste manual)
 - [ ] 6.3.1 Configurar evento AnteIncl que bloqueia operacao
 - [ ] 6.3.2 Testar que INSERT e bloqueado
 - [ ] 6.3.3 Configurar evento DepoIncl com MSG
 - [ ] 6.3.4 Testar que MSG aparece apos INSERT
+
+**Alteracoes ja implementadas (verificadas em 2026-01-02):**
+- EventService.cs:GetMovementEventsAsync() - Carrega todos os eventos de movimento
+- MovementEventData.cs - Model com todos os tipos de evento
+- MovementController.cs - Endpoint GET /api/movement/{parentTableId}/{tableId}/events
+- sag-events.js:
+  - loadMovementEvents() - Carrega eventos via API
+  - triggerMovementEvent() - Dispara eventos individuais
+  - beforeMovementOperation() - Executa AnteIAE + AnteIncl/AnteAlte/AnteExcl
+  - afterMovementOperation() - Executa DepoIncl/DepoAlte/DepoExcl + AtuaGrid
+- movement-manager.js:
+  - Carrega eventos no init via SagEvents.loadMovementEvents()
+  - Chama SagEvents.beforeMovementOperation() antes de salvar/excluir
+  - Verifica canProceed e bloqueia operacao se necessario
+  - Chama SagEvents.afterMovementOperation() apos salvar/excluir
 
 ---
 
@@ -240,9 +255,9 @@
 | 3 | BtnConf_CampModi | **Concluida** | 14/14 |
 | 4 | Tipos Componente | **Concluida** | 17/17 |
 | 5 | DuplCliq | **Concluida** | 6/6 |
-| 6 | Eventos Movimento | Pendente | 0/14 |
+| 6 | Eventos Movimento | **Impl. Concluida** | 10/14 |
 | 7 | MudaTab2 | Pendente | 0/8 |
-| **TOTAL** | | | **58/82** |
+| **TOTAL** | | | **68/82** |
 
 ---
 
