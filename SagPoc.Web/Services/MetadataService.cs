@@ -137,6 +137,8 @@ public class MetadataService : IMetadataService
             {_dbProvider.NullFunction("DESACAMP", "0")} as DesaCamp,
             {_dbProvider.NullFunction("INICCAMP", "0")} as InicCamp,
             {_dbProvider.NullFunction("LBCXCAMP", "0")} as LbcxCamp,
+            {_dbProvider.NullFunction("TAGQCAMP", "0")} as TagQCamp,
+            {_dbProvider.NullFunction("EXISCAMP", "0")} as ExisCamp,
             {_dbProvider.NullFunction("MASCCAMP", "''")} as MascCamp,
             MINICAMP as MiniCamp,
             MAXICAMP as MaxiCamp,

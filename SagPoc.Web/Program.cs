@@ -24,6 +24,9 @@ builder.Services.AddScoped<IEventService, EventService>();
 // Register MovementService for movement table CRUD operations
 builder.Services.AddScoped<IMovementService, MovementService>();
 
+// Register SequenceService for automatic sequence number generation
+builder.Services.AddScoped<ISequenceService, SequenceService>();
+
 var app = builder.Build();
 
 // Log do provider selecionado

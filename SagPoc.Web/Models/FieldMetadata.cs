@@ -32,6 +32,8 @@ public class FieldMetadata
     public int DesaCamp { get; set; }      // Campo desabilitado (1=sim)
     public int InicCamp { get; set; }      // Inicialmente desabilitado
     public int LbcxCamp { get; set; }      // Label Box - Mostra caption em Bevel (1=sim)
+    public int TagQCamp { get; set; }      // Flag para numeração sequencial (1=gerar sequência)
+    public int ExisCamp { get; set; }      // Flag campo já existe (0=novo, permite gerar sequência)
 
     // Formatação
     public string MascCamp { get; set; } = string.Empty;  // Máscara de entrada
@@ -67,6 +69,16 @@ public class FieldMetadata
     /// Indica se o campo é obrigatório
     /// </summary>
     public bool IsRequired => ObriCamp == 1;
+
+    /// <summary>
+    /// Indica se o campo requer geração de número sequencial.
+    /// Condições: InicCamp=1 AND TagQCamp=1 AND CompCamp IN ('N','EN') AND ExisCamp=0
+    /// </summary>
+    public bool RequiresSequence =>
+        InicCamp == 1 &&
+        TagQCamp == 1 &&
+        ExisCamp == 0 &&
+        (CompCamp == "N" || CompCamp == "EN");
 
     /// <summary>
     /// Indica se o campo está desabilitado permanentemente.

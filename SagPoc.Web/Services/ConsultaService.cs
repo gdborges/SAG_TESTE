@@ -15,11 +15,13 @@ namespace SagPoc.Web.Services;
 public class ConsultaService : IConsultaService
 {
     private readonly IDbProvider _dbProvider;
+    private readonly ISequenceService _sequenceService;
     private readonly ILogger<ConsultaService> _logger;
 
-    public ConsultaService(IDbProvider dbProvider, ILogger<ConsultaService> logger)
+    public ConsultaService(IDbProvider dbProvider, ISequenceService sequenceService, ILogger<ConsultaService> logger)
     {
         _dbProvider = dbProvider;
+        _sequenceService = sequenceService;
         _logger = logger;
         _logger.LogInformation("ConsultaService inicializado com provider {Provider}", _dbProvider.ProviderName);
     }
@@ -739,6 +741,54 @@ public class ConsultaService : IConsultaService
                 // Isso garante que checkboxes e outros campos tenham valores corretos no INSERT
                 await ApplyFieldDefaultsAsync(connection, request.TableId, filteredFields, validColumns);
 
+                // Modo VERI: Gera sequências para campos vazios/nulos/zero (InicCampSequ do Delphi)
+                var sequenceFields = await _sequenceService.GetFieldsRequiringSequenceAsync(request.TableId);
+                foreach (var seqField in sequenceFields)
+                {
+                    if (!validColumns.Contains(seqField.NomeCamp.ToUpperInvariant()))
+                        continue;
+
+                    // Verifica se campo já tem valor
+                    var existingKey = filteredFields.Keys.FirstOrDefault(k =>
+                        k.Equals(seqField.NomeCamp, StringComparison.OrdinalIgnoreCase));
+
+                    if (existingKey != null)
+                    {
+                        var existingValue = ConvertJsonElementToValue(filteredFields[existingKey]);
+                        // Se já tem valor não-nulo e não-zero, mantém
+                        if (existingValue != null)
+                        {
+                            var numVal = ConvertToDecimal(existingValue);
+                            if (numVal.HasValue && numVal.Value != 0)
+                                continue;
+                        }
+                    }
+
+                    // Gera sequência para o campo
+                    var seqConfig = await _sequenceService.GetSequenceConfigAsync(request.TableId, seqField.NomeCamp);
+                    Models.SequenceResult seqResult;
+
+                    if (seqConfig != null)
+                    {
+                        seqResult = await _sequenceService.GetNextSequenceAsync(seqConfig.CodiNume);
+                    }
+                    else
+                    {
+                        seqResult = await _sequenceService.GetNextMaxPlusOneAsync(tableName, seqField.NomeCamp);
+                    }
+
+                    if (seqResult.Success)
+                    {
+                        if (existingKey != null)
+                            filteredFields[existingKey] = seqResult.Value;
+                        else
+                            filteredFields[seqField.NomeCamp] = seqResult.Value;
+
+                        _logger.LogInformation("SaveRecord VERI: gerada sequência {Field} = {Value}",
+                            seqField.NomeCamp, seqResult.Value);
+                    }
+                }
+
                 var pkKey = filteredFields.Keys.FirstOrDefault(k => k.Equals(pkColumn, StringComparison.OrdinalIgnoreCase));
                 var providedPkValue = pkKey != null ? ConvertJsonElementToValue(filteredFields[pkKey]) : null;
 
@@ -999,6 +1049,30 @@ public class ConsultaService : IConsultaService
                     }
                 }
 
+                // Gera sequências para campos com TagQCamp=1 (InicCampSequ do Delphi)
+                // Campos numéricos com InicCamp=1 e TagQCamp=1 recebem valores automáticos
+                var sequenceValues = await _sequenceService.GenerateSequencesForTableAsync(tableId, tableName);
+
+                // Consolida todos os valores em um Dictionary para evitar duplicatas
+                var fieldValues = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                foreach (var col in columns)
+                {
+                    if (parameters.ParameterNames.Contains(col))
+                    {
+                        fieldValues[col] = parameters.Get<object?>(col);
+                    }
+                }
+
+                // Adiciona sequências (sobrescreve defaults se existir)
+                foreach (var seq in sequenceValues)
+                {
+                    if (validColumns.Contains(seq.Key.ToUpperInvariant()))
+                    {
+                        fieldValues[seq.Key] = seq.Value;
+                        _logger.LogInformation("Sequência final: {Field} = {Value}", seq.Key, seq.Value);
+                    }
+                }
+
                 switch (strategy)
                 {
                     case PkStrategy.Identity:
@@ -1009,29 +1083,34 @@ public class ConsultaService : IConsultaService
                         // Gera próximo ID via MAX+1 ou SEQUENCE
                         var nextId1 = await _dbProvider.GetNextIdAsync(connection, tableName, pkColumn, false, transaction);
                         newId = nextId1 ?? throw new InvalidOperationException($"Não foi possível gerar ID para tabela {tableName}");
-                        columns.Add(pkColumn);
-                        parameters.Add(pkColumn, newId);
+                        fieldValues[pkColumn] = newId;
                         break;
 
                     case PkStrategy.UserProvided:
                         // Se requer valor do usuário, gera via MAX+1 como fallback
                         var nextId2 = await _dbProvider.GetNextIdAsync(connection, tableName, pkColumn, false, transaction);
                         newId = nextId2 ?? throw new InvalidOperationException($"Não foi possível gerar ID para tabela {tableName}");
-                        columns.Add(pkColumn);
-                        parameters.Add(pkColumn, newId);
+                        fieldValues[pkColumn] = newId;
                         break;
                 }
 
-                // Monta INSERT
+                // Monta INSERT com fieldValues consolidados
                 var quotedTable = _dbProvider.QuoteIdentifier(tableName);
-                var columnList = string.Join(", ", columns.Select(c => _dbProvider.QuoteIdentifier(c)));
-                var valueList = string.Join(", ", columns.Select(c => _dbProvider.FormatParameter(c)));
+                var finalColumns = fieldValues.Keys.ToList();
+                var columnList = string.Join(", ", finalColumns.Select(c => _dbProvider.QuoteIdentifier(c)));
+                var valueList = string.Join(", ", finalColumns.Select(c => _dbProvider.FormatParameter(c)));
 
-                var sql = columns.Count > 0
+                var finalParams = new DynamicParameters();
+                foreach (var kv in fieldValues)
+                {
+                    finalParams.Add(kv.Key, kv.Value);
+                }
+
+                var sql = finalColumns.Count > 0
                     ? $"INSERT INTO {quotedTable} ({columnList}) VALUES ({valueList})"
                     : $"INSERT INTO {quotedTable} DEFAULT VALUES"; // Fallback para tabelas sem campos obrigatórios
 
-                await connection.ExecuteAsync(sql, parameters, transaction: transaction);
+                await connection.ExecuteAsync(sql, finalParams, transaction: transaction);
 
                 if (strategy == PkStrategy.Identity)
                 {
@@ -1039,8 +1118,8 @@ public class ConsultaService : IConsultaService
                 }
                 else
                 {
-                    // Já temos o ID gerado
-                    newId = parameters.Get<int>(pkColumn);
+                    // Já temos o ID gerado em fieldValues
+                    newId = Convert.ToInt32(fieldValues[pkColumn]);
                 }
 
                 transaction.Commit();
