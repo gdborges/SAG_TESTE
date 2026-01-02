@@ -13,6 +13,8 @@ const SagEvents = (function () {
     // Configuração
     let formEvents = null;
     let fieldEvents = {};
+    let movementEvents = {}; // Eventos de movimento indexados por CodiTabe
+    let movementFieldEvents = {}; // Eventos de CAMPO de movimento indexados por CodiTabe
     let initialized = false;
 
     // Cache de elementos
@@ -20,6 +22,9 @@ const SagEvents = (function () {
 
     // Flag para saber se é INSERT (novo registro) ou EDIT (alteração)
     let isInsertMode = false;
+
+    // Contexto de movimento ativo (para templates DM/D2)
+    let activeMovementContext = null;
 
     /**
      * Inicializa o sistema de eventos PLSAG.
@@ -45,6 +50,9 @@ const SagEvents = (function () {
 
         // Bind nos campos existentes
         bindAllFields();
+
+        // Bind nos botões de lookup existentes
+        bindLookupButtons();
 
         // Observa novos campos adicionados dinamicamente
         observeDom();
@@ -186,6 +194,47 @@ const SagEvents = (function () {
     }
 
     /**
+     * Inicializa os botões de lookup (pesquisa) em um container.
+     * @param {HTMLElement} container - Container onde buscar os botões (default: document)
+     */
+    function bindLookupButtons(container = document) {
+        const buttons = container.querySelectorAll('.btn-lookup');
+        let count = 0;
+
+        buttons.forEach(btn => {
+            // Evita duplo bind
+            if (btn.dataset.lookupBound) return;
+            btn.dataset.lookupBound = 'true';
+
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Encontra o input associado dentro do input-group
+                const inputGroup = this.closest('.input-group');
+                const input = inputGroup?.querySelector('input[data-sag-codicamp]');
+
+                if (input) {
+                    const codicamp = input.dataset.sagCodicamp;
+                    if (codicamp) {
+                        console.log('[SagEvents] Lookup button clicked, codicamp:', codicamp);
+                        openLookup(codicamp);
+                    } else {
+                        console.warn('[SagEvents] Input sem data-sag-codicamp');
+                    }
+                } else {
+                    console.warn('[SagEvents] Botão lookup sem input associado');
+                }
+            });
+            count++;
+        });
+
+        if (count > 0) {
+            console.log('[SagEvents] Botões de lookup vinculados:', count);
+        }
+    }
+
+    /**
      * Faz bind em um campo específico.
      * @param {HTMLElement} element - Elemento do campo
      */
@@ -245,7 +294,7 @@ const SagEvents = (function () {
     }
 
     /**
-     * Observa mudanças no DOM para vincular novos campos.
+     * Observa mudanças no DOM para vincular novos campos e botões de lookup.
      */
     function observeDom() {
         const observer = new MutationObserver((mutations) => {
@@ -256,10 +305,15 @@ const SagEvents = (function () {
                         if (node.dataset && node.dataset.sagCodicamp) {
                             bindField(node);
                         }
-                        // Verifica filhos
+                        // Verifica filhos - campos
                         const children = node.querySelectorAll?.('[data-sag-codicamp]');
                         if (children) {
                             children.forEach(bindField);
+                        }
+                        // Verifica filhos - botões de lookup
+                        const lookupButtons = node.querySelectorAll?.('.btn-lookup');
+                        if (lookupButtons && lookupButtons.length > 0) {
+                            bindLookupButtons(node);
                         }
                     }
                 });
@@ -642,7 +696,716 @@ const SagEvents = (function () {
         return fieldEvents;
     }
 
+    // ============================================
+    // MOVEMENT EVENTS - Eventos de Movimento
+    // ============================================
+
+    /**
+     * Carrega eventos de movimento de uma tabela.
+     * Busca do endpoint /api/movement/{parentTableId}/{tableId}/events
+     * @param {number} parentTableId - ID da tabela pai (cabeçalho)
+     * @param {number} movementTableId - ID da tabela de movimento
+     * @returns {Promise<Object>} Dados de eventos do movimento
+     */
+    async function loadMovementEvents(parentTableId, movementTableId) {
+        try {
+            // Verifica cache
+            if (movementEvents[movementTableId]) {
+                console.log(`[SagEvents] Eventos movimento ${movementTableId} (cache)`);
+                return movementEvents[movementTableId];
+            }
+
+            const response = await fetch(`/api/movement/${parentTableId}/${movementTableId}/events`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const events = await response.json();
+            movementEvents[movementTableId] = events;
+
+            console.log(`[SagEvents] Eventos movimento ${movementTableId} carregados:`, events);
+            return events;
+        } catch (error) {
+            console.error(`[SagEvents] Erro ao carregar eventos movimento ${movementTableId}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Define o contexto de movimento ativo.
+     * Usado para resolução de templates DM/D2 no PLSAG.
+     * @param {Object} ctx - Contexto do movimento
+     * @param {number} ctx.parentTableId - ID da tabela pai
+     * @param {number} ctx.movementTableId - ID da tabela de movimento
+     * @param {number} ctx.parentRecordId - ID do registro pai
+     * @param {number} ctx.recordId - ID do registro de movimento (se existir)
+     * @param {Object} ctx.formData - Dados do formulário de movimento
+     */
+    function setActiveMovementContext(ctx) {
+        activeMovementContext = ctx;
+        console.log('[SagEvents] Contexto movimento ativo:', ctx);
+
+        // Atualiza contexto do PLSAG interpreter para templates DM
+        if (typeof PlsagInterpreter !== 'undefined' && ctx?.formData) {
+            PlsagInterpreter.setMovementData(
+                ctx.formData,
+                ctx.movementTableId,
+                ctx.recordId
+            );
+        }
+    }
+
+    /**
+     * Obtém o contexto de movimento ativo.
+     * @returns {Object|null} Contexto do movimento ou null
+     */
+    function getActiveMovementContext() {
+        return activeMovementContext;
+    }
+
+    /**
+     * Limpa o contexto de movimento ativo.
+     */
+    function clearMovementContext() {
+        activeMovementContext = null;
+        console.log('[SagEvents] Contexto movimento limpo');
+
+        // Limpa contexto do PLSAG interpreter
+        if (typeof PlsagInterpreter !== 'undefined') {
+            PlsagInterpreter.clearMovementData();
+        }
+    }
+
+    /**
+     * Dispara um evento de movimento.
+     * @param {string} eventType - Tipo de evento: 'beforeAny', 'afterAny', 'beforeInsert', 'afterInsert',
+     *                             'beforeUpdate', 'afterUpdate', 'beforeDelete', 'afterDelete',
+     *                             'onGridRefresh', 'onModalOpen'
+     * @param {number} movementTableId - ID da tabela de movimento
+     * @param {number} recordId - ID do registro de movimento (opcional para alguns eventos)
+     * @param {Object} additionalContext - Contexto adicional (ex: formData)
+     * @returns {Promise<{success: boolean, blocked: boolean}>}
+     */
+    async function triggerMovementEvent(eventType, movementTableId, recordId = null, additionalContext = {}) {
+        const events = movementEvents[movementTableId];
+        if (!events || !events.hasEvents) {
+            console.log(`[SagEvents] Movimento ${movementTableId} sem eventos configurados`);
+            return { success: true, blocked: false };
+        }
+
+        let instructions = '';
+        let eventName = '';
+
+        // Mapeia o tipo de evento para as instruções correspondentes
+        switch (eventType) {
+            case 'beforeAny':
+                instructions = events.anteIAEMoviInstructions || '';
+                eventName = 'AnteIAE_Movi';
+                break;
+            case 'afterAny':
+                instructions = events.depoIAEMoviInstructions || '';
+                eventName = 'DepoIAE_Movi';
+                break;
+            case 'beforeInsert':
+                instructions = events.anteInclInstructions || '';
+                eventName = 'AnteIncl';
+                break;
+            case 'afterInsert':
+                instructions = events.depoInclInstructions || '';
+                eventName = 'DepoIncl';
+                break;
+            case 'beforeUpdate':
+                instructions = events.anteAlteInstructions || '';
+                eventName = 'AnteAlte';
+                break;
+            case 'afterUpdate':
+                instructions = events.depoAlteInstructions || '';
+                eventName = 'DepoAlte';
+                break;
+            case 'beforeDelete':
+                instructions = events.anteExclInstructions || '';
+                eventName = 'AnteExcl';
+                break;
+            case 'afterDelete':
+                instructions = events.depoExclInstructions || '';
+                eventName = 'DepoExcl';
+                break;
+            case 'onGridRefresh':
+                instructions = events.atuaGridInstructions || '';
+                eventName = 'AtuaGrid';
+                break;
+            case 'onModalOpen':
+                instructions = events.showPaiFilhInstructions || '';
+                eventName = 'ShowPai_Filh';
+                break;
+            default:
+                console.warn(`[SagEvents] Tipo de evento movimento desconhecido: ${eventType}`);
+                return { success: true, blocked: false };
+        }
+
+        if (!instructions || !instructions.trim()) {
+            console.log(`[SagEvents] Movimento ${movementTableId} sem instruções para ${eventName}`);
+            return { success: true, blocked: false };
+        }
+
+        console.log(`[SagEvents] Executando ${eventName} (movimento ${movementTableId}):`, instructions.substring(0, 100));
+
+        // Monta contexto para o interpretador
+        const context = {
+            type: 'movement',
+            eventType: eventName,
+            movementTableId: movementTableId,
+            parentTableId: activeMovementContext?.parentTableId || events.parentCodiTabe,
+            parentRecordId: activeMovementContext?.parentRecordId,
+            recordId: recordId,
+            codiTabe: movementTableId,
+            formData: additionalContext.formData || activeMovementContext?.formData || {},
+            ...additionalContext
+        };
+
+        // Emite evento customizado
+        document.dispatchEvent(new CustomEvent('sag:movement-event', {
+            detail: {
+                eventType: eventName,
+                movementTableId: movementTableId,
+                recordId: recordId,
+                instructions: instructions
+            }
+        }));
+
+        // Executa PLSAG
+        if (typeof PlsagInterpreter !== 'undefined') {
+            try {
+                const result = await PlsagInterpreter.execute(instructions, context);
+                console.log(`[SagEvents] ${eventName} executado:`, result);
+
+                // Verifica se foi bloqueado (PA ou ME)
+                if (result.blocked) {
+                    console.log(`[SagEvents] ${eventName} bloqueou a operação`);
+                    return { success: true, blocked: true };
+                }
+
+                return { success: true, blocked: false };
+            } catch (error) {
+                console.error(`[SagEvents] Erro ${eventName}:`, error);
+                return { success: false, blocked: false, error: error.message };
+            }
+        }
+
+        return { success: true, blocked: false };
+    }
+
+    /**
+     * Executa sequência de eventos antes de uma operação CRUD de movimento.
+     * @param {string} operation - 'insert', 'update', 'delete'
+     * @param {number} movementTableId - ID da tabela de movimento
+     * @param {number} recordId - ID do registro (para update/delete)
+     * @param {Object} formData - Dados do formulário
+     * @returns {Promise<{canProceed: boolean}>}
+     */
+    async function beforeMovementOperation(operation, movementTableId, recordId, formData = {}) {
+        // Define contexto
+        setActiveMovementContext({
+            movementTableId: movementTableId,
+            recordId: recordId,
+            formData: formData,
+            operation: operation
+        });
+
+        // 1. Evento genérico AnteIAE_Movi
+        let result = await triggerMovementEvent('beforeAny', movementTableId, recordId, { formData });
+        if (result.blocked) {
+            return { canProceed: false, reason: 'AnteIAE_Movi' };
+        }
+
+        // 2. Evento específico da operação
+        const specificEvent = operation === 'insert' ? 'beforeInsert' :
+                              operation === 'update' ? 'beforeUpdate' : 'beforeDelete';
+        result = await triggerMovementEvent(specificEvent, movementTableId, recordId, { formData });
+        if (result.blocked) {
+            return { canProceed: false, reason: specificEvent };
+        }
+
+        return { canProceed: true };
+    }
+
+    /**
+     * Executa sequência de eventos após uma operação CRUD de movimento.
+     * @param {string} operation - 'insert', 'update', 'delete'
+     * @param {number} movementTableId - ID da tabela de movimento
+     * @param {number} recordId - ID do registro criado/atualizado/excluído
+     * @param {Object} formData - Dados do formulário
+     */
+    async function afterMovementOperation(operation, movementTableId, recordId, formData = {}) {
+        // 1. Evento específico da operação
+        const specificEvent = operation === 'insert' ? 'afterInsert' :
+                              operation === 'update' ? 'afterUpdate' : 'afterDelete';
+        await triggerMovementEvent(specificEvent, movementTableId, recordId, { formData });
+
+        // 2. Evento genérico DepoIAE_Movi
+        await triggerMovementEvent('afterAny', movementTableId, recordId, { formData });
+
+        // 3. Atualiza grid (AtuaGrid)
+        await triggerMovementEvent('onGridRefresh', movementTableId, recordId);
+
+        // Limpa contexto
+        clearMovementContext();
+    }
+
+    /**
+     * Obtém eventos carregados de um movimento.
+     * @param {number} movementTableId - ID da tabela de movimento
+     * @returns {Object|null} Eventos do movimento ou null
+     */
+    function getMovementEvents(movementTableId) {
+        return movementEvents[movementTableId] || null;
+    }
+
+    /**
+     * Carrega eventos de CAMPO de uma tabela de movimento.
+     * @param {number} movementTableId - ID da tabela de movimento
+     * @returns {Promise<Object>} Eventos dos campos indexados por CodiCamp
+     */
+    async function loadMovementFieldEvents(movementTableId) {
+        try {
+            // Verifica cache
+            if (movementFieldEvents[movementTableId]) {
+                console.log(`[SagEvents] Eventos de campo movimento ${movementTableId} (cache)`);
+                return movementFieldEvents[movementTableId];
+            }
+
+            const response = await fetch(`/api/movement/${movementTableId}/field-events`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const events = await response.json();
+            movementFieldEvents[movementTableId] = events;
+
+            console.log(`[SagEvents] Eventos de campo movimento ${movementTableId} carregados:`, Object.keys(events).length, 'campos');
+            return events;
+        } catch (error) {
+            console.error(`[SagEvents] Erro ao carregar eventos de campo movimento ${movementTableId}:`, error);
+            return {};
+        }
+    }
+
+    /**
+     * Obtém eventos de campo de movimento carregados.
+     * @param {number} movementTableId - ID da tabela de movimento
+     * @returns {Object|null} Eventos de campo do movimento ou null
+     */
+    function getMovementFieldEvents(movementTableId) {
+        return movementFieldEvents[movementTableId] || null;
+    }
+
+    // ============================================
+    // LOOKUP - Modal de Pesquisa
+    // ============================================
+
+    // ============================================
+    // LOOKUP DATA CACHE - Cache de dados de lookup
+    // Similar ao DataSource interno do TDBLookNume no Delphi
+    // ============================================
+
+    /**
+     * Cache de dados de lookup por campo (NomeCamp -> data completo).
+     * Quando um lookup é selecionado, armazenamos todos os dados do registro
+     * para que campos IE vinculados possam acessar.
+     */
+    const lookupDataCache = {};
+
+    /**
+     * Armazena dados do registro selecionado no cache de lookup.
+     * @param {string} fieldName - Nome do campo de lookup (ex: CODIPROD)
+     * @param {Object} recordData - Dados completos do registro selecionado
+     */
+    function setLookupData(fieldName, recordData) {
+        const upperName = fieldName.toUpperCase();
+        lookupDataCache[upperName] = recordData;
+        console.log(`[SagEvents] Lookup cache atualizado: ${upperName}`, recordData);
+
+        // Notifica campos IE vinculados a este lookup
+        updateLinkedIEFields(upperName);
+    }
+
+    /**
+     * Obtém dados do cache de lookup.
+     * @param {string} fieldName - Nome do campo de lookup
+     * @returns {Object|null} Dados do registro ou null
+     */
+    function getLookupData(fieldName) {
+        return lookupDataCache[fieldName.toUpperCase()] || null;
+    }
+
+    /**
+     * Atualiza campos IE que estão vinculados a um lookup.
+     * No Delphi, campos IE têm VaGrCamp com duas linhas:
+     * - Linha 0: Nome do campo a exibir (ex: NOMEPROD)
+     * - Linha 1: Nome do campo lookup (ex: CODIPROD → busca dados de EdtCODIPROD)
+     * @param {string} lookupFieldName - Nome do campo lookup que foi atualizado
+     */
+    function updateLinkedIEFields(lookupFieldName) {
+        const data = lookupDataCache[lookupFieldName];
+        if (!data) return;
+
+        // Busca todos os campos IE vinculados a este lookup
+        // IE fields têm data-sag-linked-lookup="NOMECAMPOLOOKUP"
+        document.querySelectorAll(`[data-sag-linked-lookup="${lookupFieldName}"]`).forEach(ieField => {
+            const sourceColumn = ieField.dataset.sagSourceColumn;
+            if (sourceColumn && data[sourceColumn.toUpperCase()]) {
+                const newValue = data[sourceColumn.toUpperCase()];
+                const fieldName = ieField.name || ieField.dataset.sagNomecamp || ieField.id;
+                console.log(`[SagEvents] Atualizando campo IE ${fieldName}: ${newValue}`);
+
+                // Lida com diferentes tipos de elementos
+                if (ieField.tagName === 'INPUT' || ieField.tagName === 'TEXTAREA') {
+                    ieField.value = newValue;
+                } else if (ieField.tagName === 'DIV') {
+                    // Para divs (como RichEdit), usa textContent ou innerHTML
+                    ieField.textContent = newValue;
+                } else if (ieField.tagName === 'SELECT') {
+                    ieField.value = newValue;
+                }
+            }
+        });
+    }
+
+    /**
+     * Limpa o cache de lookup.
+     * Chamado ao limpar o formulário ou mudar de registro.
+     */
+    function clearLookupCache() {
+        for (const key in lookupDataCache) {
+            delete lookupDataCache[key];
+        }
+        console.log('[SagEvents] Lookup cache limpo');
+    }
+
+    /**
+     * Abre o modal de lookup para um campo.
+     * Busca o SQL do campo e executa para mostrar opções.
+     * Retorna TODOS os dados do registro para preencher campos IE.
+     * @param {string|number} codiCamp - ID do campo (CodiCamp)
+     */
+    async function openLookup(codiCamp) {
+        console.log('[SagEvents] openLookup para campo', codiCamp);
+
+        // Encontra o elemento do campo
+        const fieldElement = document.querySelector(`[data-sag-codicamp="${codiCamp}"]`);
+        if (!fieldElement) {
+            console.warn('[SagEvents] Campo não encontrado:', codiCamp);
+            return;
+        }
+
+        try {
+            // Busca o SQL do campo
+            const sqlResponse = await fetch(`/Form/GetFieldLookupSql?codiCamp=${codiCamp}`);
+            if (!sqlResponse.ok) {
+                console.warn('[SagEvents] Campo não tem SQL de lookup');
+                return;
+            }
+
+            const sqlData = await sqlResponse.json();
+            if (!sqlData.success || !sqlData.sql) {
+                console.warn('[SagEvents] SQL de lookup não encontrado');
+                return;
+            }
+
+            // Executa o SQL para obter as opções (agora retorna dados completos)
+            const lookupResponse = await fetch('/Form/ExecuteLookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sql: sqlData.sql, filter: '' })
+            });
+
+            if (!lookupResponse.ok) {
+                throw new Error('Erro ao executar lookup');
+            }
+
+            const lookupData = await lookupResponse.json();
+            if (!lookupData.success) {
+                throw new Error(lookupData.error || 'Erro ao executar lookup');
+            }
+
+            // Mostra o modal de lookup com dados completos
+            showLookupModal(fieldElement, lookupData.columns, lookupData.records, sqlData.sql);
+
+        } catch (error) {
+            console.error('[SagEvents] Erro ao abrir lookup:', error);
+            alert('Erro ao abrir pesquisa: ' + error.message);
+        }
+    }
+
+    /**
+     * Mostra o modal de lookup com as opções.
+     * Exibe todas as colunas retornadas pelo SQL_CAMP.
+     * Ao selecionar, armazena dados completos no cache para campos IE.
+     *
+     * @param {HTMLElement} fieldElement - Elemento do campo de lookup
+     * @param {Array<string>} columns - Lista de nomes das colunas
+     * @param {Array} records - Lista de registros {key, value, data}
+     * @param {string} sql - SQL para refetch com filtro
+     */
+    function showLookupModal(fieldElement, columns, records, sql) {
+        // Remove modal anterior se existir
+        const existingModal = document.getElementById('sagLookupModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Prepara cabeçalhos da tabela (até 5 colunas para não ficar muito largo)
+        const displayColumns = columns.slice(0, 5);
+        const headerHtml = displayColumns.map(col =>
+            `<th>${escapeHtml(col)}</th>`
+        ).join('');
+
+        // Cria o modal
+        const fieldName = fieldElement.dataset.sagNomecamp || fieldElement.name || 'Campo';
+        const labelText = fieldElement.dataset.sagLabel || fieldName;
+        const modalHtml = `
+            <div class="modal fade" id="sagLookupModal" tabindex="-1">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Pesquisar: ${escapeHtml(labelText)}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <input type="text" class="form-control" id="lookupFilter"
+                                       placeholder="Digite para filtrar..." autocomplete="off">
+                            </div>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-hover table-sm" id="lookupTable">
+                                    <thead class="table-light sticky-top">
+                                        <tr>${headerHtml}</tr>
+                                    </thead>
+                                    <tbody id="lookupTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <span class="text-muted me-auto" id="lookupRecordCount"></span>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const modal = document.getElementById('sagLookupModal');
+        const bsModal = new bootstrap.Modal(modal);
+        const tableBody = document.getElementById('lookupTableBody');
+        const filterInput = document.getElementById('lookupFilter');
+        const recordCount = document.getElementById('lookupRecordCount');
+
+        // Função para renderizar registros
+        function renderRecords(recordList) {
+            tableBody.innerHTML = '';
+            recordCount.textContent = `${recordList.length} registro(s)`;
+
+            if (!recordList || recordList.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="${displayColumns.length}" class="text-muted text-center">Nenhum registro encontrado</td></tr>`;
+                return;
+            }
+
+            recordList.forEach(record => {
+                const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+
+                // Renderiza células para cada coluna
+                let cellsHtml = '';
+                displayColumns.forEach(col => {
+                    const value = record.data[col] || '';
+                    cellsHtml += `<td>${escapeHtml(value)}</td>`;
+                });
+                row.innerHTML = cellsHtml;
+
+                // Ao clicar na linha, seleciona o registro
+                row.addEventListener('click', () => {
+                    // 1. Preenche o campo de lookup com a chave (primeira coluna)
+                    fieldElement.value = record.key;
+
+                    // 2. Preenche o campo de descrição automático (TDBLookNume behavior)
+                    const descId = fieldElement.dataset.lookupDescId;
+                    if (descId) {
+                        const descField = document.getElementById(descId);
+                        if (descField) {
+                            // Usa a segunda coluna como descrição (record.value)
+                            descField.value = record.value || '';
+                        }
+                    }
+
+                    // 3. Armazena TODOS os dados no cache para campos IE
+                    const lookupFieldName = fieldElement.dataset.sagNomecamp || fieldElement.name;
+                    setLookupData(lookupFieldName, record.data);
+
+                    // 4. Dispara eventos change e blur para processar OnExit
+                    fieldElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    fieldElement.dispatchEvent(new Event('blur', { bubbles: true }));
+
+                    // 5. Fecha o modal
+                    bsModal.hide();
+                });
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Renderiza registros iniciais
+        renderRecords(records);
+
+        // Filtro em tempo real
+        let filterTimeout = null;
+        filterInput.addEventListener('input', () => {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(async () => {
+                const filter = filterInput.value.trim().toLowerCase();
+                if (filter.length === 0) {
+                    renderRecords(records);
+                    return;
+                }
+
+                // Filtra por qualquer coluna exibida
+                const filtered = records.filter(record =>
+                    displayColumns.some(col => {
+                        const value = record.data[col] || '';
+                        return value.toLowerCase().includes(filter);
+                    })
+                );
+                renderRecords(filtered);
+            }, 300);
+        });
+
+        // Limpa modal ao fechar
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.remove();
+        });
+
+        // Mostra o modal
+        bsModal.show();
+        setTimeout(() => filterInput.focus(), 300);
+    }
+
+    /**
+     * Escapa HTML para prevenir XSS.
+     */
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // ============================================
+    // FIELD EXIT - Disparo Manual de OnExit
+    // ============================================
+
+    /**
+     * Dispara o evento OnExit de um campo manualmente.
+     * Usado quando o blur/change é chamado programaticamente.
+     * Suporta campos do form principal E campos de movimento.
+     * @param {string|number} codiCamp - ID do campo (CodiCamp)
+     * @param {string} value - Valor atual do campo
+     * @param {number} movementTableId - (Opcional) ID da tabela de movimento
+     */
+    async function onFieldExit(codiCamp, value, movementTableId = null) {
+        // Primeiro tenta buscar em eventos do form principal
+        let eventData = fieldEvents[codiCamp];
+
+        // Se não encontrou e há contexto de movimento ativo, busca em eventos de movimento
+        if (!eventData) {
+            const mvtTableId = movementTableId || activeMovementContext?.movementTableId;
+            if (mvtTableId && movementFieldEvents[mvtTableId]) {
+                eventData = movementFieldEvents[mvtTableId][codiCamp];
+            }
+        }
+
+        if (!eventData || !eventData.onExitInstructions) {
+            console.log('[SagEvents] Campo', codiCamp, 'sem eventos OnExit');
+            return;
+        }
+
+        const fieldElement = document.querySelector(`[data-sag-codicamp="${codiCamp}"]`);
+        const fieldName = eventData.nomeCamp || fieldElement?.dataset?.sagNomecamp || codiCamp;
+
+        console.log('[SagEvents] onFieldExit manual:', fieldName, '=', value);
+
+        // Coleta dados do form principal
+        const formData = collectFormData();
+
+        // Coleta dados do modal de movimento se estiver aberto
+        const movementFormData = {};
+        const movementForm = document.getElementById('movementForm');
+        if (movementForm) {
+            movementForm.querySelectorAll('[data-sag-nomecamp]').forEach(el => {
+                const name = el.dataset.sagNomecamp;
+                if (el.type === 'checkbox') {
+                    movementFormData[name] = el.checked ? '1' : '0';
+                } else {
+                    movementFormData[name] = el.value || '';
+                }
+            });
+            // Também pega campos sem data-sag-nomecamp mas com name
+            movementForm.querySelectorAll('[name]').forEach(el => {
+                const name = el.name;
+                if (!movementFormData[name]) {
+                    if (el.type === 'checkbox') {
+                        movementFormData[name] = el.checked ? '1' : '0';
+                    } else {
+                        movementFormData[name] = el.value || '';
+                    }
+                }
+            });
+        }
+
+        // Determina se estamos em contexto de movimento
+        const isMovementContext = !!movementTableId || !!activeMovementContext?.movementTableId;
+
+        // Atualiza o PlsagInterpreter com dados de movimento
+        if (isMovementContext && typeof PlsagInterpreter !== 'undefined') {
+            PlsagInterpreter.setMovementData(
+                movementFormData,
+                movementTableId || activeMovementContext?.movementTableId,
+                activeMovementContext?.recordId
+            );
+        }
+
+        // Executa as instruções PLSAG
+        if (eventData.onExitInstructions.trim() && typeof PlsagInterpreter !== 'undefined') {
+            try {
+                const codiTabe = movementTableId || activeMovementContext?.movementTableId || formEvents?.codiTabe;
+
+                // Combina dados: header + movimento
+                const combinedData = { ...formData, ...movementFormData };
+
+                const result = await PlsagInterpreter.execute(eventData.onExitInstructions, {
+                    type: 'field',
+                    eventType: 'OnExit',
+                    fieldName: fieldName,
+                    codiCamp: codiCamp,
+                    fieldValue: value,
+                    codiTabe: codiTabe,
+                    formData: combinedData,
+                    isMovement: isMovementContext
+                });
+
+                console.log('[SagEvents] OnExit executado:', result);
+            } catch (error) {
+                console.error('[SagEvents] Erro OnExit:', error);
+            }
+        }
+    }
+
+    // ============================================
     // API publica
+    // ============================================
+
     /**
      * Reexecuta eventos de campo após carregar registro para edição.
      * Deve ser chamado após fillForm() para aplicar regras de visibilidade/habilitação.
@@ -666,6 +1429,79 @@ const SagEvents = (function () {
         console.log('[SagEvents] Eventos pós-carregamento concluídos');
     }
 
+    // ============================================
+    // LOOKUP DESCRIPTIONS - Preenche descrições ao carregar registro
+    // Similar ao TDBLookNume que busca descrição automaticamente
+    // ============================================
+
+    /**
+     * Preenche as descrições de todos os campos lookup que têm valor.
+     * Chamado após carregar um registro para edição.
+     * @param {HTMLElement} container - Container onde buscar os campos (default: document)
+     */
+    async function populateLookupDescriptions(container = document) {
+        // Encontra todos os campos lookup com valor e campo de descrição
+        const lookupInputs = container.querySelectorAll('.lookup-code-input[data-lookup-desc-id][data-lookup-sql]');
+
+        for (const input of lookupInputs) {
+            const value = input.value?.trim();
+            if (!value) continue;
+
+            const descId = input.dataset.lookupDescId;
+            const sql = input.dataset.lookupSql;
+
+            if (!descId || !sql) continue;
+
+            const descField = document.getElementById(descId);
+            if (!descField) continue;
+
+            try {
+                // Busca a descrição via API
+                const response = await fetch('/Form/ExecuteLookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sql: sql, filter: value })
+                });
+
+                if (!response.ok) continue;
+
+                const data = await response.json();
+                if (!data.success || !data.records || data.records.length === 0) continue;
+
+                // Procura o registro com key correspondente
+                const record = data.records.find(r =>
+                    r.key === value || r.key === parseInt(value) || String(r.key) === value
+                );
+
+                if (record) {
+                    descField.value = record.value || '';
+
+                    // Também armazena no cache para campos IE
+                    const fieldName = input.dataset.sagNomecamp || input.name;
+                    if (fieldName && record.data) {
+                        setLookupData(fieldName, record.data);
+                    }
+
+                    console.log(`[SagEvents] Descrição carregada para ${fieldName}: ${record.value}`);
+                }
+            } catch (error) {
+                console.warn('[SagEvents] Erro ao buscar descrição lookup:', error);
+            }
+        }
+    }
+
+    /**
+     * Limpa descrições de lookups.
+     * Chamado ao limpar formulário ou iniciar novo registro.
+     * @param {HTMLElement} container - Container onde buscar os campos (default: document)
+     */
+    function clearLookupDescriptions(container = document) {
+        const descFields = container.querySelectorAll('.lookup-desc-field');
+        descFields.forEach(field => {
+            field.value = '';
+        });
+    }
+
     return {
         init,
         beforeSave,
@@ -677,9 +1513,30 @@ const SagEvents = (function () {
         getFieldEvents,
         bindField,
         bindAllFields,
+        bindLookupButtons,
         collectFormData,
         execFieldEventsOnShow,
-        onRecordLoaded
+        onRecordLoaded,
+        // Lookup API
+        openLookup,
+        setLookupData,
+        getLookupData,
+        clearLookupCache,
+        populateLookupDescriptions,
+        clearLookupDescriptions,
+        // Field Exit API
+        onFieldExit,
+        // Movement Events API
+        loadMovementEvents,
+        loadMovementFieldEvents,
+        getMovementFieldEvents,
+        triggerMovementEvent,
+        beforeMovementOperation,
+        afterMovementOperation,
+        setActiveMovementContext,
+        getActiveMovementContext,
+        clearMovementContext,
+        getMovementEvents
     };
 })();
 

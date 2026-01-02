@@ -386,17 +386,27 @@ class ConsultaGrid {
     }
 
     // CRUD Operations
-    incluir() {
-        // Limpa formulario
-        const form = document.getElementById('dynamicForm');
-        if (form) form.reset();
+    async incluir() {
+        // Usa Saga Pattern: cria registro vazio no banco imediatamente
+        // Isso permite que movimentos sejam adicionados antes do save final
+        if (typeof startNewRecord === 'function') {
+            console.log('[ConsultaGrid] Iniciando novo registro via Saga Pattern');
+            await startNewRecord();
+        } else {
+            // Fallback para comportamento antigo (sem Saga)
+            console.warn('[ConsultaGrid] startNewRecord não disponível, usando fallback');
 
-        // Limpa ID de edicao
-        const editingId = document.getElementById('editingRecordId');
-        if (editingId) editingId.value = '';
+            // Limpa formulario
+            const form = document.getElementById('dynamicForm');
+            if (form) form.reset();
 
-        // Ativa tab de dados
-        document.getElementById('tab-dados-tab')?.click();
+            // Limpa ID de edicao
+            const editingId = document.getElementById('editingRecordId');
+            if (editingId) editingId.value = '';
+
+            // Ativa tab de dados
+            document.getElementById('tab-dados-tab')?.click();
+        }
     }
 
     async alterar() {
@@ -416,6 +426,18 @@ class ConsultaGrid {
             // Define ID de edicao
             const editingId = document.getElementById('editingRecordId');
             if (editingId) editingId.value = this.selectedId;
+
+            // Atualiza formState para refletir modo de edição (não é novo registro)
+            if (window.formState) {
+                window.formState.recordId = this.selectedId;
+                window.formState.isNewRecord = false;
+                window.formState.isDirty = false;
+            }
+
+            // Sincroniza MovementManager com o registro sendo editado
+            if (window.MovementManager) {
+                MovementManager.syncWithHeader('load', { recordId: this.selectedId });
+            }
 
             // Ativa tab de dados
             document.getElementById('tab-dados-tab')?.click();

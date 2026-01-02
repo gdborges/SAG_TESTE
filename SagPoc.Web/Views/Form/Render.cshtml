@@ -3,6 +3,11 @@
 @{
     ViewData["Title"] = Model.Table?.NomeTabe ?? $"Formulário {Model.Form.TableId}";
     var hasConsultas = Model.HasConsultas;
+
+    // Movimentos via SISTTABE (novo sistema)
+    var hasMovementTables = Model.Form.HasMovementTables;
+    var tabMovements = Model.Form.TabMovements.ToList();
+    var inlineMovements = Model.Form.InlineMovements.ToList();
 }
 
 <link rel="stylesheet" href="~/css/consulta-grid.css" />
@@ -59,7 +64,7 @@
                     </button>
                 </li>
             }
-            @* Abas de Movimento (GuiaCamp >= 10) *@
+            @* Abas de Movimento (GuiaCamp >= 10) - sistema antigo *@
             @if (Model.Form.HasMovements)
             {
                 @foreach (var movementGroup in Model.Form.MovementsByType)
@@ -72,6 +77,22 @@
                                 data-bs-toggle="tab" data-bs-target="#@movementTabId"
                                 type="button" role="tab" aria-controls="@movementTabId" aria-selected="false">
                             @movementName
+                        </button>
+                    </li>
+                }
+            }
+
+            @* Abas de Movimento via SISTTABE (SERITABE <= 50) - sistema novo *@
+            @if (tabMovements.Any())
+            {
+                @foreach (var movement in tabMovements)
+                {
+                    var movementTabId = $"tab-movement-{movement.CodiTabe}";
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="@(movementTabId)-tab"
+                                data-bs-toggle="tab" data-bs-target="#@movementTabId"
+                                type="button" role="tab" aria-controls="@movementTabId" aria-selected="false">
+                            <i class="bi bi-list-ul me-1"></i>@movement.GetCleanTabName()
                         </button>
                     </li>
                 }
@@ -110,7 +131,7 @@
                 </div>
             }
 
-            @* Conteudo das Abas de Movimento *@
+            @* Conteudo das Abas de Movimento (GuiaCamp >= 10) - sistema antigo *@
             @if (Model.Form.HasMovements)
             {
                 @foreach (var movementGroup in Model.Form.MovementsByType)
@@ -123,7 +144,35 @@
                     </div>
                 }
             }
+
+            @* Conteudo das Abas de Movimento via SISTTABE (SERITABE <= 50) - sistema novo *@
+            @if (tabMovements.Any())
+            {
+                @foreach (var movement in tabMovements)
+                {
+                    var movementTabId = $"tab-movement-{movement.CodiTabe}";
+                    <div class="tab-pane fade" id="@movementTabId" role="tabpanel" aria-labelledby="@(movementTabId)-tab">
+                        <div class="p-3">
+                            @await Html.PartialAsync("_MovementSection", movement)
+                        </div>
+                    </div>
+                }
+            }
         </div>
+
+        @* Movimentos inline (SERITABE > 50) - aparecem no próprio form *@
+        @if (inlineMovements.Any())
+        {
+            <div class="inline-movements-container mt-4" id="inlineMovementsContainer">
+                <hr class="my-3" />
+                @foreach (var movement in inlineMovements)
+                {
+                    <div class="mb-4">
+                        @await Html.PartialAsync("_MovementSection", movement)
+                    </div>
+                }
+            </div>
+        }
     }
     else
     {
@@ -192,9 +241,19 @@
     }
 </div>
 
+@* Modal de movimento (renderizado uma vez, fora do container) *@
+@if (hasMovementTables)
+{
+    @await Html.PartialAsync("_MovementModal")
+}
+
 @section Scripts {
     <script src="~/js/consulta-grid.js"></script>
     <script src="~/js/sag-events.js"></script>
+    @if (hasMovementTables)
+    {
+        <script src="~/js/movement-manager.js"></script>
+    }
     <script>
         // Inicializa sistema de eventos PLSAG
         (function() {
@@ -212,8 +271,369 @@
             }
         })();
     </script>
+    @if (hasMovementTables)
+    {
+        <script>
+            // Inicializa sistema de movimentos
+            (function() {
+                var parentTableId = @Model.Form.TableId;
+                var parentRecordId = @(Model.EditingRecordId?.ToString() ?? "null");
+                var movementMetadata = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                    Model.Form.MovementTables.Select(m => new {
+                        m.CodiTabe,
+                        m.NomeTabe,
+                        m.GravTabe,
+                        m.SiglTabe,
+                        m.SeriTabe,
+                        m.IsInline,
+                        m.PkColumnName,
+                        TabName = m.GetCleanTabName(),
+                        Columns = m.GetGridColumns()
+                    }),
+                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }
+                ));
+
+                // Inicializa após o DOM estar pronto
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if (window.MovementManager) {
+                            MovementManager.init(parentTableId, parentRecordId, movementMetadata);
+                        }
+                    });
+                } else {
+                    if (window.MovementManager) {
+                        MovementManager.init(parentTableId, parentRecordId, movementMetadata);
+                    }
+                }
+            })();
+        </script>
+    }
     <script>
-        // Validacao Bootstrap
+        // ========================================
+        // Estado do formulário (Saga Pattern)
+        // ========================================
+        var formState = {
+            tableId: @Model.Form.TableId,
+            recordId: @(Model.EditingRecordId?.ToString() ?? "null"),
+            isNewRecord: false,  // true quando usuário clicou "Novo" e ainda não salvou
+            isDirty: false
+        };
+
+        // Expor globalmente para acesso pelos outros scripts
+        window.formState = formState;
+
+        // ========================================
+        // Funções do Saga Pattern
+        // ========================================
+
+        /**
+         * Inicia modo de inclusão: cria registro vazio no banco e habilita edição.
+         * Chamado pelo botão "Novo" na tab Consulta.
+         */
+        async function startNewRecord() {
+            try {
+                console.log('[Saga] Iniciando novo registro...');
+
+                // 1. Cria registro vazio no servidor
+                const response = await fetch('/Form/CreateRecord?tableId=' + formState.tableId, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert('Erro ao criar registro: ' + (result.message || 'Erro desconhecido'));
+                    return false;
+                }
+
+                console.log('[Saga] Registro criado com ID:', result.recordId);
+
+                // 2. Atualiza estado do formulário
+                formState.recordId = result.recordId;
+                formState.isNewRecord = true;
+                formState.isDirty = false;
+
+                // 3. Atualiza campo hidden
+                var hiddenInput = document.getElementById('editingRecordId');
+                if (hiddenInput) {
+                    hiddenInput.value = result.recordId;
+                }
+
+                // 4. Habilita movimentos imediatamente (agora têm parentRecordId válido)
+                if (window.MovementManager) {
+                    MovementManager.syncWithHeader('load', { recordId: result.recordId });
+                }
+
+                // 5. Muda para aba Dados
+                var dadosTab = document.getElementById('tab-dados-tab');
+                if (dadosTab) {
+                    dadosTab.click();
+                }
+
+                // 6. Habilita modo de edição na UI
+                enableEditMode();
+
+                // 7. Re-executa eventos de campo OnShow para modo INSERT
+                // Os eventos do form já foram executados no init()
+                if (window.SagEvents && typeof SagEvents.execFieldEventsOnShow === 'function') {
+                    await SagEvents.execFieldEventsOnShow();
+                }
+
+                // 8. Carrega os dados do registro criado (que já tem defaults aplicados)
+                // O CreateEmptyRecordAsync aplica defaults como ATIVCONT=1 baseado em InicCamp
+                await loadRecordData(result.recordId);
+
+                // 9. Preenche o campo PK com o ID do registro criado
+                // IMPORTANTE: Isso é necessário para que templates PLSAG como {DG-CODICONT}
+                // funcionem corretamente nas validações de gravação
+                var pkFieldName = hiddenInput?.getAttribute('data-pk-field');
+                if (pkFieldName && result.recordId) {
+                    var pkField = document.querySelector('[name="' + pkFieldName + '"]') ||
+                                  document.querySelector('[data-sag-nomecamp="' + pkFieldName + '"]') ||
+                                  document.querySelector('[data-sag-nomecamp="' + pkFieldName.toUpperCase() + '"]');
+                    if (pkField) {
+                        pkField.value = result.recordId;
+                        console.log('[Saga] Campo PK preenchido:', pkFieldName, '=', result.recordId);
+                    } else {
+                        // Se não encontrou campo visual, cria hidden para garantir
+                        // que {DG-<pkField>} funcione nas validações
+                        var hiddenPk = document.createElement('input');
+                        hiddenPk.type = 'hidden';
+                        hiddenPk.name = pkFieldName;
+                        hiddenPk.value = result.recordId;
+                        hiddenPk.setAttribute('data-sag-nomecamp', pkFieldName);
+                        document.getElementById('dynamicForm')?.appendChild(hiddenPk);
+                        console.log('[Saga] Campo PK hidden criado:', pkFieldName, '=', result.recordId);
+                    }
+                }
+
+                return true;
+            } catch (error) {
+                console.error('[Saga] Erro ao criar registro:', error);
+                alert('Erro ao iniciar inclusão: ' + error.message);
+                return false;
+            }
+        }
+
+        /**
+         * Cancela a inclusão em andamento: exclui registro e movimentos.
+         */
+        async function cancelNewRecord() {
+            if (!formState.isNewRecord || !formState.recordId) {
+                console.log('[Saga] Nada para cancelar');
+                return;
+            }
+
+            if (!confirm('Deseja cancelar a inclusão? Todos os dados serão perdidos.')) {
+                return;
+            }
+
+            try {
+                console.log('[Saga] Cancelando inclusão do registro:', formState.recordId);
+
+                // Exclui registro e movimentos em cascata
+                const response = await fetch('/Form/CancelRecord/' + formState.tableId + '/' + formState.recordId, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+
+                if (!result.success) {
+                    console.warn('[Saga] Aviso ao cancelar:', result.message);
+                }
+
+                // Limpa estado
+                formState.recordId = null;
+                formState.isNewRecord = false;
+                formState.isDirty = false;
+
+                var hiddenInput = document.getElementById('editingRecordId');
+                if (hiddenInput) {
+                    hiddenInput.value = '';
+                }
+
+                // Limpa movimentos
+                if (window.MovementManager) {
+                    MovementManager.syncWithHeader('clear', {});
+                }
+
+                // Desabilita modo de edição
+                disableEditMode();
+
+                // Volta para tab Consulta
+                var consultaTab = document.getElementById('tab-consulta-tab');
+                if (consultaTab) {
+                    consultaTab.click();
+                }
+
+                // Recarrega grid
+                if (window.consultaGrid) {
+                    window.consultaGrid.loadData();
+                }
+
+                console.log('[Saga] Inclusão cancelada com sucesso');
+            } catch (error) {
+                console.error('[Saga] Erro ao cancelar:', error);
+                alert('Erro ao cancelar inclusão: ' + error.message);
+            }
+        }
+
+        /**
+         * Carrega os dados de um registro e preenche o formulário.
+         * Usado após criar registro vazio para aplicar defaults do backend.
+         */
+        async function loadRecordData(recordId) {
+            try {
+                const response = await fetch(`/Form/GetRecord?tableId=${formState.tableId}&recordId=${recordId}`);
+                if (!response.ok) {
+                    console.warn('[Saga] Registro não encontrado:', recordId);
+                    return;
+                }
+
+                const record = await response.json();
+                const form = document.getElementById('dynamicForm');
+                if (!form) return;
+
+                console.log('[Saga] Carregando dados do registro:', record);
+
+                for (const [key, value] of Object.entries(record)) {
+                    const input = form.querySelector(`[name="${key}"], [name="${key.toUpperCase()}"], [name="${key.toLowerCase()}"]`);
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = value === 1 || value === true || value === 'S';
+                            console.log(`[Saga] Checkbox ${key} = ${input.checked} (valor: ${value})`);
+                        } else if (input.tagName === 'SELECT') {
+                            const strValue = String(value ?? '');
+                            for (const option of input.options) {
+                                if (option.value === strValue || option.value.toUpperCase() === strValue.toUpperCase()) {
+                                    input.value = option.value;
+                                    break;
+                                }
+                            }
+                        } else {
+                            input.value = value ?? '';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[Saga] Erro ao carregar dados do registro:', error);
+            }
+        }
+
+        /**
+         * Habilita modo de edição na UI.
+         */
+        function enableEditMode() {
+            // Desabilita tab Consulta durante edição (opcional - pode remover se preferir)
+            var consultaTab = document.getElementById('tab-consulta-tab');
+            if (consultaTab) {
+                consultaTab.classList.add('text-muted');
+            }
+
+            // Mostra botão Cancelar
+            var btnCancelar = document.getElementById('btnCancelar');
+            if (btnCancelar) {
+                btnCancelar.style.display = 'inline-block';
+            }
+
+            // Adiciona classe ao form para indicar modo edição
+            var form = document.getElementById('dynamicForm');
+            if (form) {
+                form.classList.add('editing-mode');
+            }
+        }
+
+        /**
+         * Desabilita modo de edição na UI.
+         */
+        function disableEditMode() {
+            var consultaTab = document.getElementById('tab-consulta-tab');
+            if (consultaTab) {
+                consultaTab.classList.remove('text-muted');
+            }
+
+            var btnCancelar = document.getElementById('btnCancelar');
+            if (btnCancelar) {
+                btnCancelar.style.display = 'none';
+            }
+
+            var form = document.getElementById('dynamicForm');
+            if (form) {
+                form.classList.remove('editing-mode');
+            }
+        }
+
+        /**
+         * Limpa os campos do formulário para nova inclusão.
+         */
+        function clearFormFields() {
+            var form = document.getElementById('dynamicForm');
+            if (!form) return;
+
+            // Obtém o nome do campo PK para preservá-lo
+            var pkFieldName = document.getElementById('editingRecordId')?.getAttribute('data-pk-field')?.toUpperCase();
+
+            // Limpa inputs de texto e number (exceto PK)
+            form.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(function(input) {
+                if (input.name && !input.name.startsWith('_')) {
+                    // Preserva o campo PK
+                    var inputName = (input.name || '').toUpperCase();
+                    var sagNomeCamp = (input.getAttribute('data-sag-nomecamp') || '').toUpperCase();
+                    if (pkFieldName && (inputName === pkFieldName || sagNomeCamp === pkFieldName)) {
+                        return; // Não limpa o campo PK
+                    }
+                    input.value = '';
+                }
+            });
+
+            // Reseta selects para primeira opção
+            form.querySelectorAll('select').forEach(function(select) {
+                if (select.name && !select.name.startsWith('_')) {
+                    select.selectedIndex = 0;
+                }
+            });
+
+            // Desmarca checkboxes
+            form.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = false;
+            });
+
+            // Limpa campos de descrição de lookup (campos IE que mostram texto do lookup)
+            form.querySelectorAll('.lookup-desc-field').forEach(function(field) {
+                field.value = '';
+            });
+
+            // Limpa cache de lookup do SagEvents
+            if (window.SagEvents) {
+                if (typeof SagEvents.clearLookupCache === 'function') {
+                    SagEvents.clearLookupCache();
+                }
+                if (typeof SagEvents.clearLookupDescriptions === 'function') {
+                    SagEvents.clearLookupDescriptions(form);
+                }
+            }
+        }
+
+        /**
+         * Intercepta fechamento da página para limpar registro órfão.
+         */
+        window.addEventListener('beforeunload', function(e) {
+            if (formState.isNewRecord && formState.recordId) {
+                // Tenta excluir registro órfão (best effort com sendBeacon)
+                navigator.sendBeacon('/Form/CancelRecord/' + formState.tableId + '/' + formState.recordId);
+
+                // Mostra confirmação ao usuário
+                e.preventDefault();
+                e.returnValue = 'Você tem uma inclusão em andamento. Deseja sair?';
+                return e.returnValue;
+            }
+        });
+
+        // Expor funções globalmente
+        window.startNewRecord = startNewRecord;
+        window.cancelNewRecord = cancelNewRecord;
+
+        // ========================================
+        // Validação Bootstrap
+        // ========================================
         (function () {
             'use strict'
             var forms = document.querySelectorAll('.needs-validation')
@@ -231,7 +651,9 @@
             })
         })()
 
-        // Funcao para salvar formulario
+        // ========================================
+        // Função para salvar formulário
+        // ========================================
         async function saveForm(form) {
             // Dispara evento LancTabe (antes de salvar)
             // beforeSave() é async e retorna false se PA ou ME bloquear
@@ -249,15 +671,15 @@
                 fields[key] = value;
             });
 
-            // Garantir que checkboxes nao marcados enviem valor 0
+            // Garantir que checkboxes não marcados enviem valor 0
             form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 if (!cb.checked && cb.name) {
                     fields[cb.name] = '0';
                 }
             });
 
-            const tableId = @Model.Form.TableId;
-            const recordId = document.getElementById('editingRecordId')?.value || null;
+            const tableId = formState.tableId;
+            const recordId = formState.recordId || document.getElementById('editingRecordId')?.value || null;
 
             try {
                 const response = await fetch('/Form/SaveRecord', {
@@ -276,15 +698,37 @@
                     if (window.SagEvents) {
                         SagEvents.afterSave();   // EGraTabe
                         SagEvents.refreshGrid(); // AtuaGrid
-                        SagEvents.onClose();     // AposTabe
                     }
 
-                    alert(result.message);
-                    // Volta para tab Consulta e recarrega
+                    // Atualiza estado: não é mais "novo" após salvar
+                    formState.isNewRecord = false;
+                    formState.isDirty = false;
+
+                    // Atualiza recordId caso seja uma inclusão
+                    if (result.recordId) {
+                        formState.recordId = result.recordId;
+                        var hiddenInput = document.getElementById('editingRecordId');
+                        if (hiddenInput) {
+                            hiddenInput.value = result.recordId;
+                        }
+                    }
+
+                    // Sincroniza movimentos com novo recordId
+                    if (window.MovementManager && result.recordId) {
+                        MovementManager.syncWithHeader('save', { recordId: result.recordId });
+                    }
+
+                    alert(result.message || 'Registro salvo com sucesso!');
+
+                    // NÃO volta para Consulta automaticamente
+                    // Usuário pode continuar editando ou adicionando movimentos
+                    // Recarrega grid em background
                     if (window.consultaGrid) {
-                        document.getElementById('tab-consulta-tab')?.click();
                         window.consultaGrid.loadData();
                     }
+
+                    // Esconde botão Cancelar após salvar com sucesso
+                    disableEditMode();
                 } else {
                     alert('Erro: ' + result.message);
                 }

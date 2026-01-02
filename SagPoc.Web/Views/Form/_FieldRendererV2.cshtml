@@ -296,9 +296,12 @@
 
     case ComponentType.LookupModal:
     case ComponentType.LookupModalInfo:
-        // L, IL - Lookup modal (botão de pesquisa ao lado)
+        // L, IL - Lookup modal (botão de pesquisa ao lado) + campo descrição automático
+        // Similar ao TDBLookNume do Delphi que mostra descrição ao lado do código
         var isInfoModal = componentType == ComponentType.LookupModalInfo;
-        <div class="field-wrapper @readonlyClass @(isInfoModal ? "field-info" : "")" style="@wrapperStyle">
+        var lookupDescId = $"{fieldId}_desc";
+        var hasLookupSql = !string.IsNullOrEmpty(field.SqlCamp);
+        <div class="field-wrapper field-lookup-container @readonlyClass @(isInfoModal ? "field-info" : "")" style="@wrapperStyle">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -309,25 +312,39 @@
                     }
                 </label>
             }
-            <div class="input-group">
+            <div class="lookup-inputs-row">
+                <div class="input-group lookup-code-group">
+                    <input type="text"
+                           class="form-control @(isInfoModal ? "form-control-info" : "") lookup-code-input"
+                           id="@fieldId"
+                           name="@fieldName"
+                           title="@hint"
+                           placeholder="@hint"
+                           @(isRequired ? "required" : "")
+                           @(isDisabled || isInfoModal ? "readonly" : "")
+                           data-sag-codicamp="@sagCodicamp"
+                           data-sag-nomecamp="@sagNomecamp"
+                           data-sag-namecamp="@sagNamecamp"
+                           data-sag-comptype="@sagComptype"
+                           data-lookup-desc-id="@lookupDescId"
+                           @if (hasLookupSql) {
+                               <text>data-lookup-sql="@field.SqlCamp"</text>
+                           } />
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-lookup"
+                            title="Pesquisar"
+                            @(isDisabled ? "disabled" : "")>
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                @* Campo de descrição automática - similar ao TDBLookNume do Delphi *@
                 <input type="text"
-                       class="form-control @(isInfoModal ? "form-control-info" : "")"
-                       id="@fieldId"
-                       name="@fieldName"
-                       title="@hint"
-                       placeholder="@hint"
-                       @(isRequired ? "required" : "")
-                       @(isDisabled || isInfoModal ? "readonly" : "")
-                       data-sag-codicamp="@sagCodicamp"
-                       data-sag-nomecamp="@sagNomecamp"
-                   data-sag-namecamp="@sagNamecamp"
-                       data-sag-comptype="@sagComptype" />
-                <button type="button"
-                        class="btn btn-outline-secondary btn-lookup"
-                        title="Pesquisar"
-                        @(isDisabled ? "disabled" : "")>
-                    <i class="bi bi-search"></i>
-                </button>
+                       class="form-control lookup-desc-field"
+                       id="@lookupDescId"
+                       readonly
+                       tabindex="-1"
+                       placeholder="(descrição)"
+                       data-lookup-for="@fieldId" />
             </div>
         </div>
         break;
@@ -676,10 +693,16 @@
 
     // ============================================================
     // TIPOS INFO (readonly, dados de outra tabela)
+    // Campos IE/IN/IM são vinculados a um lookup via VaGrCamp:
+    //   Linha 0 = coluna a exibir (ex: NOMEPROD)
+    //   Linha 1 = campo lookup (ex: CODIPROD)
     // ============================================================
 
     case ComponentType.InfoTextInput:
         // IE - Info texto readonly
+        var ieTextVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieTextSourceColumn = ieTextVaGrLines.Length >= 1 ? ieTextVaGrLines[0].Trim().ToUpper() : "";
+        var ieTextLinkedLookup = ieTextVaGrLines.Length >= 2 ? ieTextVaGrLines[1].Trim().ToUpper() : "";
         <div class="field-wrapper field-info field-readonly" style="@wrapperStyle">
             @if (hasLabel)
             {
@@ -697,12 +720,21 @@
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
                    data-sag-namecamp="@sagNamecamp"
-                   data-sag-comptype="@sagComptype" />
+                   data-sag-comptype="@sagComptype"
+                   @if (!string.IsNullOrEmpty(ieTextLinkedLookup)) {
+                       <text>data-sag-linked-lookup="@ieTextLinkedLookup"</text>
+                   }
+                   @if (!string.IsNullOrEmpty(ieTextSourceColumn)) {
+                       <text>data-sag-source-column="@ieTextSourceColumn"</text>
+                   } />
         </div>
         break;
 
     case ComponentType.InfoNumberInput:
         // IN - Info número readonly
+        var ieNumVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieNumSourceColumn = ieNumVaGrLines.Length >= 1 ? ieNumVaGrLines[0].Trim().ToUpper() : "";
+        var ieNumLinkedLookup = ieNumVaGrLines.Length >= 2 ? ieNumVaGrLines[1].Trim().ToUpper() : "";
         <div class="field-wrapper field-info field-readonly" style="@wrapperStyle">
             @if (hasLabel)
             {
@@ -720,12 +752,21 @@
                    data-sag-codicamp="@sagCodicamp"
                    data-sag-nomecamp="@sagNomecamp"
                    data-sag-namecamp="@sagNamecamp"
-                   data-sag-comptype="@sagComptype" />
+                   data-sag-comptype="@sagComptype"
+                   @if (!string.IsNullOrEmpty(ieNumLinkedLookup)) {
+                       <text>data-sag-linked-lookup="@ieNumLinkedLookup"</text>
+                   }
+                   @if (!string.IsNullOrEmpty(ieNumSourceColumn)) {
+                       <text>data-sag-source-column="@ieNumSourceColumn"</text>
+                   } />
         </div>
         break;
 
     case ComponentType.InfoTextArea:
         // IM - Info memo readonly
+        var ieMemoVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieMemoSourceColumn = ieMemoVaGrLines.Length >= 1 ? ieMemoVaGrLines[0].Trim().ToUpper() : "";
+        var ieMemoLinkedLookup = ieMemoVaGrLines.Length >= 2 ? ieMemoVaGrLines[1].Trim().ToUpper() : "";
         var infoMemoRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 3;
         <div class="field-wrapper field-wrapper-full field-info field-readonly mb-3">
             @if (hasLabel)
@@ -743,13 +784,22 @@
                       data-info="true"
                       data-sag-codicamp="@sagCodicamp"
                       data-sag-nomecamp="@sagNomecamp"
-                   data-sag-namecamp="@sagNamecamp"
-                      data-sag-comptype="@sagComptype"></textarea>
+                      data-sag-namecamp="@sagNamecamp"
+                      data-sag-comptype="@sagComptype"
+                      @if (!string.IsNullOrEmpty(ieMemoLinkedLookup)) {
+                          <text>data-sag-linked-lookup="@ieMemoLinkedLookup"</text>
+                      }
+                      @if (!string.IsNullOrEmpty(ieMemoSourceColumn)) {
+                          <text>data-sag-source-column="@ieMemoSourceColumn"</text>
+                      }></textarea>
         </div>
         break;
 
     case ComponentType.InfoRichEdit:
         // IR - Info RichEdit readonly
+        var ieRichVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieRichSourceColumn = ieRichVaGrLines.Length >= 1 ? ieRichVaGrLines[0].Trim().ToUpper() : "";
+        var ieRichLinkedLookup = ieRichVaGrLines.Length >= 2 ? ieRichVaGrLines[1].Trim().ToUpper() : "";
         var infoRichRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 5;
         <div class="field-wrapper field-wrapper-full field-info field-readonly mb-3">
             @if (hasLabel)
@@ -762,7 +812,17 @@
                  id="@fieldId"
                  style="min-height: @(infoRichRows * 25)px;"
                  data-info="true"
-                 data-rich="true">
+                 data-rich="true"
+                 data-sag-codicamp="@sagCodicamp"
+                 data-sag-nomecamp="@sagNomecamp"
+                 data-sag-namecamp="@sagNamecamp"
+                 data-sag-comptype="@sagComptype"
+                 @if (!string.IsNullOrEmpty(ieRichLinkedLookup)) {
+                     <text>data-sag-linked-lookup="@ieRichLinkedLookup"</text>
+                 }
+                 @if (!string.IsNullOrEmpty(ieRichSourceColumn)) {
+                     <text>data-sag-source-column="@ieRichSourceColumn"</text>
+                 }>
             </div>
         </div>
         break;

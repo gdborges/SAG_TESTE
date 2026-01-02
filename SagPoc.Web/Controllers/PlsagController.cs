@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Dapper;
 using System.Data;
 using System.Text.RegularExpressions;
+using SagPoc.Web.Services.Database;
 
 namespace SagPoc.Web.Controllers;
 
@@ -19,7 +19,7 @@ namespace SagPoc.Web.Controllers;
 [ApiController]
 public class PlsagController : ControllerBase
 {
-    private readonly string _connectionString;
+    private readonly IDbProvider _dbProvider;
     private readonly ILogger<PlsagController> _logger;
 
     // Lista de tabelas permitidas para operacoes de gravacao
@@ -36,16 +36,15 @@ public class PlsagController : ControllerBase
         "xp_", "sp_", "EXEC ", "EXECUTE ", "--", "/*", "*/"
     };
 
-    public PlsagController(IConfiguration configuration, ILogger<PlsagController> logger)
+    public PlsagController(IDbProvider dbProvider, ILogger<PlsagController> logger)
     {
-        _connectionString = configuration.GetConnectionString("SagDb")
-            ?? throw new InvalidOperationException("Connection string 'SagDb' not found.");
+        _dbProvider = dbProvider;
         _logger = logger;
     }
 
     private IDbConnection CreateConnection()
     {
-        return new SqlConnection(_connectionString);
+        return _dbProvider.CreateConnection();
     }
 
     #region Query Endpoints

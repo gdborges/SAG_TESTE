@@ -223,4 +223,97 @@ public class EventService : IEventService
             _ => false
         };
     }
+
+    /// <inheritdoc/>
+    public async Task<MovementEventData> GetMovementEventsAsync(int parentCodiTabe, int movementCodiTabe)
+    {
+        // Campos virtuais de evento de movimento seguem o padrão NomeCamp_CodiTabe
+        // Ex: AnteIAE_Movi_815, DepoIncl_815, etc.
+        var eventPatterns = new[]
+        {
+            $"AnteIAE_Movi_{movementCodiTabe}",
+            $"AnteIncl_{movementCodiTabe}",
+            $"AnteAlte_{movementCodiTabe}",
+            $"AnteExcl_{movementCodiTabe}",
+            $"DepoIAE_Movi_{movementCodiTabe}",
+            $"DepoIncl_{movementCodiTabe}",
+            $"DepoAlte_{movementCodiTabe}",
+            $"DepoExcl_{movementCodiTabe}",
+            $"AtuaGrid_{movementCodiTabe}",
+            $"ShowPai_Filh_{movementCodiTabe}"
+        };
+
+        // Constrói IN clause dinâmico
+        var inClause = string.Join(", ", eventPatterns.Select((_, i) => _dbProvider.FormatParameter($"Name{i}")));
+        var parameters = new DynamicParameters();
+        parameters.Add("CodiTabe", parentCodiTabe);
+        for (int i = 0; i < eventPatterns.Length; i++)
+        {
+            parameters.Add($"Name{i}", eventPatterns[i]);
+        }
+
+        var sql = $@"
+            SELECT
+                UPPER({_dbProvider.NullFunction("NOMECAMP", "''")}) as NomeCamp,
+                {_dbProvider.NullFunction("EXPRCAMP", "''")} as ExprCamp,
+                {_dbProvider.NullFunction("EPERCAMP", "''")} as EPerCamp
+            FROM SISTCAMP
+            WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}
+              AND UPPER(NOMECAMP) IN ({inClause})";
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            var fields = await connection.QueryAsync<dynamic>(sql, parameters);
+
+            var result = new MovementEventData
+            {
+                ParentCodiTabe = parentCodiTabe,
+                MovementCodiTabe = movementCodiTabe
+            };
+
+            foreach (var field in fields)
+            {
+                var fieldDict = (IDictionary<string, object>)field;
+                var nomeCamp = ((string)(fieldDict.ContainsKey("NomeCamp") ? fieldDict["NomeCamp"] : fieldDict["NOMECAMP"]))?.ToUpper()?.Trim() ?? "";
+                var exprCamp = (string)(fieldDict.ContainsKey("ExprCamp") ? fieldDict["ExprCamp"] : fieldDict["EXPRCAMP"]) ?? "";
+                var ePerCamp = (string)(fieldDict.ContainsKey("EPerCamp") ? fieldDict["EPerCamp"] : fieldDict["EPERCAMP"]) ?? "";
+
+                var instructions = MergeInstructions(exprCamp, ePerCamp);
+
+                if (nomeCamp == $"ANTEIAE_MOVI_{movementCodiTabe}")
+                    result.AnteIAEMoviInstructions = instructions;
+                else if (nomeCamp == $"ANTEINCL_{movementCodiTabe}")
+                    result.AnteInclInstructions = instructions;
+                else if (nomeCamp == $"ANTEALTE_{movementCodiTabe}")
+                    result.AnteAlteInstructions = instructions;
+                else if (nomeCamp == $"ANTEEXCL_{movementCodiTabe}")
+                    result.AnteExclInstructions = instructions;
+                else if (nomeCamp == $"DEPOIAE_MOVI_{movementCodiTabe}")
+                    result.DepoIAEMoviInstructions = instructions;
+                else if (nomeCamp == $"DEPOINCL_{movementCodiTabe}")
+                    result.DepoInclInstructions = instructions;
+                else if (nomeCamp == $"DEPOALTE_{movementCodiTabe}")
+                    result.DepoAlteInstructions = instructions;
+                else if (nomeCamp == $"DEPOEXCL_{movementCodiTabe}")
+                    result.DepoExclInstructions = instructions;
+                else if (nomeCamp == $"ATUAGRID_{movementCodiTabe}")
+                    result.AtuaGridInstructions = instructions;
+                else if (nomeCamp == $"SHOWPAI_FILH_{movementCodiTabe}")
+                    result.ShowPaiFilhInstructions = instructions;
+            }
+
+            _logger.LogInformation("Eventos do movimento {MovementCodiTabe} (pai {ParentCodiTabe}) carregados. HasEvents: {HasEvents}",
+                movementCodiTabe, parentCodiTabe, result.HasEvents);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao carregar eventos do movimento {MovementCodiTabe}", movementCodiTabe);
+            throw;
+        }
+    }
 }

@@ -199,7 +199,7 @@ public class FieldMetadata
             "FF" => ComponentType.ImageFixed,         // TImgLbl - Imagem fixa
 
             // === Campos especiais que devem ser ocultos ===
-            "DEPOSHOW" or "ATUAGRID" => ComponentType.Hidden,
+            "DEPOSHOW" or "ATUAGRID" or "ANTEREMO" => ComponentType.Hidden,
 
             _ => ComponentType.TextInput              // Fallback para input texto
         };

@@ -21,6 +21,9 @@ builder.Services.AddScoped<IConsultaService, ConsultaService>();
 // Register EventService for PLSAG events
 builder.Services.AddScoped<IEventService, EventService>();
 
+// Register MovementService for movement table CRUD operations
+builder.Services.AddScoped<IMovementService, MovementService>();
+
 var app = builder.Build();
 
 // Log do provider selecionado

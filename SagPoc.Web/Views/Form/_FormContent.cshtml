@@ -57,7 +57,16 @@
 
 <script>
     document.getElementById('btnCancelar')?.addEventListener('click', function() {
-        // Volta para a tab Consulta
+        // Verifica se estamos em modo de inclusão com Saga Pattern
+        if (window.formState && window.formState.isNewRecord && window.formState.recordId) {
+            // Chama cancelNewRecord que deleta o registro e movimentos em cascata
+            if (typeof cancelNewRecord === 'function') {
+                cancelNewRecord();
+                return;
+            }
+        }
+
+        // Comportamento padrão: volta para a tab Consulta
         document.getElementById('tab-consulta-tab')?.click();
     });
 </script>

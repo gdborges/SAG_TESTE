@@ -1,0 +1,31 @@
+@model SagPoc.Web.Models.MovementFormViewModel
+@using SagPoc.Web.Models
+
+@{
+    // Agrupa campos em linhas para renderização
+    var fieldRows = Model.GetFieldRows();
+}
+
+<div class="movement-form-fields">
+    @foreach (var rowFields in fieldRows)
+    {
+        var isSingleField = rowFields.Count == 1;
+        var rowClass = isSingleField ? "field-row field-row-single" : "field-row field-row-multi";
+
+        <div class="@rowClass">
+            @foreach (var field in rowFields)
+            {
+                // Obtém valor do registro se existir
+                var fieldValue = Model.GetFieldValue(field.NomeCamp);
+
+                @await Html.PartialAsync("_MovementFieldRenderer", new MovementFieldContext
+                {
+                    Field = field,
+                    Value = fieldValue,
+                    IsSingleInRow = isSingleField,
+                    IsEditMode = Model.IsEditMode
+                })
+            }
+        </div>
+    }
+</div>

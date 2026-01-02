@@ -25,6 +25,124 @@ public class ConsultaService : IConsultaService
     }
 
     /// <summary>
+    /// Busca campos com InicCamp=1 (campos que devem ter defaults aplicados).
+    /// Replica o comportamento do Delphi InicValoCampPers.
+    /// </summary>
+    private async Task<List<(string NomeCamp, string CompCamp, decimal? PadrCamp)>> GetFieldsWithDefaultsAsync(
+        IDbConnection connection, int codiTabe)
+    {
+        var sql = $@"
+            SELECT
+                NOMECAMP as NomeCamp,
+                {_dbProvider.NullFunction("COMPCAMP", "'E'")} as CompCamp,
+                PADRCAMP as PadrCamp
+            FROM SISTCAMP
+            WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}
+              AND {_dbProvider.NullFunction("INICCAMP", "0")} = 1";
+
+        var fields = await connection.QueryAsync<dynamic>(sql, new { CodiTabe = codiTabe });
+
+        // Oracle retorna nomes de coluna em UPPERCASE
+        return fields.Select(f =>
+        {
+            var dict = (IDictionary<string, object>)f;
+            var nomeCamp = dict.ContainsKey("NOMECAMP") ? dict["NOMECAMP"]?.ToString() : dict["NomeCamp"]?.ToString();
+            var compCamp = dict.ContainsKey("COMPCAMP") ? dict["COMPCAMP"]?.ToString() : dict["CompCamp"]?.ToString();
+            var padrCampObj = dict.ContainsKey("PADRCAMP") ? dict["PADRCAMP"] : dict["PadrCamp"];
+
+            decimal? padrCamp = null;
+            if (padrCampObj != null && padrCampObj != DBNull.Value)
+            {
+                padrCamp = Convert.ToDecimal(padrCampObj);
+            }
+
+            return (
+                NomeCamp: nomeCamp ?? "",
+                CompCamp: compCamp?.Trim() ?? "E",
+                PadrCamp: padrCamp
+            );
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Aplica valores default para campos com InicCamp=1 que não foram fornecidos.
+    /// Replica o comportamento do Delphi InicValoCampPers que aplica defaults
+    /// no DataSet ANTES do formulário aparecer para o usuário.
+    ///
+    /// Lógica por tipo de campo (CompCamp):
+    /// - 'S' (checkbox): PadrCamp != 0 ? 1 : 0 (SeInte no Delphi)
+    /// - Outros: PadrCamp diretamente
+    /// </summary>
+    private async Task ApplyFieldDefaultsAsync(
+        IDbConnection connection,
+        int tableId,
+        Dictionary<string, object?> fields,
+        HashSet<string> validColumns)
+    {
+        var fieldsWithDefaults = await GetFieldsWithDefaultsAsync(connection, tableId);
+
+        foreach (var (nomeCamp, compCamp, padrCamp) in fieldsWithDefaults)
+        {
+            // Verifica se campo é válido na tabela
+            if (!validColumns.Contains(nomeCamp.ToUpperInvariant()))
+                continue;
+
+            // Verifica se valor já foi fornecido pelo frontend
+            var existingKey = fields.Keys.FirstOrDefault(k =>
+                k.Equals(nomeCamp, StringComparison.OrdinalIgnoreCase));
+
+            if (existingKey != null)
+            {
+                var existingValue = ConvertJsonElementToValue(fields[existingKey]);
+                // Se já tem valor não-nulo/não-vazio, não sobrescreve
+                if (existingValue != null && existingValue.ToString() != "")
+                    continue;
+            }
+
+            // Aplica default baseado no tipo de campo
+            object? defaultValue = null;
+
+            if (compCamp == "S" || compCamp == "ES") // Checkbox
+            {
+                // Lógica Delphi: SeInte(PadrCamp = 0, 0, 1)
+                // Se PadrCamp = 0, valor = 0; senão valor = 1
+                defaultValue = (padrCamp == null || padrCamp == 0) ? 0 : 1;
+                _logger.LogInformation(
+                    "Aplicando default checkbox: {Field} = {Value} (PadrCamp={PadrCamp})",
+                    nomeCamp, defaultValue, padrCamp);
+            }
+            else if (compCamp == "D" || compCamp == "H" || compCamp == "DH")
+            {
+                // Campos de data/hora: não aplica PadrCamp numérico
+                // Delphi trata separadamente (geralmente usa data atual)
+                continue;
+            }
+            else if (compCamp == "M" || compCamp == "MEMO")
+            {
+                // Campos memo: não aplica default numérico
+                continue;
+            }
+            else if (padrCamp.HasValue && padrCamp.Value != 0)
+            {
+                // Para outros tipos numéricos, só aplica se PadrCamp != 0
+                defaultValue = padrCamp.Value;
+                _logger.LogInformation(
+                    "Aplicando default numérico: {Field} = {Value}",
+                    nomeCamp, defaultValue);
+            }
+
+            if (defaultValue != null)
+            {
+                // Adiciona ou atualiza o campo
+                if (existingKey != null)
+                    fields[existingKey] = defaultValue;
+                else
+                    fields[nomeCamp] = defaultValue;
+            }
+        }
+    }
+
+    /// <summary>
     /// Obtém o nome real da coluna de chave primária (primeira coluna da tabela).
     /// No SAG, a convenção é que a primeira coluna é sempre a PK (CODI + sufixo da tabela).
     /// </summary>
@@ -128,7 +246,7 @@ public class ConsultaService : IConsultaService
     }
 
     /// <summary>
-    /// Converte valores string especiais (checkbox "on", etc.) para valores do banco.
+    /// Converte valores string especiais (checkbox "on", datas, etc.) para valores do banco.
     /// </summary>
     private static object? ConvertStringValue(string? value)
     {
@@ -139,7 +257,43 @@ public class ConsultaService : IConsultaService
         if (value.Equals("false", StringComparison.OrdinalIgnoreCase)) return 0;
         if (string.IsNullOrWhiteSpace(value)) return null;
 
+        // Tenta detectar e converter datas (formato dd/MM/yyyy ou yyyy-MM-dd)
+        if (TryParseDate(value, out var dateValue))
+        {
+            return dateValue;
+        }
+
         return value;
+    }
+
+    /// <summary>
+    /// Tenta parsear uma string como data em formatos comuns.
+    /// </summary>
+    private static bool TryParseDate(string value, out DateTime result)
+    {
+        result = default;
+
+        // Ignora valores muito curtos ou muito longos para serem datas
+        if (value.Length < 8 || value.Length > 20) return false;
+
+        // Formatos de data comuns
+        var formats = new[]
+        {
+            "dd/MM/yyyy",      // Formato brasileiro
+            "yyyy-MM-dd",      // Formato ISO
+            "dd-MM-yyyy",      // Formato alternativo
+            "MM/dd/yyyy",      // Formato americano
+            "dd/MM/yyyy HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-ddTHH:mm:ss",
+            "yyyy-MM-ddTHH:mm:ss.fff",
+            "yyyy-MM-ddTHH:mm:ssZ"
+        };
+
+        return DateTime.TryParseExact(value, formats,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None,
+            out result);
     }
 
     /// <inheritdoc/>
@@ -161,7 +315,10 @@ public class ConsultaService : IConsultaService
                 GRIDTABE as GridTabe,
                 {_dbProvider.NullFunction("ALTUTABE", "400")} as AltuTabe,
                 {_dbProvider.NullFunction("TAMATABE", "600")} as TamaTabe,
-                {_dbProvider.NullFunction("SIGLTABE", "''")} as SiglTabe
+                {_dbProvider.NullFunction("SIGLTABE", "''")} as SiglTabe,
+                CABETABE as CabeTabe,
+                {_dbProvider.NullFunction("SERITABE", "0")} as SeriTabe,
+                GETATABE as GeTaTabe
             FROM SISTTABE
             WHERE CODITABE = {_dbProvider.FormatParameter("TableId")}";
 
@@ -490,6 +647,10 @@ public class ConsultaService : IConsultaService
 
             if (request.IsNew)
             {
+                // Aplica defaults de campos com InicCamp=1 (replica InicValoCampPers do Delphi)
+                // Isso garante que checkboxes e outros campos tenham valores corretos no INSERT
+                await ApplyFieldDefaultsAsync(connection, request.TableId, filteredFields, validColumns);
+
                 var pkKey = filteredFields.Keys.FirstOrDefault(k => k.Equals(pkColumn, StringComparison.OrdinalIgnoreCase));
                 var providedPkValue = pkKey != null ? ConvertJsonElementToValue(filteredFields[pkKey]) : null;
 
@@ -660,6 +821,272 @@ public class ConsultaService : IConsultaService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir registro {RecordId} da tabela {TableId}", recordId, tableId);
+            return new SaveRecordResponse
+            {
+                Success = false,
+                Message = $"Erro ao excluir: {ex.Message}"
+            };
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> CreateEmptyRecordAsync(int tableId)
+    {
+        var table = await GetTableMetadataAsync(tableId);
+        if (table == null || string.IsNullOrEmpty(table.GravTabe))
+        {
+            throw new InvalidOperationException($"Tabela {tableId} não encontrada");
+        }
+
+        var tableName = table.GravTabe;
+        _logger.LogInformation("Criando registro vazio para tabela {TableId} ({TableName})", tableId, tableName);
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
+
+            // Obtém colunas válidas da tabela
+            var validColumnsSql = _dbProvider.GetColumnsMetadataQuery(tableName);
+            var columnsResult = await connection.QueryAsync<dynamic>(validColumnsSql, new { TableName = tableName.ToUpper() });
+            var validColumns = columnsResult
+                .Select(c => ((string)c.COLUMN_NAME).ToUpperInvariant())
+                .ToHashSet();
+
+            // Verifica estratégia de PK
+            var (strategy, needsNewId) = await GetPkStrategyAsync(connection, tableName, pkColumn, null);
+            _logger.LogInformation("Tabela {TableName}: estratégia PK = {Strategy}", tableName, strategy);
+
+            using var transaction = connection.BeginTransaction();
+            try
+            {
+                int newId;
+                var columns = new List<string>();
+                var parameters = new DynamicParameters();
+
+                // Adiciona campos de controle padrão SAG (se existirem)
+                var now = DateTime.Now;
+                if (validColumns.Contains("CRDATABE"))
+                {
+                    columns.Add("CRDATABE");
+                    parameters.Add("CRDATABE", now.Date);
+                }
+                if (validColumns.Contains("CRHORTABE"))
+                {
+                    columns.Add("CRHORTABE");
+                    parameters.Add("CRHORTABE", now.ToString("HH:mm:ss"));
+                }
+                if (validColumns.Contains("ULDATABE"))
+                {
+                    columns.Add("ULDATABE");
+                    parameters.Add("ULDATABE", now.Date);
+                }
+                if (validColumns.Contains("ULHORTABE"))
+                {
+                    columns.Add("ULHORTABE");
+                    parameters.Add("ULHORTABE", now.ToString("HH:mm:ss"));
+                }
+                if (validColumns.Contains("CRUSUTABE"))
+                {
+                    columns.Add("CRUSUTABE");
+                    parameters.Add("CRUSUTABE", 1); // Usuário padrão
+                }
+                if (validColumns.Contains("ULUSUTABE"))
+                {
+                    columns.Add("ULUSUTABE");
+                    parameters.Add("ULUSUTABE", 1); // Usuário padrão
+                }
+
+                // Aplica defaults de campos com InicCamp=1 (replica InicValoCampPers do Delphi)
+                var defaultFields = new Dictionary<string, object?>();
+                await ApplyFieldDefaultsAsync(connection, tableId, defaultFields, validColumns);
+                foreach (var field in defaultFields)
+                {
+                    if (!columns.Any(c => c.Equals(field.Key, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        columns.Add(field.Key);
+                        parameters.Add(field.Key, field.Value);
+                    }
+                }
+
+                switch (strategy)
+                {
+                    case PkStrategy.Identity:
+                        // SQL Server: banco gera PK automaticamente
+                        break;
+
+                    case PkStrategy.MaxPlusOneOrSequence:
+                        // Gera próximo ID via MAX+1 ou SEQUENCE
+                        var nextId1 = await _dbProvider.GetNextIdAsync(connection, tableName, pkColumn, false, transaction);
+                        newId = nextId1 ?? throw new InvalidOperationException($"Não foi possível gerar ID para tabela {tableName}");
+                        columns.Add(pkColumn);
+                        parameters.Add(pkColumn, newId);
+                        break;
+
+                    case PkStrategy.UserProvided:
+                        // Se requer valor do usuário, gera via MAX+1 como fallback
+                        var nextId2 = await _dbProvider.GetNextIdAsync(connection, tableName, pkColumn, false, transaction);
+                        newId = nextId2 ?? throw new InvalidOperationException($"Não foi possível gerar ID para tabela {tableName}");
+                        columns.Add(pkColumn);
+                        parameters.Add(pkColumn, newId);
+                        break;
+                }
+
+                // Monta INSERT
+                var quotedTable = _dbProvider.QuoteIdentifier(tableName);
+                var columnList = string.Join(", ", columns.Select(c => _dbProvider.QuoteIdentifier(c)));
+                var valueList = string.Join(", ", columns.Select(c => _dbProvider.FormatParameter(c)));
+
+                var sql = columns.Count > 0
+                    ? $"INSERT INTO {quotedTable} ({columnList}) VALUES ({valueList})"
+                    : $"INSERT INTO {quotedTable} DEFAULT VALUES"; // Fallback para tabelas sem campos obrigatórios
+
+                await connection.ExecuteAsync(sql, parameters, transaction: transaction);
+
+                if (strategy == PkStrategy.Identity)
+                {
+                    newId = await _dbProvider.GetLastInsertedIdAsync(connection, transaction);
+                }
+                else
+                {
+                    // Já temos o ID gerado
+                    newId = parameters.Get<int>(pkColumn);
+                }
+
+                transaction.Commit();
+
+                _logger.LogInformation("Registro vazio criado: ID {NewId} na tabela {TableName}", newId, tableName);
+                return newId;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar registro vazio na tabela {TableId}", tableId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<SaveRecordResponse> DeleteRecordWithMovementsAsync(int tableId, int recordId)
+    {
+        var table = await GetTableMetadataAsync(tableId);
+        if (table == null || string.IsNullOrEmpty(table.GravTabe))
+        {
+            return new SaveRecordResponse
+            {
+                Success = false,
+                Message = "Tabela não encontrada"
+            };
+        }
+
+        var tableName = table.GravTabe;
+        _logger.LogInformation("Excluindo registro {RecordId} e movimentos da tabela {TableId} ({TableName})",
+            recordId, tableId, tableName);
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            var pkColumn = await GetPrimaryKeyColumnAsync(connection, tableName);
+
+            // Busca tabelas de movimento (filhos) via CABETABE
+            var movementsSql = $@"
+                SELECT CODITABE, GRAVTABE, {_dbProvider.NullFunction("SIGLTABE", "''")} as SiglTabe
+                FROM SISTTABE
+                WHERE CABETABE = {_dbProvider.FormatParameter("ParentId")}";
+
+            var movements = await connection.QueryAsync<dynamic>(movementsSql, new { ParentId = tableId });
+
+            using var transaction = connection.BeginTransaction();
+            try
+            {
+                var totalDeleted = 0;
+
+                // Deleta movimentos primeiro (FKs apontam para o header)
+                foreach (var movement in movements)
+                {
+                    var movTableName = (string)movement.GRAVTABE;
+                    var movSiglTabe = ((string?)movement.SiglTabe)?.Trim() ?? "";
+
+                    if (string.IsNullOrEmpty(movTableName))
+                        continue;
+
+                    // Descobre a FK do movimento que referencia o header
+                    // Convenção SAG: FK é CODI + sufixo do GRAVTABE (ex: POCACONT -> CODICONT)
+                    // NÃO usa SIGLTABE pois pode diferir (ex: SIGLTABE=COTR mas FK=CODICONT)
+                    var parentSuffix = tableName
+                        .Replace("POCA", "")
+                        .Replace("POGE", "")
+                        .Replace("FPCA", "")
+                        .Replace("ADMN", "");
+                    var fkColumn = $"CODI{parentSuffix}";
+
+                    // Verifica se a coluna FK existe na tabela de movimento
+                    var fkCheckSql = _dbProvider.GetColumnsMetadataQuery(movTableName);
+                    var movColumns = await connection.QueryAsync<dynamic>(fkCheckSql,
+                        new { TableName = movTableName.ToUpper() }, transaction: transaction);
+                    var hasFK = movColumns.Any(c =>
+                        ((string)c.COLUMN_NAME).Equals(fkColumn, StringComparison.OrdinalIgnoreCase));
+
+                    if (hasFK)
+                    {
+                        var quotedMovTable = _dbProvider.QuoteIdentifier(movTableName);
+                        var quotedFK = _dbProvider.QuoteIdentifier(fkColumn);
+                        var deleteSql = $"DELETE FROM {quotedMovTable} WHERE {quotedFK} = {_dbProvider.FormatParameter("ParentRecordId")}";
+
+                        var deleted = await connection.ExecuteAsync(deleteSql,
+                            new { ParentRecordId = recordId }, transaction: transaction);
+                        totalDeleted += deleted;
+
+                        _logger.LogInformation("Excluídos {Count} registros de movimento {MovTable} (FK: {FK})",
+                            deleted, movTableName, fkColumn);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Coluna FK {FKColumn} não encontrada na tabela {MovTable}",
+                            fkColumn, movTableName);
+                    }
+                }
+
+                // Deleta o header
+                var quotedTable = _dbProvider.QuoteIdentifier(tableName);
+                var quotedPk = _dbProvider.QuoteIdentifier(pkColumn);
+                var headerDeleteSql = $"DELETE FROM {quotedTable} WHERE {quotedPk} = {_dbProvider.FormatParameter("RecordId")}";
+
+                var headerDeleted = await connection.ExecuteAsync(headerDeleteSql,
+                    new { RecordId = recordId }, transaction: transaction);
+
+                transaction.Commit();
+
+                _logger.LogInformation("Exclusão em cascata concluída: header={Header}, movimentos={Movements}",
+                    headerDeleted, totalDeleted);
+
+                return new SaveRecordResponse
+                {
+                    Success = headerDeleted > 0,
+                    Message = headerDeleted > 0
+                        ? $"Registro e {totalDeleted} movimento(s) excluído(s) com sucesso"
+                        : "Registro não encontrado"
+                };
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao excluir registro {RecordId} com movimentos da tabela {TableId}",
+                recordId, tableId);
             return new SaveRecordResponse
             {
                 Success = false,

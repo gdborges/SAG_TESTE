@@ -21,11 +21,21 @@ const PlsagInterpreter = (function() {
      * Contexto de execucao - mantem estado entre instrucoes
      */
     const context = {
-        // Dados do formulario
+        // Dados do formulario (header/cabeçalho)
         formData: {},
         tableName: '',
         tableId: null,
         recordId: null,
+
+        // Dados de movimento nivel 1 (DM templates)
+        movementData: {},
+        movementTableId: null,
+        movementRecordId: null,
+
+        // Dados de sub-movimento nivel 2 (D2 templates)
+        subMovementData: {},
+        subMovementTableId: null,
+        subMovementRecordId: null,
 
         // Variaveis PLSAG por tipo/faixa
         variables: {
@@ -454,11 +464,21 @@ const PlsagInterpreter = (function() {
 
         switch (type) {
             case 'DG':
-            case 'DM':
-            case 'D2':
-            case 'D3':
-                // Campo do formulario
+                // DG: Campo do formulário principal (header/cabeçalho)
                 return getFormFieldValue(fieldTrimmed);
+
+            case 'DM':
+                // DM: Campo do movimento nível 1
+                return getMovementFieldValue(fieldTrimmed);
+
+            case 'D2':
+                // D2: Campo do sub-movimento nível 2
+                return getSubMovementFieldValue(fieldTrimmed);
+
+            case 'D3':
+                // D3: Alias para header ou contexto especial (legado)
+                // Tenta movimento primeiro, depois header
+                return getMovementFieldValue(fieldTrimmed) ?? getFormFieldValue(fieldTrimmed);
 
             case 'CC': // Campo Combo
             case 'CE': // Campo Editor
@@ -480,7 +500,14 @@ const PlsagInterpreter = (function() {
             case 'EA': // Editor Arquivo
             case 'EI': // Editor Diretorio
             case 'EL': // Editor Lookup
-                // Campo/Editor - valor atual do campo
+                // Campo/Editor - Em contexto de movimento, primeiro tenta no movimento
+                // Depois fallback para o formulário principal
+                if (isInMovementContext()) {
+                    const movValue = getMovementFieldValue(fieldTrimmed);
+                    if (movValue !== undefined) {
+                        return movValue;
+                    }
+                }
                 return getFormFieldValue(fieldTrimmed);
 
             case 'VA':
@@ -516,7 +543,7 @@ const PlsagInterpreter = (function() {
     }
 
     /**
-     * Obtem valor de um campo do formulario
+     * Obtem valor de um campo do formulario principal (header)
      */
     function getFormFieldValue(fieldName) {
         // Primeiro tenta no contexto
@@ -524,16 +551,142 @@ const PlsagInterpreter = (function() {
             return context.formData[fieldName];
         }
 
-        // Tenta encontrar o elemento no DOM
+        // Tenta encontrar o elemento no DOM (formulário principal)
         const element = PlsagCommands?.findField?.(fieldName);
         if (element) {
             if (element.type === 'checkbox') {
                 return element.checked ? '1' : '0';
             }
-            return element.value;
+            if (element.value !== undefined && element.value !== '') {
+                return element.value;
+            }
+        }
+
+        // Fallback: Se o campo é a PK e está vazio, usa editingRecordId
+        // Isso é necessário no Saga Pattern onde o PK é criado antes do form ser preenchido
+        const editingRecordId = document.getElementById('editingRecordId');
+        if (editingRecordId && editingRecordId.value) {
+            const pkFieldName = editingRecordId.getAttribute('data-pk-field');
+            const upperFieldName = fieldName.toUpperCase();
+            const upperPkFieldName = pkFieldName?.toUpperCase();
+
+            // Match exato com o campo PK configurado
+            if (pkFieldName && upperFieldName === upperPkFieldName) {
+                console.log(`[PLSAG] getFormFieldValue: ${fieldName} usando editingRecordId (match exato) = ${editingRecordId.value}`);
+                return editingRecordId.value;
+            }
+
+            // Fallback adicional: Se o campo pedido começa com "CODI" e não foi encontrado,
+            // pode ser um nome alternativo para a PK (ex: CODICONT vs CODICOTR no sistema legado)
+            // Isso acontece quando scripts PLSAG antigos usam nomes diferentes para a mesma PK
+            if (upperFieldName.startsWith('CODI')) {
+                console.log(`[PLSAG] getFormFieldValue: ${fieldName} usando editingRecordId (fallback CODI*) = ${editingRecordId.value}`);
+                return editingRecordId.value;
+            }
         }
 
         return undefined;
+    }
+
+    /**
+     * Obtem valor de um campo do movimento nível 1 (DM)
+     * @param {string} fieldName - Nome do campo
+     * @returns {*} Valor do campo ou undefined
+     */
+    function getMovementFieldValue(fieldName) {
+        // Primeiro tenta no contexto movementData
+        if (context.movementData[fieldName] !== undefined) {
+            return context.movementData[fieldName];
+        }
+
+        // Tenta case-insensitive
+        const upperField = fieldName.toUpperCase();
+        for (const [key, value] of Object.entries(context.movementData)) {
+            if (key.toUpperCase() === upperField) {
+                return value;
+            }
+        }
+
+        // Tenta encontrar no modal de movimento (se aberto)
+        // Usa data-sag-nomecamp que é o atributo padrao dos campos
+        let modalElement = document.querySelector(`#movementFormContent [data-sag-nomecamp="${fieldName}"]`);
+        // Fallback para case-insensitive
+        if (!modalElement) {
+            modalElement = document.querySelector(`#movementFormContent [data-sag-nomecamp="${fieldName.toUpperCase()}"]`);
+        }
+        // Fallback para name attribute
+        if (!modalElement) {
+            modalElement = document.querySelector(`#movementFormContent [name="${fieldName}"]`);
+        }
+        if (modalElement) {
+            if (modalElement.type === 'checkbox') {
+                return modalElement.checked ? '1' : '0';
+            }
+            return modalElement.value;
+        }
+
+        // Fallback: tenta no SagEvents se há contexto de movimento ativo
+        if (window.SagEvents) {
+            const movementContext = SagEvents.getActiveMovementContext?.();
+            if (movementContext?.formData?.[fieldName] !== undefined) {
+                return movementContext.formData[fieldName];
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Obtem valor de um campo do sub-movimento nível 2 (D2)
+     * @param {string} fieldName - Nome do campo
+     * @returns {*} Valor do campo ou undefined
+     */
+    function getSubMovementFieldValue(fieldName) {
+        // Primeiro tenta no contexto subMovementData
+        if (context.subMovementData[fieldName] !== undefined) {
+            return context.subMovementData[fieldName];
+        }
+
+        // Tenta case-insensitive
+        const upperField = fieldName.toUpperCase();
+        for (const [key, value] of Object.entries(context.subMovementData)) {
+            if (key.toUpperCase() === upperField) {
+                return value;
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Verifica se estamos em contexto de movimento ativo.
+     * Retorna true se:
+     * - O modal de movimento está aberto
+     * - OU temos dados de movimento no contexto
+     * - OU o SagEvents tem contexto de movimento ativo
+     * @returns {boolean}
+     */
+    function isInMovementContext() {
+        // Verifica se o modal de movimento está aberto
+        const movementModal = document.getElementById('movementModal');
+        if (movementModal && movementModal.classList.contains('show')) {
+            return true;
+        }
+
+        // Verifica se temos dados de movimento no contexto
+        if (context.movementData && Object.keys(context.movementData).length > 0) {
+            return true;
+        }
+
+        // Verifica se o SagEvents tem contexto de movimento ativo
+        if (window.SagEvents) {
+            const movementContext = SagEvents.getActiveMovementContext?.();
+            if (movementContext?.movementTableId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1495,6 +1648,52 @@ const PlsagInterpreter = (function() {
     // API PUBLICA
     // ============================================================
 
+    /**
+     * Define dados do movimento nível 1 (para templates DM)
+     * @param {Object} data - Dados do movimento
+     * @param {number} tableId - ID da tabela de movimento
+     * @param {number} recordId - ID do registro de movimento
+     */
+    function setMovementData(data, tableId = null, recordId = null) {
+        context.movementData = data || {};
+        context.movementTableId = tableId;
+        context.movementRecordId = recordId;
+        console.log('[PLSAG] Movement data set:', { tableId, recordId, fieldCount: Object.keys(context.movementData).length });
+    }
+
+    /**
+     * Define dados do sub-movimento nível 2 (para templates D2)
+     * @param {Object} data - Dados do sub-movimento
+     * @param {number} tableId - ID da tabela de sub-movimento
+     * @param {number} recordId - ID do registro de sub-movimento
+     */
+    function setSubMovementData(data, tableId = null, recordId = null) {
+        context.subMovementData = data || {};
+        context.subMovementTableId = tableId;
+        context.subMovementRecordId = recordId;
+        console.log('[PLSAG] SubMovement data set:', { tableId, recordId, fieldCount: Object.keys(context.subMovementData).length });
+    }
+
+    /**
+     * Limpa dados de movimento do contexto
+     */
+    function clearMovementData() {
+        context.movementData = {};
+        context.movementTableId = null;
+        context.movementRecordId = null;
+        console.log('[PLSAG] Movement data cleared');
+    }
+
+    /**
+     * Limpa dados de sub-movimento do contexto
+     */
+    function clearSubMovementData() {
+        context.subMovementData = {};
+        context.subMovementTableId = null;
+        context.subMovementRecordId = null;
+        console.log('[PLSAG] SubMovement data cleared');
+    }
+
     return {
         // Execucao
         execute,
@@ -1505,6 +1704,16 @@ const PlsagInterpreter = (function() {
         getContext: () => ({ ...context }),
         getFormData: () => ({ ...context.formData }),
         getQueryResults: () => ({ ...context.queryResults }),
+
+        // Movimento (DM/D2 templates)
+        setMovementData,
+        getMovementData: () => ({ ...context.movementData }),
+        getMovementFieldValue,
+        clearMovementData,
+        setSubMovementData,
+        getSubMovementData: () => ({ ...context.subMovementData }),
+        getSubMovementFieldValue,
+        clearSubMovementData,
 
         // Variaveis
         getVariable,

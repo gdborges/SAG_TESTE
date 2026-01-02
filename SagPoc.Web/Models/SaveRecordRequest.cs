@@ -51,3 +51,19 @@ public class SaveRecordResponse
     /// </summary>
     public Dictionary<string, string> ValidationErrors { get; set; } = new();
 }
+
+/// <summary>
+/// Request para executar query de lookup.
+/// </summary>
+public class LookupQueryRequest
+{
+    /// <summary>
+    /// SQL do lookup (SELECT com 2 colunas: Key, Value)
+    /// </summary>
+    public string Sql { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Filtro opcional para busca
+    /// </summary>
+    public string? Filter { get; set; }
+}

@@ -41,4 +41,21 @@ public interface IConsultaService
     /// Exclui um registro.
     /// </summary>
     Task<SaveRecordResponse> DeleteRecordAsync(int tableId, int recordId);
+
+    /// <summary>
+    /// Cria um registro vazio (com valores default) para iniciar modo de inclusão.
+    /// Usado pelo Saga Pattern: INSERT imediato, DELETE se cancelar.
+    /// </summary>
+    /// <param name="tableId">ID da tabela</param>
+    /// <returns>ID do registro criado</returns>
+    Task<int> CreateEmptyRecordAsync(int tableId);
+
+    /// <summary>
+    /// Exclui um registro e todos os seus movimentos em cascata.
+    /// Usado pelo Saga Pattern ao cancelar uma inclusão.
+    /// </summary>
+    /// <param name="tableId">ID da tabela pai</param>
+    /// <param name="recordId">ID do registro a excluir</param>
+    /// <returns>Resultado da operação</returns>
+    Task<SaveRecordResponse> DeleteRecordWithMovementsAsync(int tableId, int recordId);
 }

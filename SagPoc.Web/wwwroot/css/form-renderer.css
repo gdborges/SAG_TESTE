@@ -829,6 +829,53 @@ textarea.form-control {
     border-left-color: var(--border-focus);
 }
 
+/* Container do campo Lookup (código + descrição) */
+.field-lookup-container {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Linha de inputs do lookup (código + descrição) */
+.field-lookup-container .lookup-inputs-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    min-height: 38px;
+}
+
+/* Input-group do código do lookup */
+.field-lookup-container .lookup-code-group {
+    flex: 0 0 auto;
+    min-width: 120px;
+    max-width: 180px;
+    width: auto;
+}
+
+.field-lookup-container .lookup-code-input {
+    min-width: 60px;
+    height: 38px;
+}
+
+/* Campo de descrição do lookup */
+.field-lookup-container .lookup-desc-field {
+    height: 38px;
+    min-width: 0;
+    flex: 1 1 auto;
+    background-color: var(--bg-readonly, #f8f9fa);
+    color: var(--text-muted, #495057);
+}
+
+/* Lookup dentro de linha multi-campo */
+.field-row-multi > .field-lookup-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.field-row-multi > .field-lookup-container .lookup-inputs-row {
+    flex: 1;
+    min-height: 38px;
+}
+
 /* ===========================================
    RichEdit (RM, RB)
    =========================================== */
@@ -1037,5 +1084,224 @@ textarea.form-control {
 
     .movement-grid-container .btn-group .btn {
         flex: 1;
+    }
+}
+
+/* ===========================================
+   Movement System - Grid e Modal
+   =========================================== */
+
+/* Section container */
+.movement-section {
+    margin-bottom: var(--spacing-lg, 24px);
+}
+
+/* Header do movimento */
+.movement-header {
+    padding-bottom: var(--spacing-sm, 8px);
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: var(--spacing-md, 16px);
+}
+
+.movement-header h6 {
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Grid de dados com scroll */
+.movement-grid-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.movement-grid-table {
+    margin-bottom: 0;
+}
+
+.movement-grid-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.movement-grid-table thead th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.movement-grid-table tbody tr {
+    cursor: pointer;
+    transition: background-color var(--transition-fast, 150ms ease);
+}
+
+.movement-grid-table tbody tr:hover {
+    background-color: var(--primary-100, rgba(68, 123, 218, 0.1)) !important;
+}
+
+.movement-grid-table tbody tr.selected {
+    background-color: var(--primary-200, rgba(68, 123, 218, 0.2)) !important;
+}
+
+.movement-grid-table tbody tr.selected td {
+    font-weight: var(--font-weight-medium, 500);
+}
+
+/* Linha vazia */
+.movement-grid-table .empty-row td {
+    padding: var(--spacing-lg, 24px);
+    color: var(--text-muted);
+}
+
+/* Loading state */
+.movement-loading {
+    background-color: rgba(255, 255, 255, 0.9);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+}
+
+/* Sub-movimentos (nível 2) */
+.sub-movements {
+    border-left: 3px solid var(--primary-100, rgba(68, 123, 218, 0.3));
+    margin-left: var(--spacing-sm, 8px);
+    padding-left: var(--spacing-md, 16px);
+}
+
+.sub-movement-section {
+    margin-top: var(--spacing-md, 16px);
+}
+
+/* Modal de movimento - não bloqueante */
+#movementModal .modal-dialog {
+    margin: 1.75rem auto;
+    max-width: 800px;
+}
+
+#movementModal .modal-content {
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+}
+
+#movementModal .modal-header {
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--spacing-md, 16px);
+}
+
+#movementModal .modal-body {
+    padding: var(--spacing-lg, 24px);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+#movementModal .modal-footer {
+    border-top: 1px solid var(--border-light);
+    padding: var(--spacing-md, 16px);
+}
+
+/* Form dentro do modal */
+#movementFormContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md, 16px);
+}
+
+#movementFormContent .field-wrapper {
+    margin-bottom: 0;
+}
+
+/* Container de campos do movimento */
+.movement-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem; /* Espaçamento entre linhas */
+}
+
+.movement-form-fields .field-row {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.movement-form-fields .field-row-single {
+    display: block;
+}
+
+.movement-form-fields .field-row-multi {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+/* Resumo do movimento */
+.movement-summary {
+    padding-top: var(--spacing-sm, 8px);
+    border-top: 1px solid var(--border-light);
+}
+
+/* Paginação */
+.movement-pagination {
+    padding-top: var(--spacing-sm, 8px);
+}
+
+.movement-pagination .pagination {
+    margin: 0;
+}
+
+.movement-pagination .page-link {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Toolbar de botões */
+.movement-toolbar .btn {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+}
+
+.movement-toolbar .btn i {
+    margin-right: 0.25rem;
+}
+
+/* Modal de confirmação de exclusão */
+#movementDeleteModal .modal-header {
+    border-bottom: none;
+}
+
+#movementDeleteModal .modal-body {
+    padding-top: 0;
+}
+
+/* Responsividade mobile */
+@media (max-width: 768px) {
+    #movementModal .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+
+    #movementModal .modal-body {
+        max-height: 70vh;
+    }
+
+    .movement-toolbar {
+        width: 100%;
+        margin-top: var(--spacing-sm, 8px);
+    }
+
+    .movement-toolbar .btn {
+        flex: 1;
+    }
+
+    .movement-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: var(--spacing-sm, 8px);
+    }
+
+    .movement-grid-wrapper {
+        max-height: 300px;
     }
 }

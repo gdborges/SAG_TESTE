@@ -23,4 +23,13 @@ public interface IEventService
     /// <param name="codiTabe">Código da tabela/formulário</param>
     /// <returns>Dicionário de CodiCamp -> FieldEventData</returns>
     Task<Dictionary<int, FieldEventData>> GetFieldEventsAsync(int codiTabe);
+
+    /// <summary>
+    /// Carrega os eventos de movimento (CRUD de registros filhos).
+    /// Fonte: SISTCAMP com campos virtuais AnteIAE_Movi_*, DepoIncl_*, etc.
+    /// </summary>
+    /// <param name="parentCodiTabe">Código da tabela pai (cabeçalho)</param>
+    /// <param name="movementCodiTabe">Código da tabela de movimento</param>
+    /// <returns>Dados de eventos do movimento</returns>
+    Task<MovementEventData> GetMovementEventsAsync(int parentCodiTabe, int movementCodiTabe);
 }

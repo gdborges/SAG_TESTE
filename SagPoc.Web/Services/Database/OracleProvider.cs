@@ -57,22 +57,40 @@ public class OracleProvider : IDbProvider
     public async Task<int?> GetNextIdAsync(IDbConnection connection, string tableName,
         string pkColumn, bool isIdentity, IDbTransaction? transaction = null)
     {
-        // Oracle sempre usa SEQUENCE (convenção: SEQ_ + nome da tabela)
+        // Tenta usar SEQUENCE primeiro (convenção: SEQ_ + nome da tabela)
         var sequenceName = $"SEQ_{tableName.ToUpper()}";
-
-        var sql = $"SELECT {sequenceName}.NEXTVAL FROM DUAL";
+        var sequenceSql = $"SELECT {sequenceName}.NEXTVAL FROM DUAL";
 
         try
         {
-            var nextId = await connection.ExecuteScalarAsync<int>(sql, transaction: transaction);
+            var nextId = await connection.ExecuteScalarAsync<int>(sequenceSql, transaction: transaction);
             _logger.LogDebug("Gerado próximo ID {NextId} para tabela {TableName} via sequence {SequenceName}",
                 nextId, tableName, sequenceName);
             return nextId;
         }
+        catch (OracleException ex) when (ex.Number == 2289) // ORA-02289: sequence does not exist
+        {
+            // Fallback: usa MAX(pkColumn)+1 (padrão SAG/Delphi)
+            _logger.LogDebug("Sequence {SequenceName} não existe, usando MAX()+1 para tabela {TableName}",
+                sequenceName, tableName);
+
+            var maxSql = $"SELECT NVL(MAX({pkColumn.ToUpper()}), 0) + 1 FROM {tableName.ToUpper()}";
+
+            try
+            {
+                var maxId = await connection.ExecuteScalarAsync<int>(maxSql, transaction: transaction);
+                _logger.LogDebug("Gerado próximo ID {NextId} para tabela {TableName} via MAX()+1", maxId, tableName);
+                return maxId;
+            }
+            catch (Exception maxEx)
+            {
+                _logger.LogError(maxEx, "Erro ao obter MAX()+1 para tabela {TableName}", tableName);
+                throw;
+            }
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao obter NEXTVAL da sequence {SequenceName}. Verifique se a sequence existe.",
-                sequenceName);
+            _logger.LogError(ex, "Erro ao obter próximo ID para tabela {TableName}", tableName);
             throw;
         }
     }

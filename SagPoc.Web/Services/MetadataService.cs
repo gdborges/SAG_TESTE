@@ -26,6 +26,27 @@ public class MetadataService : IMetadataService
     {
         var fields = await GetFieldsByTableAsync(codiTabe);
         var tableInfo = await GetTableInfoAsync(codiTabe);
+        var movementTables = await GetMovementTablesAsync(codiTabe);
+
+        var fieldsList = fields.ToList();
+
+        // Associa campos do cabeçalho a cada movimento onde GuiaCamp = CodiTabe do movimento
+        // No Delphi, campos com GuiaCamp=125 aparecem na aba do movimento 125 junto com o grid
+        foreach (var movement in movementTables)
+        {
+            movement.HeaderFields = fieldsList
+                .Where(f => f.GuiaCamp == movement.CodiTabe && !f.IsHidden)
+                .OrderBy(f => f.OrdeCamp)
+                .ThenBy(f => f.TopoCamp)
+                .ThenBy(f => f.EsquCamp)
+                .ToList();
+
+            if (movement.HeaderFields.Count > 0)
+            {
+                _logger.LogInformation("Movimento {MovementId} tem {Count} campos de cabeçalho associados (GuiaCamp={GuiaCamp})",
+                    movement.CodiTabe, movement.HeaderFields.Count, movement.CodiTabe);
+            }
+        }
 
         return new FormMetadata
         {
@@ -33,7 +54,8 @@ public class MetadataService : IMetadataService
             TableName = tableInfo.GravTabe ?? $"Tabela{codiTabe}",
             SiglTabe = tableInfo.SiglTabe,
             Title = tableInfo.NomeTabe ?? $"Formulário {codiTabe}",
-            Fields = fields.ToList()
+            Fields = fieldsList,
+            MovementTables = movementTables
         };
     }
 
@@ -56,7 +78,7 @@ public class MetadataService : IMetadataService
             {
                 return (
                     result.NOMETABE?.ToString(),
-                    result.GravTabe?.ToString()?.Trim(),
+                    result.GRAVTABE?.ToString()?.Trim(),
                     result.SIGLTABE?.ToString()?.Trim()
                 );
             }
@@ -156,6 +178,104 @@ public class MetadataService : IMetadataService
         {
             _logger.LogError(ex, "Erro ao listar tabelas disponíveis");
             throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<MovementMetadata>> GetMovementTablesAsync(int parentCodiTabe, bool loadChildren = true)
+    {
+        var param = _dbProvider.FormatParameter("CabeTabe");
+
+        var sql = $@"
+            SELECT
+                CODITABE as CodiTabe,
+                {_dbProvider.NullFunction("NOMETABE", "''")} as NomeTabe,
+                {_dbProvider.NullFunction("GRAVTABE", "''")} as GravTabe,
+                {_dbProvider.NullFunction("SIGLTABE", "''")} as SiglTabe,
+                {_dbProvider.NullFunction("CABETABE", "0")} as CabeTabe,
+                {_dbProvider.NullFunction("SERITABE", "0")} as SeriTabe,
+                GETATABE as GeTaTabe,
+                {_dbProvider.NullFunction("GUI1TABE", "''")} as Gui1Tabe,
+                GRIDTABE as GridTabe,
+                GRCOTABE as GrCoTabe,
+                {_dbProvider.NullFunction("ALTUTABE", "400")} as AltuTabe,
+                {_dbProvider.NullFunction("TAMATABE", "600")} as TamaTabe,
+                PARATABE as ParaTabe
+            FROM SISTTABE
+            WHERE CABETABE = {param}
+            ORDER BY SERITABE, CODITABE";
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            var movements = (await connection.QueryAsync<MovementMetadata>(sql, new { CabeTabe = parentCodiTabe })).ToList();
+
+            _logger.LogInformation("Carregados {Count} movimentos para tabela {ParentId}",
+                movements.Count, parentCodiTabe);
+
+            // Carrega sub-movimentos (nível 2) se solicitado
+            if (loadChildren)
+            {
+                foreach (var movement in movements)
+                {
+                    // Trim strings
+                    movement.GravTabe = movement.GravTabe?.Trim() ?? string.Empty;
+                    movement.SiglTabe = movement.SiglTabe?.Trim() ?? string.Empty;
+                    movement.Gui1Tabe = movement.Gui1Tabe?.Trim();
+
+                    // Carrega sub-movimentos (não carrega filhos dos filhos para evitar loop infinito)
+                    movement.Children = await GetMovementTablesAsync(movement.CodiTabe, loadChildren: false);
+
+                    if (movement.Children.Count > 0)
+                    {
+                        _logger.LogInformation("Movimento {MovementId} tem {ChildCount} sub-movimentos",
+                            movement.CodiTabe, movement.Children.Count);
+                    }
+                }
+            }
+
+            return movements;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao carregar movimentos da tabela {ParentId}", parentCodiTabe);
+            return new List<MovementMetadata>();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<FieldMetadata>> GetMovementFieldsAsync(int movementCodiTabe)
+    {
+        try
+        {
+            var fields = await GetFieldsByTableAsync(movementCodiTabe);
+            return fields.ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao carregar campos do movimento {MovementId}", movementCodiTabe);
+            return new List<FieldMetadata>();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<string?> GetFieldLookupSqlAsync(int codiCamp)
+    {
+        var sql = $"SELECT SQL_CAMP FROM SISTCAMP WHERE CODICAMP = {_dbProvider.FormatParameter("CodiCamp")}";
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+            var result = await connection.QueryFirstOrDefaultAsync<string?>(sql, new { CodiCamp = codiCamp });
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter SQL de lookup do campo {CodiCamp}", codiCamp);
+            return null;
         }
     }
 }

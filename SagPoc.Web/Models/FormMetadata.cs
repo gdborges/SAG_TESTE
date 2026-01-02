@@ -33,6 +33,29 @@ public class FormMetadata
     public List<FieldMetadata> Fields { get; set; } = new();
 
     /// <summary>
+    /// Tabelas de movimento (filhos) vinculadas a este formulário.
+    /// Carregadas via CABETABE do SISTTABE.
+    /// </summary>
+    public List<MovementMetadata> MovementTables { get; set; } = new();
+
+    /// <summary>
+    /// Indica se o formulário tem tabelas de movimento.
+    /// </summary>
+    public bool HasMovementTables => MovementTables.Count > 0;
+
+    /// <summary>
+    /// Movimentos que devem ser exibidos inline (SERITABE > 50).
+    /// </summary>
+    public IEnumerable<MovementMetadata> InlineMovements =>
+        MovementTables.Where(m => m.IsInline).OrderBy(m => m.SeriTabe);
+
+    /// <summary>
+    /// Movimentos que devem ser exibidos em tabs separadas (SERITABE <= 50).
+    /// </summary>
+    public IEnumerable<MovementMetadata> TabMovements =>
+        MovementTables.Where(m => !m.IsInline).OrderBy(m => m.SeriTabe);
+
+    /// <summary>
     /// Campos do cabeçalho (GuiaCamp menor que 10).
     /// Esses campos são renderizados nas abas normais do formulário.
     /// Exclui campos ocultos (DEPOSHOW, ATUAGRID, OrdeCamp=9999).
@@ -41,43 +64,62 @@ public class FormMetadata
         Fields.Where(f => !f.IsMovementField && !f.IsHidden);
 
     /// <summary>
-    /// Campos de movimento (GuiaCamp >= 10).
-    /// Esses campos são renderizados em abas de movimento com grid próprio.
-    /// No Delphi, movimentos têm Envia/Remove e grid de registros filhos.
+    /// Campos de movimento (GuiaCamp >= 10) que NÃO pertencem a tabelas de movimento via SISTTABE.
+    /// Quando existe uma MovementTable com CodiTabe = GuiaCamp, o campo vai para essa aba de movimento,
+    /// não para o sistema antigo de MovementsByType.
     /// Exclui campos ocultos.
     /// </summary>
-    public IEnumerable<FieldMetadata> MovementFields =>
-        Fields.Where(f => f.IsMovementField && !f.IsHidden);
+    public IEnumerable<FieldMetadata> MovementFields
+    {
+        get
+        {
+            // IDs de movimentos via SISTTABE (novo sistema)
+            var movementTableIds = MovementTables.Select(m => m.CodiTabe).ToHashSet();
+
+            // Retorna apenas campos de movimento que NÃO têm uma tabela correspondente
+            return Fields.Where(f => f.IsMovementField && !f.IsHidden && !movementTableIds.Contains(f.GuiaCamp));
+        }
+    }
 
     /// <summary>
-    /// Indica se o formulário tem movimentos (registros filhos).
+    /// Indica se o formulário tem movimentos pelo sistema antigo (GuiaCamp >= 10 sem tabela SISTTABE).
+    /// Movimentos via SISTTABE são tratados separadamente por HasMovementTables.
     /// </summary>
     public bool HasMovements => MovementFields.Any();
 
     /// <summary>
     /// Nome da coluna PK (chave primária).
-    /// Segue o padrão SAG: CODI + SIGLTABE (ex: SIGLTABE="LESI" -> PK="CODILESI")
+    /// Segue o padrão SAG: CODI + sufixo da tabela (ex: POCACONT -> CODICONT)
+    /// A lógica prioriza o sufixo do GravTabe (nome físico) sobre o SIGLTABE,
+    /// pois há casos onde SIGLTABE não corresponde ao sufixo real da tabela.
     /// </summary>
     public string PkColumnName
     {
         get
         {
-            // Usa SIGLTABE se disponível (ignora espaços em branco)
+            // Prioriza extração do nome físico da tabela (mais confiável)
+            if (!string.IsNullOrWhiteSpace(TableName))
+            {
+                // Remove prefixos comuns de tabelas SAG para obter o sufixo
+                var suffix = TableName
+                    .Replace("POCA", "", StringComparison.OrdinalIgnoreCase)
+                    .Replace("POGE", "", StringComparison.OrdinalIgnoreCase)
+                    .Replace("FPCA", "", StringComparison.OrdinalIgnoreCase)  // Folha de Pagamento
+                    .Replace("ADMN", "", StringComparison.OrdinalIgnoreCase); // Administração
+
+                if (!string.IsNullOrWhiteSpace(suffix))
+                {
+                    return $"CODI{suffix}";
+                }
+            }
+
+            // Fallback: usa SIGLTABE se disponível
             if (!string.IsNullOrWhiteSpace(SiglTabe))
             {
                 return $"CODI{SiglTabe.Trim()}";
             }
 
-            // Fallback: extrai do nome físico da tabela
-            if (string.IsNullOrWhiteSpace(TableName)) return "ID";
-
-            // Remove prefixos comuns de tabelas SAG
-            var suffix = TableName
-                .Replace("POCA", "", StringComparison.OrdinalIgnoreCase)
-                .Replace("POGE", "", StringComparison.OrdinalIgnoreCase)
-                .Replace("FPCA", "", StringComparison.OrdinalIgnoreCase)  // Folha de Pagamento
-                .Replace("ADMN", "", StringComparison.OrdinalIgnoreCase); // Administração
-            return $"CODI{suffix}";
+            return "ID";
         }
     }
 

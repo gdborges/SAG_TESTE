@@ -48,6 +48,42 @@ const PlsagCommands = (function() {
     }
 
     /**
+     * Encontra um componente de movimento pelo nome Delphi
+     * Mapeia nomes como DBG<N>, BTNNOV<N>, BTNALT<N>, BTNEXC<N> para elementos do DOM
+     * @param {string} componentName - Nome do componente Delphi (ex: DBG815, BTNNOV815)
+     * @returns {HTMLElement|null} Elemento encontrado ou null
+     */
+    function findMovementComponent(componentName) {
+        const name = componentName.trim().toUpperCase();
+
+        // Padrões de componentes de movimento: DBG<N>, BTNNOV<N>, BTNALT<N>, BTNEXC<N>, BTNMES<N>
+        const patterns = [
+            { regex: /^DBG(\d+)$/, selector: (id) => `[data-movement="${id}"] table, [data-movement-table="${id}"]` },
+            { regex: /^BTNNOV(\d+)$/, selector: (id) => `[data-movement="${id}"] .btn-add, [data-movement-add="${id}"]` },
+            { regex: /^BTNALT(\d+)$/, selector: (id) => `[data-movement="${id}"] .btn-edit, [data-movement-edit="${id}"]` },
+            { regex: /^BTNEXC(\d+)$/, selector: (id) => `[data-movement="${id}"] .btn-delete, [data-movement-delete="${id}"]` },
+            { regex: /^BTNMES(\d+)$/, selector: (id) => `[data-movement="${id}"] .btn-mes, [data-movement-mes="${id}"]` },
+            { regex: /^PNLMOV(\d+)$/, selector: (id) => `[data-movement-panel="${id}"], [data-movement="${id}"].movement-section, #movement-${id}` },
+            { regex: /^TABMOV(\d+)$/, selector: (id) => `[data-movement="${id}"] .nav-tabs, #movement-tabs-${id}` }
+        ];
+
+        for (const pattern of patterns) {
+            const match = name.match(pattern.regex);
+            if (match) {
+                const movementId = match[1];
+                const selector = pattern.selector(movementId);
+                const element = document.querySelector(selector);
+                if (element) {
+                    console.log(`[PLSAG] findMovementComponent: ${name} -> ${selector}`);
+                    return element;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Encontra um campo no formulario pelo nome
      * IMPORTANTE: Usa NAMECAMP (nome do componente visual) para busca, não NOMECAMP (nome do campo no banco)
      * No Delphi, FindComponent usa NAMECAMP. Campos duplicados (mesmo NOMECAMP) têm NAMECAMP diferentes.
@@ -58,27 +94,48 @@ const PlsagCommands = (function() {
     function findField(fieldName) {
         const name = fieldName.trim();
 
-        // 1. Busca por data-sag-namecamp (NAMECAMP - nome do componente visual, usado pelo PLSAG)
+        // 0. Verifica se é componente de movimento (DBG<N>, BTNNOV<N>, etc.)
+        const movementComponent = findMovementComponent(name);
+        if (movementComponent) return movementComponent;
+
+        // 1. Se modal de movimento está aberto, busca primeiro no modal
+        const movementModal = document.getElementById('movementFormContent');
+        if (movementModal && movementModal.offsetParent !== null) {
+            // Modal está visível - busca campos dentro do modal primeiro
+            let element = movementModal.querySelector(`[data-sag-namecamp="${name}"]`);
+            if (element) return element;
+
+            element = movementModal.querySelector(`[data-sag-nomecamp="${name}"]`);
+            if (element) return element;
+
+            element = movementModal.querySelector(`[name="${name}"]`);
+            if (element) return element;
+
+            element = movementModal.querySelector(`#mov_${name}`);
+            if (element) return element;
+        }
+
+        // 2. Busca por data-sag-namecamp (NAMECAMP - nome do componente visual, usado pelo PLSAG)
         let element = document.querySelector(`[data-sag-namecamp="${name}"]`);
         if (element) return element;
 
-        // 2. Fallback: Busca por data-sag-nomecamp (NOMECAMP - nome do campo no banco)
+        // 3. Fallback: Busca por data-sag-nomecamp (NOMECAMP - nome do campo no banco)
         element = document.querySelector(`[data-sag-nomecamp="${name}"]`);
         if (element) return element;
 
-        // 3. Tenta por name attribute
+        // 4. Tenta por name attribute
         element = document.querySelector(`[name="${name}"]`);
         if (element) return element;
 
-        // 4. Tenta por id (com prefixo field_)
+        // 5. Tenta por id (com prefixo field_)
         element = document.getElementById(`field_${name}`);
         if (element) return element;
 
-        // 5. Tenta por id direto
+        // 6. Tenta por id direto
         element = document.getElementById(name);
         if (element) return element;
 
-        // 6. Tenta case-insensitive em data-sag-namecamp
+        // 7. Tenta case-insensitive em data-sag-namecamp
         const allFields = document.querySelectorAll('[data-sag-namecamp], [data-sag-nomecamp], [name]');
         for (const field of allFields) {
             const sagNamecamp = field.dataset.sagNamecamp;
@@ -87,7 +144,7 @@ const PlsagCommands = (function() {
             }
         }
 
-        // 7. Tenta case-insensitive em data-sag-nomecamp
+        // 8. Tenta case-insensitive em data-sag-nomecamp
         for (const field of allFields) {
             const sagNomecamp = field.dataset.sagNomecamp || field.name;
             if (sagNomecamp && sagNomecamp.toLowerCase() === name.toLowerCase()) {
@@ -196,6 +253,117 @@ const PlsagCommands = (function() {
                 parent.classList.remove('hidden', 'd-none');
             }
             parent = parent.parentElement;
+        }
+    }
+
+    /**
+     * Executa disable/enable em componentes de movimento
+     * @param {HTMLElement} element - Elemento de movimento
+     * @param {boolean} enable - true = habilita, false = desabilita
+     * @param {string} componentName - Nome do componente (DBG815, BTNNOV815, etc.)
+     */
+    function executeMovementDisable(element, enable, componentName) {
+        const name = componentName.trim().toUpperCase();
+        console.log(`[PLSAG] executeMovementDisable: ${name} -> ${enable ? 'enable' : 'disable'}`);
+
+        // Detecta tipo de componente pelo nome ou atributos
+        const isTable = name.startsWith('DBG') || element.tagName === 'TABLE' || element.dataset.movementTable;
+        const isButton = name.startsWith('BTN') || element.tagName === 'BUTTON';
+        const isPanel = name.startsWith('PNLMOV') || element.dataset.movementPanel;
+
+        if (isTable) {
+            // Para tabelas (DBG): desabilita toda a seção de movimento
+            const movementSection = element.closest('.movement-section') || element.closest('[data-movement]');
+            if (movementSection) {
+                if (enable) {
+                    movementSection.classList.remove('disabled', 'movement-disabled');
+                    movementSection.style.pointerEvents = '';
+                    movementSection.style.opacity = '';
+                    // Habilita botões do grid
+                    movementSection.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                } else {
+                    movementSection.classList.add('disabled', 'movement-disabled');
+                    movementSection.style.pointerEvents = 'none';
+                    movementSection.style.opacity = '0.6';
+                    // Desabilita botões do grid
+                    movementSection.querySelectorAll('button').forEach(btn => btn.disabled = true);
+                }
+            }
+        } else if (isButton) {
+            // Para botões: toggle disabled
+            element.disabled = !enable;
+            if (enable) {
+                element.classList.remove('disabled');
+            } else {
+                element.classList.add('disabled');
+            }
+        } else if (isPanel) {
+            // Para painel: desabilita toda a seção
+            if (enable) {
+                element.classList.remove('disabled', 'movement-disabled');
+                element.style.pointerEvents = '';
+                element.style.opacity = '';
+            } else {
+                element.classList.add('disabled', 'movement-disabled');
+                element.style.pointerEvents = 'none';
+                element.style.opacity = '0.6';
+            }
+        } else {
+            // Fallback: comportamento padrão
+            element.disabled = !enable;
+            if (enable) {
+                element.classList.remove('disabled');
+            } else {
+                element.classList.add('disabled');
+            }
+        }
+    }
+
+    /**
+     * Executa visible em componentes de movimento
+     * @param {HTMLElement} element - Elemento de movimento
+     * @param {boolean} visible - true = mostra, false = esconde
+     * @param {string} componentName - Nome do componente (DBG815, BTNNOV815, etc.)
+     */
+    function executeMovementVisible(element, visible, componentName) {
+        const name = componentName.trim().toUpperCase();
+        console.log(`[PLSAG] executeMovementVisible: ${name} -> ${visible ? 'show' : 'hide'}`);
+
+        // Detecta tipo de componente pelo nome ou atributos
+        const isTable = name.startsWith('DBG') || element.tagName === 'TABLE' || element.dataset.movementTable;
+        const isButton = name.startsWith('BTN') || element.tagName === 'BUTTON';
+        const isPanel = name.startsWith('PNLMOV') || element.dataset.movementPanel;
+
+        if (isTable || isPanel) {
+            // Para tabelas ou painéis: esconde toda a seção de movimento
+            const movementSection = element.closest('.movement-section') || element.closest('[data-movement]') || element;
+            if (movementSection) {
+                if (visible) {
+                    movementSection.style.display = '';
+                    movementSection.classList.remove('hidden', 'd-none');
+                } else {
+                    movementSection.style.display = 'none';
+                    movementSection.classList.add('d-none');
+                }
+            }
+        } else if (isButton) {
+            // Para botões: esconde apenas o botão
+            if (visible) {
+                element.style.display = '';
+                element.classList.remove('hidden', 'd-none');
+            } else {
+                element.style.display = 'none';
+                element.classList.add('d-none');
+            }
+        } else {
+            // Fallback: comportamento padrão
+            if (visible) {
+                element.style.display = '';
+                element.classList.remove('hidden', 'd-none');
+            } else {
+                element.style.display = 'none';
+                element.classList.add('d-none');
+            }
         }
     }
 
@@ -357,20 +525,34 @@ const PlsagCommands = (function() {
     /**
      * Executa modificador de campo
      * D = Disable/Enable, F = Focus, V = Visible, C = Color, R = Readonly
+     * Suporta componentes de movimento: DBG<N>, BTNNOV<N>, BTNALT<N>, BTNEXC<N>, PNLMOV<N>
      */
     function executeFieldModifier(element, modifier, parameter, fieldName) {
         // Converte para string para suportar parâmetros numéricos (ex: resultado de IF())
         const value = parameter !== null && parameter !== undefined ? String(parameter).trim() : '';
         const isTrue = isTruthy(value);
 
+        // Detecta se é componente de movimento
+        const isMovementComponent = element.dataset.movementTable ||
+                                    element.dataset.movementAdd ||
+                                    element.dataset.movementEdit ||
+                                    element.dataset.movementDelete ||
+                                    element.dataset.movementPanel ||
+                                    element.closest('[data-movement]');
+
         switch (modifier) {
             case 'D': // Disable/Enable
-                // Parametro: 0 = desabilita, != 0 = habilita
-                element.disabled = !isTrue;
-                if (isTrue) {
-                    element.classList.remove('disabled');
+                // Para componentes de movimento, trata de forma especial
+                if (isMovementComponent) {
+                    executeMovementDisable(element, isTrue, fieldName);
                 } else {
-                    element.classList.add('disabled');
+                    // Parametro: 0 = desabilita, != 0 = habilita
+                    element.disabled = !isTrue;
+                    if (isTrue) {
+                        element.classList.remove('disabled');
+                    } else {
+                        element.classList.add('disabled');
+                    }
                 }
                 break;
 
@@ -381,18 +563,23 @@ const PlsagCommands = (function() {
                 break;
 
             case 'V': // Visible
-                const container = findFieldContainer(fieldName);
-                if (container) {
-                    // 0 = esconde, != 0 = mostra
-                    if (isTrue) {
-                        container.style.display = '';
-                        container.classList.remove('hidden', 'd-none');
-                        // Também mostra os containers pai (bevel-group/bevel-content)
-                        // para garantir que o campo seja visível
-                        ensureParentGroupsVisible(container);
-                    } else {
-                        container.style.display = 'none';
-                        container.classList.add('hidden');
+                // Para componentes de movimento, usa o container de movimento
+                if (isMovementComponent) {
+                    executeMovementVisible(element, isTrue, fieldName);
+                } else {
+                    const container = findFieldContainer(fieldName);
+                    if (container) {
+                        // 0 = esconde, != 0 = mostra
+                        if (isTrue) {
+                            container.style.display = '';
+                            container.classList.remove('hidden', 'd-none');
+                            // Também mostra os containers pai (bevel-group/bevel-content)
+                            // para garantir que o campo seja visível
+                            ensureParentGroupsVisible(container);
+                        } else {
+                            container.style.display = 'none';
+                            container.classList.add('hidden');
+                        }
                     }
                 }
                 break;
@@ -1743,6 +1930,7 @@ const PlsagCommands = (function() {
         findFieldContainer,
         findButton,
         findLabel,
+        findMovementComponent,
         showModal,
 
         // Validacoes

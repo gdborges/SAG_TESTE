@@ -1,0 +1,86 @@
+@model SagPoc.Web.Models.MovementMetadata
+@using SagPoc.Web.Models
+@{
+    // Container principal do movimento
+    // Renderiza grid com dados, botões CRUD e campos de resumo (se houver) na parte inferior
+    var movementId = $"movement-{Model.CodiTabe}";
+    var gridId = $"movement-grid-{Model.CodiTabe}";
+    var hasHeaderFields = Model.HasHeaderFields;
+}
+
+<div class="movement-section" id="@movementId"
+     data-movement="@Model.CodiTabe"
+     data-movement-panel="@Model.CodiTabe"
+     data-sag-component="PNLMOV@(Model.CodiTabe)"
+     data-table-name="@Model.GravTabe"
+     data-pk-column="@Model.PkColumnName">
+
+    @* Cabeçalho com título do grid e botões *@
+    <div class="movement-header d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0">
+            <i class="bi bi-list-ul me-2"></i>
+            @Model.GetCleanTabName()
+        </h6>
+        <div class="btn-group movement-toolbar" id="btn-group-@Model.CodiTabe">
+            <button type="button" class="btn btn-outline-primary btn-sm btn-movement-new btn-add"
+                    data-movement="@Model.CodiTabe"
+                    data-movement-add="@Model.CodiTabe"
+                    data-sag-button="BTNNOV@(Model.CodiTabe)"
+                    title="Novo registro">
+                <i class="bi bi-plus-lg"></i> Novo
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm btn-movement-edit btn-edit"
+                    data-movement="@Model.CodiTabe"
+                    data-movement-edit="@Model.CodiTabe"
+                    data-sag-button="BTNALT@(Model.CodiTabe)"
+                    disabled
+                    title="Editar registro selecionado">
+                <i class="bi bi-pencil"></i> Editar
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm btn-movement-delete btn-delete"
+                    data-movement="@Model.CodiTabe"
+                    data-movement-delete="@Model.CodiTabe"
+                    data-sag-button="BTNEXC@(Model.CodiTabe)"
+                    disabled
+                    title="Excluir registro selecionado">
+                <i class="bi bi-trash"></i> Excluir
+            </button>
+        </div>
+    </div>
+
+    @* Grid de dados *@
+    @await Html.PartialAsync("_MovementGrid", Model)
+
+    @* Painel de resumo com campos de cabeçalho (equivalente ao PnlResu do Delphi) *@
+    @* No Delphi, campos com GuiaCamp = CodiTabe do movimento aparecem na parte inferior *@
+    <div class="movement-summary mt-3" id="summary-@Model.CodiTabe" data-sag-component="PNLRESU@(Model.CodiTabe)">
+        @if (hasHeaderFields)
+        {
+            <div class="movement-footer-fields">
+                @{
+                    var headerRows = Model.GetHeaderFieldRows();
+                }
+                @foreach (var row in headerRows)
+                {
+                    @await Html.PartialAsync("_FieldRowRenderer", row)
+                }
+            </div>
+        }
+        <div class="d-flex justify-content-end gap-3 mt-2 text-muted small">
+            <span>Total: <strong id="summary-count-@Model.CodiTabe">0</strong> registro(s)</span>
+        </div>
+    </div>
+
+    @* Sub-movimentos (nível 2) *@
+    @if (Model.HasChildren)
+    {
+        <div class="sub-movements mt-4" id="sub-movements-@Model.CodiTabe">
+            @foreach (var child in Model.Children)
+            {
+                <div class="sub-movement-section border-start border-3 ps-3 mt-3">
+                    @await Html.PartialAsync("_MovementSection", child)
+                </div>
+            }
+        </div>
+    }
+</div>

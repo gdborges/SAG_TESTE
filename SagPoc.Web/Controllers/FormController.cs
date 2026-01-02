@@ -249,5 +249,185 @@ public class FormController : Controller
         }
     }
 
+    /// <summary>
+    /// Cria um registro vazio para iniciar modo de inclusão (Saga Pattern).
+    /// O registro é criado imediatamente no banco. Se o usuário cancelar,
+    /// deve chamar CancelRecord para excluí-lo.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CreateRecord(int tableId)
+    {
+        try
+        {
+            _logger.LogInformation("Criando registro vazio para tabela {TableId} (Saga Pattern)", tableId);
+            var recordId = await _consultaService.CreateEmptyRecordAsync(tableId);
+            return Json(new { success = true, recordId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar registro vazio na tabela {TableId}", tableId);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Cancela uma inclusão excluindo o registro e seus movimentos (Saga Pattern).
+    /// Usado quando o usuário inicia um novo registro mas desiste de salvar.
+    /// </summary>
+    [HttpDelete]
+    [Route("Form/CancelRecord/{tableId}/{recordId}")]
+    public async Task<IActionResult> CancelRecord(int tableId, int recordId)
+    {
+        try
+        {
+            _logger.LogInformation("Cancelando inclusão: excluindo registro {RecordId} e movimentos da tabela {TableId}",
+                recordId, tableId);
+            var result = await _consultaService.DeleteRecordWithMovementsAsync(tableId, recordId);
+            if (result.Success)
+                return Json(result);
+            else
+                return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao cancelar registro {RecordId} da tabela {TableId}", recordId, tableId);
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Executa uma query de lookup e retorna os resultados completos.
+    /// POST /Form/ExecuteLookup
+    /// Body: { "sql": "SELECT ...", "filter": "termo de busca" }
+    ///
+    /// Retorna:
+    /// - columns: Lista de nomes das colunas (uppercase)
+    /// - records: Lista de registros com key, value e data (todos os campos)
+    ///
+    /// Similar ao TDBLookNume do Delphi que mantém todos os dados do registro
+    /// para preencher campos IE associados.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ExecuteLookup([FromBody] LookupQueryRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Sql))
+                return BadRequest(new { error = "SQL não informado" });
+
+            var result = await _lookupService.ExecuteLookupQueryFullAsync(request.Sql);
+
+            // Aplica filtro se informado
+            if (!string.IsNullOrWhiteSpace(request.Filter))
+            {
+                var filter = request.Filter.ToLower();
+                result.Records = result.Records.Where(r =>
+                    r.Key.ToLower().Contains(filter) ||
+                    r.Value.ToLower().Contains(filter) ||
+                    r.Data.Values.Any(v => v.ToLower().Contains(filter))
+                ).ToList();
+            }
+
+            return Json(new
+            {
+                success = true,
+                columns = result.Columns,
+                records = result.Records.Select(r => new
+                {
+                    key = r.Key,
+                    value = r.Value,
+                    data = r.Data
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar lookup");
+            return StatusCode(500, new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtém o SQL de lookup de um campo pelo CodiCamp.
+    /// GET /Form/GetFieldLookupSql?codiCamp={codiCamp}
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetFieldLookupSql(int codiCamp)
+    {
+        try
+        {
+            var sql = await _metadataService.GetFieldLookupSqlAsync(codiCamp);
+            if (string.IsNullOrEmpty(sql))
+                return NotFound(new { error = "Campo não tem SQL de lookup" });
+
+            return Json(new { success = true, sql });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter SQL de lookup do campo {CodiCamp}", codiCamp);
+            return StatusCode(500, new { success = false, error = ex.Message });
+        }
+    }
+
+    #endregion
+
+    #region Movement Form HTML
+
+    /// <summary>
+    /// Retorna o HTML renderizado do formulário de movimento (para o modal).
+    /// GET /Form/MovementFormHtml/{tableId}?recordId={recordId}
+    /// </summary>
+    [HttpGet]
+    [Route("Form/MovementFormHtml/{tableId}")]
+    public async Task<IActionResult> MovementFormHtml(int tableId, int? recordId = null)
+    {
+        try
+        {
+            // Carrega metadados dos campos do movimento
+            var fields = await _metadataService.GetMovementFieldsAsync(tableId);
+
+            // Carrega lookups para campos que precisam (tipos T, IT, L, IL)
+            var lookupTypes = new[] { "T", "IT", "L", "IL" };
+            foreach (var field in fields)
+            {
+                var compType = field.CompCamp?.ToUpper()?.Trim();
+                if (lookupTypes.Contains(compType) && !string.IsNullOrEmpty(field.SqlCamp))
+                {
+                    try
+                    {
+                        field.LookupOptions = await _lookupService.ExecuteLookupQueryAsync(field.SqlCamp);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Erro ao carregar lookup para campo {Campo}", field.NomeCamp);
+                    }
+                }
+            }
+
+            // Se tiver recordId, carrega os dados do registro
+            Dictionary<string, object?>? recordData = null;
+            if (recordId.HasValue)
+            {
+                recordData = await _consultaService.GetRecordByIdAsync(tableId, recordId.Value);
+            }
+
+            // Monta o model para a view
+            var model = new MovementFormViewModel
+            {
+                TableId = tableId,
+                RecordId = recordId,
+                Fields = fields.Where(f => !f.IsHidden && f.GetComponentType() != ComponentType.Bevel).ToList(),
+                RecordData = recordData
+            };
+
+            return PartialView("_MovementFormContent", model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao renderizar formulário de movimento {TableId}", tableId);
+            return Content($"<div class=\"alert alert-danger\">Erro ao carregar formulário: {ex.Message}</div>");
+        }
+    }
+
     #endregion
 }
