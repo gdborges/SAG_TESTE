@@ -27,15 +27,17 @@ public class ConsultaService : IConsultaService
     /// <summary>
     /// Busca campos com InicCamp=1 (campos que devem ter defaults aplicados).
     /// Replica o comportamento do Delphi InicValoCampPers.
+    /// Retorna NomeCamp, CompCamp, PadrCamp (object para suportar texto e número) e VaGrCamp.
     /// </summary>
-    private async Task<List<(string NomeCamp, string CompCamp, decimal? PadrCamp)>> GetFieldsWithDefaultsAsync(
+    private async Task<List<(string NomeCamp, string CompCamp, object? PadrCamp, string? VaGrCamp)>> GetFieldsWithDefaultsAsync(
         IDbConnection connection, int codiTabe)
     {
         var sql = $@"
             SELECT
                 NOMECAMP as NomeCamp,
                 {_dbProvider.NullFunction("COMPCAMP", "'E'")} as CompCamp,
-                PADRCAMP as PadrCamp
+                PADRCAMP as PadrCamp,
+                VAGRCAMP as VaGrCamp
             FROM SISTCAMP
             WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}
               AND {_dbProvider.NullFunction("INICCAMP", "0")} = 1";
@@ -49,17 +51,26 @@ public class ConsultaService : IConsultaService
             var nomeCamp = dict.ContainsKey("NOMECAMP") ? dict["NOMECAMP"]?.ToString() : dict["NomeCamp"]?.ToString();
             var compCamp = dict.ContainsKey("COMPCAMP") ? dict["COMPCAMP"]?.ToString() : dict["CompCamp"]?.ToString();
             var padrCampObj = dict.ContainsKey("PADRCAMP") ? dict["PADRCAMP"] : dict["PadrCamp"];
+            var vaGrCampObj = dict.ContainsKey("VAGRCAMP") ? dict["VAGRCAMP"] : dict["VaGrCamp"];
 
-            decimal? padrCamp = null;
+            // Preserva PadrCamp como object - pode ser número ou texto dependendo do CompCamp
+            object? padrCamp = null;
             if (padrCampObj != null && padrCampObj != DBNull.Value)
             {
-                padrCamp = Convert.ToDecimal(padrCampObj);
+                padrCamp = padrCampObj;
+            }
+
+            string? vaGrCamp = null;
+            if (vaGrCampObj != null && vaGrCampObj != DBNull.Value)
+            {
+                vaGrCamp = vaGrCampObj.ToString();
             }
 
             return (
                 NomeCamp: nomeCamp ?? "",
                 CompCamp: compCamp?.Trim() ?? "E",
-                PadrCamp: padrCamp
+                PadrCamp: padrCamp,
+                VaGrCamp: vaGrCamp
             );
         }).ToList();
     }
@@ -70,8 +81,12 @@ public class ConsultaService : IConsultaService
     /// no DataSet ANTES do formulário aparecer para o usuário.
     ///
     /// Lógica por tipo de campo (CompCamp):
-    /// - 'S' (checkbox): PadrCamp != 0 ? 1 : 0 (SeInte no Delphi)
-    /// - Outros: PadrCamp diretamente
+    /// - 'S', 'ES' (checkbox): PadrCamp != 0 ? 1 : 0
+    /// - 'D' (data): Data atual
+    /// - 'DH' (data/hora): Data atual
+    /// - 'C' (combo): Primeiro valor de VaGrCamp
+    /// - 'E' (texto): PadrCamp como string se definido
+    /// - 'N', 'EN' (numérico): PadrCamp como número (mesmo se 0)
     /// </summary>
     private async Task ApplyFieldDefaultsAsync(
         IDbConnection connection,
@@ -81,7 +96,7 @@ public class ConsultaService : IConsultaService
     {
         var fieldsWithDefaults = await GetFieldsWithDefaultsAsync(connection, tableId);
 
-        foreach (var (nomeCamp, compCamp, padrCamp) in fieldsWithDefaults)
+        foreach (var (nomeCamp, compCamp, padrCamp, vaGrCamp) in fieldsWithDefaults)
         {
             // Verifica se campo é válido na tabela
             if (!validColumns.Contains(nomeCamp.ToUpperInvariant()))
@@ -106,29 +121,87 @@ public class ConsultaService : IConsultaService
             {
                 // Lógica Delphi: SeInte(PadrCamp = 0, 0, 1)
                 // Se PadrCamp = 0, valor = 0; senão valor = 1
-                defaultValue = (padrCamp == null || padrCamp == 0) ? 0 : 1;
+                var padrNum = ConvertToDecimal(padrCamp);
+                defaultValue = (padrNum == null || padrNum == 0) ? 0 : 1;
                 _logger.LogInformation(
                     "Aplicando default checkbox: {Field} = {Value} (PadrCamp={PadrCamp})",
                     nomeCamp, defaultValue, padrCamp);
             }
-            else if (compCamp == "D" || compCamp == "H" || compCamp == "DH")
+            else if (compCamp == "D" || compCamp == "DH") // Data ou Data/Hora
             {
-                // Campos de data/hora: não aplica PadrCamp numérico
-                // Delphi trata separadamente (geralmente usa data atual)
+                // Delphi aplica data atual para campos de data com InicCamp=1
+                defaultValue = DateTime.Today;
+                _logger.LogInformation(
+                    "Aplicando default data: {Field} = {Value}",
+                    nomeCamp, defaultValue);
+            }
+            else if (compCamp == "H") // Só hora
+            {
+                // Para campos de hora, não aplica default automático
                 continue;
+            }
+            else if (compCamp == "C") // Combo
+            {
+                // Delphi: primeiro valor de VaGrCamp é o default
+                // VaGrCamp contém valores separados por \n (newline)
+                if (!string.IsNullOrEmpty(vaGrCamp))
+                {
+                    var firstValue = vaGrCamp
+                        .Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                        .FirstOrDefault()?.Trim();
+
+                    if (!string.IsNullOrEmpty(firstValue))
+                    {
+                        defaultValue = firstValue;
+                        _logger.LogInformation(
+                            "Aplicando default combo: {Field} = {Value} (primeiro de VaGrCamp)",
+                            nomeCamp, defaultValue);
+                    }
+                }
+            }
+            else if (compCamp == "E") // Texto (Edit)
+            {
+                // Para campos de texto, usa PadrCamp como string se definido
+                if (padrCamp != null)
+                {
+                    defaultValue = padrCamp.ToString();
+                    _logger.LogInformation(
+                        "Aplicando default texto: {Field} = {Value}",
+                        nomeCamp, defaultValue);
+                }
+            }
+            else if (compCamp == "N" || compCamp == "EN") // Numérico
+            {
+                // Para campos numéricos, aplica PadrCamp mesmo se for 0
+                // (0 pode ser um valor default válido)
+                if (padrCamp != null)
+                {
+                    var padrNum = ConvertToDecimal(padrCamp);
+                    if (padrNum != null)
+                    {
+                        defaultValue = padrNum.Value;
+                        _logger.LogInformation(
+                            "Aplicando default numérico: {Field} = {Value}",
+                            nomeCamp, defaultValue);
+                    }
+                }
             }
             else if (compCamp == "M" || compCamp == "MEMO")
             {
                 // Campos memo: não aplica default numérico
                 continue;
             }
-            else if (padrCamp.HasValue && padrCamp.Value != 0)
+            else
             {
-                // Para outros tipos numéricos, só aplica se PadrCamp != 0
-                defaultValue = padrCamp.Value;
-                _logger.LogInformation(
-                    "Aplicando default numérico: {Field} = {Value}",
-                    nomeCamp, defaultValue);
+                // Outros tipos: aplica PadrCamp se definido e != 0
+                var padrNum = ConvertToDecimal(padrCamp);
+                if (padrNum.HasValue && padrNum.Value != 0)
+                {
+                    defaultValue = padrNum.Value;
+                    _logger.LogInformation(
+                        "Aplicando default genérico: {Field} = {Value}",
+                        nomeCamp, defaultValue);
+                }
             }
 
             if (defaultValue != null)
@@ -140,6 +213,21 @@ public class ConsultaService : IConsultaService
                     fields[nomeCamp] = defaultValue;
             }
         }
+    }
+
+    /// <summary>
+    /// Converte um valor object para decimal? de forma segura.
+    /// </summary>
+    private static decimal? ConvertToDecimal(object? value)
+    {
+        if (value == null) return null;
+        if (value is decimal d) return d;
+        if (value is int i) return i;
+        if (value is long l) return l;
+        if (value is double dbl) return (decimal)dbl;
+        if (value is float f) return (decimal)f;
+        if (decimal.TryParse(value.ToString(), out var result)) return result;
+        return null;
     }
 
     /// <summary>
@@ -1093,5 +1181,94 @@ public class ConsultaService : IConsultaService
                 Message = $"Erro ao excluir: {ex.Message}"
             };
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<Dictionary<string, object?>> GetFieldDefaultsAsync(int tableId)
+    {
+        var defaults = new Dictionary<string, object?>();
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            var fieldsWithDefaults = await GetFieldsWithDefaultsAsync(connection, tableId);
+
+            foreach (var (nomeCamp, compCamp, padrCamp, vaGrCamp) in fieldsWithDefaults)
+            {
+                object? defaultValue = null;
+
+                if (compCamp == "S" || compCamp == "ES") // Checkbox
+                {
+                    var padrNum = ConvertToDecimal(padrCamp);
+                    defaultValue = (padrNum == null || padrNum == 0) ? 0 : 1;
+                }
+                else if (compCamp == "D" || compCamp == "DH") // Data ou Data/Hora
+                {
+                    // Retorna data como string no formato ISO para JavaScript
+                    defaultValue = DateTime.Today.ToString("yyyy-MM-dd");
+                }
+                else if (compCamp == "C") // Combo
+                {
+                    if (!string.IsNullOrEmpty(vaGrCamp))
+                    {
+                        var firstValue = vaGrCamp
+                            .Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                            .FirstOrDefault()?.Trim();
+
+                        if (!string.IsNullOrEmpty(firstValue))
+                        {
+                            defaultValue = firstValue;
+                        }
+                    }
+                }
+                else if (compCamp == "E") // Texto (Edit)
+                {
+                    // Para campos de texto, usa PadrCamp como string se definido
+                    if (padrCamp != null)
+                    {
+                        defaultValue = padrCamp.ToString();
+                    }
+                }
+                else if (compCamp == "N" || compCamp == "EN") // Numérico
+                {
+                    // Para campos numéricos, aplica PadrCamp mesmo se for 0
+                    if (padrCamp != null)
+                    {
+                        var padrNum = ConvertToDecimal(padrCamp);
+                        if (padrNum != null)
+                        {
+                            defaultValue = padrNum.Value;
+                        }
+                    }
+                }
+                else
+                {
+                    // Outros tipos: aplica PadrCamp se definido e != 0
+                    var padrNum = ConvertToDecimal(padrCamp);
+                    if (padrNum.HasValue && padrNum.Value != 0)
+                    {
+                        defaultValue = padrNum.Value;
+                    }
+                }
+
+                if (defaultValue != null)
+                {
+                    defaults[nomeCamp] = defaultValue;
+                    _logger.LogDebug("Default para {Field}: {Value} (tipo={CompCamp})",
+                        nomeCamp, defaultValue, compCamp);
+                }
+            }
+
+            _logger.LogInformation("Carregados {Count} defaults para tabela {TableId}",
+                defaults.Count, tableId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter defaults da tabela {TableId}", tableId);
+        }
+
+        return defaults;
     }
 }
