@@ -67,3 +67,20 @@ public class LookupQueryRequest
     /// </summary>
     public string? Filter { get; set; }
 }
+
+/// <summary>
+/// Request para buscar registro de lookup por código digitado.
+/// Usado quando o usuário digita diretamente no campo lookup (comportamento TDBLookNume).
+/// </summary>
+public class LookupByCodeRequest
+{
+    /// <summary>
+    /// SQL do lookup (SQL_CAMP do campo)
+    /// </summary>
+    public string Sql { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Código digitado pelo usuário
+    /// </summary>
+    public string Code { get; set; } = string.Empty;
+}

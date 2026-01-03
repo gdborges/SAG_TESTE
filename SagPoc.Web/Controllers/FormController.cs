@@ -393,6 +393,56 @@ public class FormController : Controller
     }
 
     /// <summary>
+    /// Busca um registro de lookup específico pelo código digitado.
+    /// POST /Form/LookupByCode
+    /// Body: { "sql": "SELECT ...", "code": "123" }
+    ///
+    /// Usado quando o usuário digita diretamente o código no campo lookup.
+    /// Comportamento similar ao TDBLookNume do Delphi no evento OnExit.
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> LookupByCode([FromBody] LookupByCodeRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Sql))
+                return BadRequest(new { success = false, error = "SQL não informado" });
+
+            if (string.IsNullOrWhiteSpace(request.Code))
+                return BadRequest(new { success = false, error = "Código não informado" });
+
+            var record = await _lookupService.LookupByCodeAsync(request.Sql, request.Code);
+
+            if (record == null)
+            {
+                return Json(new
+                {
+                    success = true,
+                    found = false,
+                    message = "Código não encontrado"
+                });
+            }
+
+            return Json(new
+            {
+                success = true,
+                found = true,
+                record = new
+                {
+                    key = record.Key,
+                    value = record.Value,
+                    data = record.Data
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar LookupByCode: {Code}", request.Code);
+            return StatusCode(500, new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Retorna os campos protegidos de uma tabela.
     /// GET /Form/GetProtectedFields?tableId={id}
     /// </summary>

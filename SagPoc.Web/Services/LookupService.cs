@@ -132,6 +132,150 @@ public class LookupService : ILookupService
             return result;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<LookupRecord?> LookupByCodeAsync(string sql, string code)
+    {
+        if (string.IsNullOrWhiteSpace(sql) || string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        try
+        {
+            // Modifica a SQL para filtrar pelo código
+            // A primeira coluna é sempre o código (Key)
+            var filteredSql = WrapSqlWithCodeFilter(sql, code);
+
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            var queryResults = await connection.QueryAsync(filteredSql);
+            var firstRow = queryResults.FirstOrDefault();
+
+            if (firstRow == null)
+            {
+                _logger.LogDebug("LookupByCode: código '{Code}' não encontrado", code);
+                return null;
+            }
+
+            var dict = (IDictionary<string, object>)firstRow;
+            var record = new LookupRecord();
+
+            // Preenche Key e Value (colunas 0 e 1)
+            var values = dict.Values.ToList();
+            if (values.Count >= 1)
+            {
+                record.Key = values[0]?.ToString() ?? string.Empty;
+            }
+            if (values.Count >= 2)
+            {
+                record.Value = values[1]?.ToString() ?? string.Empty;
+            }
+            else
+            {
+                record.Value = record.Key;
+            }
+
+            // Armazena TODOS os valores do registro por nome de coluna (uppercase)
+            foreach (var kvp in dict)
+            {
+                record.Data[kvp.Key.ToUpper()] = kvp.Value?.ToString() ?? string.Empty;
+            }
+
+            _logger.LogDebug("LookupByCode: código '{Code}' encontrado, descrição: '{Value}'", code, record.Value);
+            return record;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao executar LookupByCode: {Code}", code);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Envolve a SQL original em uma subquery para filtrar pelo código.
+    /// Funciona para SQL Server e Oracle.
+    /// </summary>
+    private string WrapSqlWithCodeFilter(string sql, string code)
+    {
+        // Remove ponto-e-vírgula final se existir
+        sql = sql.TrimEnd().TrimEnd(';');
+
+        // Escapa aspas simples no código para evitar SQL injection
+        var safeCode = code.Replace("'", "''");
+
+        // Tenta detectar se o código é numérico
+        var isNumeric = decimal.TryParse(code, out _);
+
+        // Nome da primeira coluna precisa ser determinado dinamicamente
+        // Usamos a subquery approach que funciona em ambos os bancos
+        // IMPORTANTE: Oracle retorna colunas em UPPERCASE a menos que sejam quoted
+        var firstCol = GetFirstColumnAlias(sql).ToUpper();
+
+        if (_dbProvider.ProviderName == "Oracle")
+        {
+            // Oracle: usa ROWNUM para limitar
+            // Não usa aspas duplas para que seja case-insensitive
+            if (isNumeric)
+            {
+                return $@"SELECT * FROM ({sql}) lookup_sub
+                          WHERE lookup_sub.{firstCol} = {safeCode}
+                          AND ROWNUM = 1";
+            }
+            else
+            {
+                return $@"SELECT * FROM ({sql}) lookup_sub
+                          WHERE UPPER(TO_CHAR(lookup_sub.{firstCol})) = UPPER('{safeCode}')
+                          AND ROWNUM = 1";
+            }
+        }
+        else
+        {
+            // SQL Server: usa TOP 1
+            if (isNumeric)
+            {
+                return $@"SELECT TOP 1 * FROM ({sql}) AS lookup_sub
+                          WHERE lookup_sub.[{GetFirstColumnAlias(sql)}] = {safeCode}";
+            }
+            else
+            {
+                return $@"SELECT TOP 1 * FROM ({sql}) AS lookup_sub
+                          WHERE UPPER(CAST(lookup_sub.[{GetFirstColumnAlias(sql)}] AS VARCHAR(MAX))) = UPPER('{safeCode}')";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extrai o alias/nome da primeira coluna do SELECT.
+    /// </summary>
+    private string GetFirstColumnAlias(string sql)
+    {
+        // Procura o primeiro SELECT e extrai a primeira coluna
+        var selectMatch = System.Text.RegularExpressions.Regex.Match(
+            sql,
+            @"SELECT\s+(?:TOP\s+\d+\s+)?(?:DISTINCT\s+)?(\w+(?:\.\w+)?(?:\s+AS\s+(\w+))?)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        if (selectMatch.Success)
+        {
+            // Se tem alias (AS xxx), usa o alias
+            if (selectMatch.Groups[2].Success && !string.IsNullOrWhiteSpace(selectMatch.Groups[2].Value))
+            {
+                return selectMatch.Groups[2].Value;
+            }
+            // Senão usa o nome da coluna (pode ser tabela.coluna)
+            var col = selectMatch.Groups[1].Value;
+            if (col.Contains('.'))
+            {
+                col = col.Split('.').Last();
+            }
+            return col;
+        }
+
+        // Fallback: assume primeira coluna padrão
+        return "CODICAMPO";
+    }
 }
 
 /// <summary>

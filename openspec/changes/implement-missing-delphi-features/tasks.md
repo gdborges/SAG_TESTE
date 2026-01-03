@@ -1,7 +1,7 @@
 # Tasks: Implement Missing Delphi Features
 
-**Status Geral:** 68/82 tarefas concluidas
-**Ultima Atualizacao:** 2026-01-02
+**Status Geral:** 89/109 tarefas concluidas (82%)
+**Ultima Atualizacao:** 2026-01-03
 
 ---
 
@@ -246,6 +246,79 @@
 
 ---
 
+## Fase 8: Lookup Auto-Fetch (Media) - IMPL. CONCLUIDA
+
+**Objetivo:** Buscar descricao automaticamente ao digitar codigo no campo lookup
+**Arquivos:** sag-events.js, FormController.cs, LookupService.cs
+**Estimativa:** 2-3 horas
+
+**Contexto:** No Delphi, o TDBLookNume busca automaticamente a descricao quando o
+usuario digita um codigo e sai do campo (blur). Na web, isso so funciona quando
+o usuario clica no botao de pesquisa e seleciona um item.
+
+### 8.1 Backend - Endpoint de busca por codigo - CONCLUIDO
+- [x] 8.1.1 Criar metodo LookupByCode em LookupService
+- [x] 8.1.2 Executar SQL_CAMP com filtro pelo codigo digitado
+- [x] 8.1.3 Retornar registro completo (codigo, descricao, dados extras)
+- [x] 8.1.4 Adicionar endpoint POST /Form/LookupByCode no FormController
+
+### 8.2 Frontend - Auto-fetch no blur - CONCLUIDO
+- [x] 8.2.1 Criar funcao bindLookupAutoFetch() em sag-events.js
+- [x] 8.2.2 Detectar campos .lookup-code-input[data-lookup-sql]
+- [x] 8.2.3 No blur, se valor mudou, chamar endpoint LookupByCode
+- [x] 8.2.4 Preencher campo de descricao (.lookup-desc-field)
+- [x] 8.2.5 Armazenar dados no cache via setLookupData()
+- [x] 8.2.6 Preencher campos IE vinculados via fillLinkedIEFields()
+- [x] 8.2.7 Limpar descricao se codigo nao encontrado
+
+### 8.3 Integracao - CONCLUIDO
+- [x] 8.3.1 Chamar bindLookupAutoFetch() no init do SagEvents
+- [x] 8.3.2 Chamar apos abertura de modal de movimento
+
+### 8.4 Testes - PENDENTE (requer teste manual)
+- [ ] 8.4.1 Testar digitacao de codigo valido - deve preencher descricao
+- [ ] 8.4.2 Testar digitacao de codigo invalido - deve limpar descricao
+- [ ] 8.4.3 Testar preenchimento de campos IE apos lookup
+- [ ] 8.4.4 Testar em modal de movimento
+
+---
+
+## Fase 9: WH-NOVO - Loop PLSAG com SQL (Alta) - CONCLUIDA
+
+**Objetivo:** Implementar comando WH-NOVO que executa SQL diretamente e itera sobre resultados
+**Arquivos:** plsag-interpreter.js
+**Estimativa:** 1-2 horas
+
+**Contexto:** O comando WH-NOVO e amplamente usado nos scripts PLSAG para iterar sobre
+resultados de queries SQL. O formato e:
+- `WH-NOVO####-SELECT ...` - Inicia loop executando SQL
+- `WH-NOVO####` ou `WH-NOVO####-` - Fim do loop
+
+Os dados ficam disponiveis via template `{QY-NOVO####-Campo}`.
+
+### 9.1 Implementacao - CONCLUIDO
+- [x] 9.1.1 Tornar handleControlFlow async para suportar fetch
+- [x] 9.1.2 Detectar WH-NOVO<label>-<SQL> (inicio de loop)
+- [x] 9.1.3 Executar query via /api/plsag/query
+- [x] 9.1.4 Armazenar resultados em context.queryMultiResults[label]
+- [x] 9.1.5 Carregar primeiro registro em context.queryResults[label]
+- [x] 9.1.6 Detectar WH-NOVO<label> sem SQL (fim de loop)
+- [x] 9.1.7 Avancar para proximo registro
+- [x] 9.1.8 Voltar ao inicio do loop se ainda ha dados
+- [x] 9.1.9 Tratar caso de query sem resultados (pular loop)
+
+### 9.2 Testes - PENDENTE (requer teste manual)
+- [x] 9.2.1 Testar com registro que dispara evento com WH-NOVO
+- [ ] 9.2.2 Testar loop com multiplos registros
+- [ ] 9.2.3 Verificar que templates {QY-NOVO####-Campo} funcionam
+
+**Alteracoes realizadas:**
+- plsag-interpreter.js:handleControlFlow() - Tornada async
+- plsag-interpreter.js:execute() - Chamada await handleControlFlow()
+- Adicionado bloco completo para WH-NOVO com suporte a inicio/fim de loop
+
+---
+
 ## Resumo de Progresso
 
 | Fase | Descricao | Status | Progresso |
@@ -257,7 +330,9 @@
 | 5 | DuplCliq | **Concluida** | 6/6 |
 | 6 | Eventos Movimento | **Impl. Concluida** | 10/14 |
 | 7 | MudaTab2 | Pendente | 0/8 |
-| **TOTAL** | | | **68/82** |
+| 8 | Lookup Auto-Fetch | **Impl. Concluida** | 11/15 |
+| 9 | WH-NOVO Loop | **Impl. Concluida** | 10/12 |
+| **TOTAL** | | | **89/109** |
 
 ---
 

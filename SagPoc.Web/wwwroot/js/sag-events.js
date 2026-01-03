@@ -60,6 +60,9 @@ const SagEvents = (function () {
         // Bind de duplo clique em campos lookup (T, IT, L, IL)
         bindDuplCliq();
 
+        // Bind de auto-fetch em campos lookup (L, IL) - busca descrição ao digitar código
+        bindLookupAutoFetch();
+
         // Observa novos campos adicionados dinamicamente
         observeDom();
 
@@ -1935,6 +1938,168 @@ const SagEvents = (function () {
     }
 
     // ============================================
+    // LOOKUP AUTO-FETCH - Busca descrição ao digitar código
+    // Similar ao TDBLookNume do Delphi que busca no OnExit
+    // ============================================
+
+    /**
+     * Faz bind nos campos lookup para buscar descrição automaticamente
+     * quando o usuário digita um código e sai do campo (blur).
+     *
+     * Comportamento similar ao TDBLookNume do Delphi:
+     * - Usuário digita código diretamente
+     * - Ao sair do campo (Tab/Enter/Click fora)
+     * - Sistema busca descrição pelo código
+     * - Preenche campo de descrição
+     * - Preenche campos IE vinculados
+     *
+     * @param {HTMLElement} container - Container onde buscar os campos (default: document)
+     */
+    function bindLookupAutoFetch(container = document) {
+        const lookupInputs = container.querySelectorAll('.lookup-code-input[data-lookup-sql]');
+        let count = 0;
+
+        lookupInputs.forEach(input => {
+            // Evita duplo bind
+            if (input.dataset.autofetchBound) return;
+            input.dataset.autofetchBound = 'true';
+
+            // Armazena valor anterior para detectar mudança
+            let previousValue = input.value || '';
+
+            // Bind no blur (quando sai do campo)
+            input.addEventListener('blur', async function(e) {
+                const currentValue = this.value?.trim() || '';
+
+                // Só busca se valor mudou e não está vazio
+                if (currentValue === previousValue) {
+                    return;
+                }
+
+                previousValue = currentValue;
+
+                // Se limpou o campo, limpa a descrição
+                if (!currentValue) {
+                    clearLookupDescForField(this);
+                    return;
+                }
+
+                // Busca descrição pelo código
+                await fetchLookupByCode(this, currentValue);
+            });
+
+            // Também bind no Enter para buscar imediatamente
+            input.addEventListener('keydown', async function(e) {
+                if (e.key === 'Enter') {
+                    const currentValue = this.value?.trim() || '';
+                    if (currentValue && currentValue !== previousValue) {
+                        previousValue = currentValue;
+                        await fetchLookupByCode(this, currentValue);
+                    }
+                }
+            });
+
+            count++;
+        });
+
+        if (count > 0) {
+            console.log('[SagEvents] Lookup Auto-Fetch vinculado em', count, 'campos');
+        }
+    }
+
+    /**
+     * Busca descrição de lookup pelo código digitado.
+     * @param {HTMLElement} input - Campo de input do lookup
+     * @param {string} code - Código digitado
+     */
+    async function fetchLookupByCode(input, code) {
+        const sql = input.dataset.lookupSql;
+        const descId = input.dataset.lookupDescId;
+        const fieldName = input.dataset.sagNomecamp || input.name;
+
+        if (!sql) {
+            console.warn('[SagEvents] Campo lookup sem data-lookup-sql');
+            return;
+        }
+
+        console.log(`[SagEvents] Buscando lookup para ${fieldName}, código: ${code}`);
+
+        try {
+            const response = await fetch('/Form/LookupByCode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sql: sql, code: code })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Erro na busca');
+            }
+
+            if (data.found && data.record) {
+                // Encontrou o registro
+                const record = data.record;
+
+                // 1. Preenche campo de descrição
+                if (descId) {
+                    const descField = document.getElementById(descId);
+                    if (descField) {
+                        descField.value = record.value || '';
+                    }
+                }
+
+                // 2. Armazena dados no cache para campos IE
+                if (fieldName && record.data) {
+                    setLookupData(fieldName, record.data);
+                }
+
+                // 3. Preenche campos IE vinculados
+                fillLinkedIEFields(input, record.data || {});
+
+                console.log(`[SagEvents] Lookup encontrado: ${fieldName} = ${record.value}`);
+
+                // 4. Dispara eventos change e blur para processar OnExit
+                // Obs: não dispara blur novamente para evitar loop
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+
+            } else {
+                // Código não encontrado - limpa descrição
+                clearLookupDescForField(input);
+                console.log(`[SagEvents] Lookup não encontrado para código: ${code}`);
+            }
+
+        } catch (error) {
+            console.error('[SagEvents] Erro ao buscar lookup:', error);
+            // Não limpa descrição em caso de erro de rede
+        }
+    }
+
+    /**
+     * Limpa a descrição de um campo lookup específico.
+     * @param {HTMLElement} input - Campo de input do lookup
+     */
+    function clearLookupDescForField(input) {
+        const descId = input.dataset.lookupDescId;
+        if (descId) {
+            const descField = document.getElementById(descId);
+            if (descField) {
+                descField.value = '';
+            }
+        }
+
+        // Limpa dados do cache
+        const fieldName = input.dataset.sagNomecamp || input.name;
+        if (fieldName) {
+            setLookupData(fieldName, {});
+        }
+    }
+
+    // ============================================
     // PROTECTED FIELDS - Validação de Campos Protegidos
     // Similar ao BtnConf_CampModi do Delphi
     // ============================================
@@ -2166,7 +2331,9 @@ const SagEvents = (function () {
         clearOriginalRecordData,
         getProtectedFields,
         validateProtectedFields,
-        validateBeforeSave
+        validateBeforeSave,
+        // Lookup Auto-Fetch API
+        bindLookupAutoFetch
     };
 })();
 

@@ -1237,8 +1237,8 @@ const PlsagInterpreter = (function() {
 
                 const token = tokens[i];
 
-                // Verifica controle de fluxo
-                const flowResult = handleControlFlow(token);
+                // Verifica controle de fluxo (async para suportar WH-NOVO)
+                const flowResult = await handleControlFlow(token);
                 if (flowResult === 'skip') {
                     continue;
                 }
@@ -1280,7 +1280,7 @@ const PlsagInterpreter = (function() {
      * Trata instrucoes de controle de fluxo
      * @returns {'skip'|number|null} - 'skip' para pular, numero para jump, null para continuar
      */
-    function handleControlFlow(token) {
+    async function handleControlFlow(token) {
         const prefix = token.prefix;
         const identifier = token.identifier;
 
@@ -1417,6 +1417,121 @@ const PlsagInterpreter = (function() {
             // Loop finalizado
             context.control.loopStack.splice(loopIdx, 1);
             console.log(`[PLSAG] WH-FINA: Loop ${label} finalizado apos ${loop.currentIndex} iteracoes`);
+            return 'skip';
+        }
+
+        // WH-NOVO<label>-<SQL> - Loop que executa SQL diretamente
+        // Formato: WH-NOVO0001-SELECT ... (inicia loop)
+        //          WH-NOVO0001 ou WH-NOVO0001- (fim do loop)
+        if (prefix === 'WH' && identifier.startsWith('NOVO')) {
+            const label = identifier; // Ex: "NOVO0001"
+            const sql = (token.parameter || '').trim();
+
+            // Se tem SQL, e inicio de loop - executa query e inicia iteracao
+            if (sql && sql.toUpperCase().startsWith('SELECT')) {
+                try {
+                    // Substitui templates no SQL
+                    const resolvedSql = substituteTemplatesForSQL(sql);
+                    console.log(`[PLSAG] WH-${label}: Executando query: ${resolvedSql.substring(0, 100)}...`);
+
+                    const response = await fetch('/api/plsag/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sql: resolvedSql,
+                            type: 'multi'
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (!result.success) {
+                        console.error(`[PLSAG] WH-${label}: Erro na query:`, result.error);
+                        // Marca para pular loop
+                        context.control.loopStack.push({
+                            type: 'WH-NOVO',
+                            label: label,
+                            data: [],
+                            currentIndex: 0,
+                            startInstructionIndex: context.meta.instructionCount,
+                            skipLoop: true
+                        });
+                        return 'skip';
+                    }
+
+                    const queryData = result.data || [];
+
+                    if (queryData.length === 0) {
+                        console.log(`[PLSAG] WH-${label}: Query sem resultados, pulando loop`);
+                        context.control.loopStack.push({
+                            type: 'WH-NOVO',
+                            label: label,
+                            data: [],
+                            currentIndex: 0,
+                            startInstructionIndex: context.meta.instructionCount,
+                            skipLoop: true
+                        });
+                        return 'skip';
+                    }
+
+                    console.log(`[PLSAG] WH-${label}: Iniciando loop com ${queryData.length} registros`);
+
+                    // Armazena dados para iteracao
+                    context.queryMultiResults[label] = queryData;
+                    context.queryResults[label] = queryData[0];
+
+                    // Inicia loop
+                    context.control.loopStack.push({
+                        type: 'WH-NOVO',
+                        label: label,
+                        data: queryData,
+                        currentIndex: 0,
+                        startInstructionIndex: context.meta.instructionCount,
+                        skipLoop: false
+                    });
+
+                    return 'skip';
+                } catch (error) {
+                    console.error(`[PLSAG] WH-${label}: Excecao:`, error);
+                    return 'skip';
+                }
+            }
+
+            // Sem SQL ou SQL vazio = fim do loop (WH-NOVO0001 ou WH-NOVO0001-)
+            const loopIdx = context.control.loopStack.findIndex(
+                l => l.type === 'WH-NOVO' && l.label === label
+            );
+
+            if (loopIdx === -1) {
+                console.warn(`[PLSAG] WH-${label} (fim) sem inicio correspondente`);
+                return 'skip';
+            }
+
+            const loop = context.control.loopStack[loopIdx];
+
+            // Se loop estava marcado para pular, apenas remove da pilha
+            if (loop.skipLoop) {
+                context.control.loopStack.splice(loopIdx, 1);
+                console.log(`[PLSAG] WH-${label}: Loop finalizado (sem dados)`);
+                return 'skip';
+            }
+
+            // Avanca para proximo registro
+            loop.currentIndex++;
+
+            if (loop.currentIndex < loop.data.length) {
+                // Ainda tem registros - atualiza contexto com proximo registro
+                context.queryResults[label] = loop.data[loop.currentIndex];
+
+                console.log(`[PLSAG] WH-${label}: Iteracao ${loop.currentIndex + 1}/${loop.data.length}`);
+
+                // Retorna indice para voltar ao inicio do loop
+                return loop.startInstructionIndex;
+            }
+
+            // Loop finalizado
+            context.control.loopStack.splice(loopIdx, 1);
+            console.log(`[PLSAG] WH-${label}: Loop finalizado apos ${loop.currentIndex} iteracoes`);
             return 'skip';
         }
 

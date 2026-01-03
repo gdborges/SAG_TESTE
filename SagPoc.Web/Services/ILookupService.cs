@@ -23,4 +23,13 @@ public interface ILookupService
     /// <param name="sql">Query SQL do campo (SQL_CAMP)</param>
     /// <returns>LookupQueryResult com todos os registros e colunas</returns>
     Task<LookupQueryResult> ExecuteLookupQueryFullAsync(string sql);
+
+    /// <summary>
+    /// Busca um registro específico pelo código digitado.
+    /// Usado quando o usuário digita diretamente no campo lookup (comportamento TDBLookNume).
+    /// </summary>
+    /// <param name="sql">Query SQL do campo (SQL_CAMP)</param>
+    /// <param name="code">Código digitado pelo usuário</param>
+    /// <returns>LookupRecord com dados completos ou null se não encontrado</returns>
+    Task<LookupRecord?> LookupByCodeAsync(string sql, string code);
 }

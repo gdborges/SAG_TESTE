@@ -569,6 +569,11 @@ var MovementManager = (function() {
             SagEvents.bindLookupButtons(container);
         }
 
+        // Inicializa auto-fetch de lookup (busca descrição ao digitar código)
+        if (window.SagEvents && typeof SagEvents.bindLookupAutoFetch === 'function') {
+            SagEvents.bindLookupAutoFetch(container);
+        }
+
         // Inicializa máscaras se disponível
         if (window.IMask) {
             container.querySelectorAll('[data-mask]').forEach(function(input) {
