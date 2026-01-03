@@ -1,0 +1,609 @@
+@model SagPoc.Web.Models.FormRenderViewModel
+@using SagPoc.Web.Models
+@{
+    Layout = null; // Sem layout master - renderiza standalone para embedding em iframe
+    var title = Model.Table?.NomeTabe ?? $"Formulário {Model.Form.TableId}";
+    var hasConsultas = Model.HasConsultas;
+
+    // Movimentos via SISTTABE (novo sistema)
+    var hasMovementTables = Model.Form.HasMovementTables;
+    var tabMovements = Model.Form.TabMovements.ToList();
+    var inlineMovements = Model.Form.InlineMovements.ToList();
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title - SAG</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+
+    <!-- SAG Styles -->
+    <link rel="stylesheet" href="/css/site.css" />
+    <link rel="stylesheet" href="/css/form-renderer.css" />
+    <link rel="stylesheet" href="/css/vision-theme.css" />
+    <link rel="stylesheet" href="/css/consulta-grid.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Embedded-specific styles */
+        body {
+            background-color: transparent;
+            min-height: auto;
+            padding: 0;
+            margin: 0;
+        }
+        .container-fluid {
+            padding: 1rem;
+        }
+        /* Hide back button in embedded mode */
+        .btn-voltar-embedded {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">@title</h4>
+            <div>
+                <span class="badge bg-info">@Model.Form.Fields.Count campos</span>
+                @if (hasConsultas)
+                {
+                    <span class="badge bg-success ms-1">@Model.Consultas.Count consultas</span>
+                }
+                @if (Model.Form.HasMultipleTabs)
+                {
+                    <span class="badge bg-secondary ms-1">@Model.Form.GetTabGroups().Count guias</span>
+                }
+            </div>
+        </div>
+
+        @if (hasConsultas)
+        {
+            <!-- Layout com Guia Consulta + Guias de Dados -->
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <!-- Tab Consulta -->
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-consulta-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-consulta"
+                            type="button" role="tab" aria-controls="tab-consulta" aria-selected="true">
+                        @Model.ConsultaTabName
+                    </button>
+                </li>
+                <!-- Tab Dados (primeira guia) -->
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-dados-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-dados"
+                            type="button" role="tab" aria-controls="tab-dados" aria-selected="false">
+                        @Model.DadosTabName
+                    </button>
+                </li>
+                @{
+                    var hasTab2Fields = Model.Form.HeaderFields.Any(f => f.GuiaCamp == 2);
+                }
+                @if (!string.IsNullOrEmpty(Model.DadosTab2Name) && hasTab2Fields)
+                {
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-dados2-tab"
+                                data-bs-toggle="tab" data-bs-target="#tab-dados2"
+                                type="button" role="tab" aria-controls="tab-dados2" aria-selected="false">
+                            @Model.DadosTab2Name
+                        </button>
+                    </li>
+                }
+                @if (Model.Form.HasMovements)
+                {
+                    @foreach (var movementGroup in Model.Form.MovementsByType)
+                    {
+                        var movementTabId = $"tab-mov-{movementGroup.Key}";
+                        var firstBevel = movementGroup.FirstOrDefault(f => f.GetComponentType() == SagPoc.Web.Models.ComponentType.Bevel && f.HasBevelCaption);
+                        var movementName = firstBevel?.LabeCamp ?? $"Movimento {movementGroup.Key}";
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="@(movementTabId)-tab"
+                                    data-bs-toggle="tab" data-bs-target="#@movementTabId"
+                                    type="button" role="tab" aria-controls="@movementTabId" aria-selected="false">
+                                @movementName
+                            </button>
+                        </li>
+                    }
+                }
+                @if (tabMovements.Any())
+                {
+                    @foreach (var movement in tabMovements)
+                    {
+                        var movementTabId = $"tab-movement-{movement.CodiTabe}";
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="@(movementTabId)-tab"
+                                    data-bs-toggle="tab" data-bs-target="#@movementTabId"
+                                    type="button" role="tab" aria-controls="@movementTabId" aria-selected="false">
+                                <i class="bi bi-list-ul me-1"></i>@movement.GetCleanTabName()
+                            </button>
+                        </li>
+                    }
+                }
+            </ul>
+
+            <div class="tab-content" id="mainTabsContent">
+                <!-- Conteudo Tab Consulta -->
+                <div class="tab-pane fade show active" id="tab-consulta" role="tabpanel" aria-labelledby="tab-consulta-tab">
+                    <div class="tab-overlay hidden" id="overlay-consulta">
+                        <div class="overlay-content">
+                            <div class="overlay-icon">
+                                <i class="bi bi-pencil-square"></i>
+                            </div>
+                            <h5>Edição em andamento</h5>
+                            <p>Finalize a edição atual antes de acessar a consulta.</p>
+                            <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-dados-tab').click()">
+                                <i class="bi bi-arrow-right me-1"></i>Voltar para Edição
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        @await Html.PartialAsync("_ConsultaTab", Model)
+                    </div>
+                </div>
+
+                <!-- Conteudo Tab Dados -->
+                <div class="tab-pane fade" id="tab-dados" role="tabpanel" aria-labelledby="tab-dados-tab">
+                    <div class="tab-overlay" id="overlay-dados">
+                        <div class="overlay-content">
+                            <div class="overlay-icon">
+                                <i class="bi bi-lock-fill"></i>
+                            </div>
+                            <h5>Nenhum registro selecionado</h5>
+                            <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                            <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                                <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        @await Html.PartialAsync("_FormContent", Model.Form)
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.DadosTab2Name) && hasTab2Fields)
+                {
+                    <div class="tab-pane fade" id="tab-dados2" role="tabpanel" aria-labelledby="tab-dados2-tab">
+                        <div class="tab-overlay" id="overlay-dados2">
+                            <div class="overlay-content">
+                                <div class="overlay-icon">
+                                    <i class="bi bi-lock-fill"></i>
+                                </div>
+                                <h5>Nenhum registro selecionado</h5>
+                                <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                                <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                                    <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            @{
+                                var tabGroups = Model.Form.GetTabGroups();
+                                var secondTab = tabGroups.Skip(1).FirstOrDefault();
+                                if (secondTab != null)
+                                {
+                                    @await Html.PartialAsync("_FormTabContent", secondTab)
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (Model.Form.HasMovements)
+                {
+                    @foreach (var movementGroup in Model.Form.MovementsByType)
+                    {
+                        var movementTabId = $"tab-mov-{movementGroup.Key}";
+                        <div class="tab-pane fade" id="@movementTabId" role="tabpanel" aria-labelledby="@(movementTabId)-tab">
+                            <div class="tab-overlay" id="overlay-@movementTabId">
+                                <div class="overlay-content">
+                                    <div class="overlay-icon">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </div>
+                                    <h5>Nenhum registro selecionado</h5>
+                                    <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                                    <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                                        <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-3">
+                                @await Html.PartialAsync("_MovementTab", movementGroup)
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (tabMovements.Any())
+                {
+                    @foreach (var movement in tabMovements)
+                    {
+                        var movementTabId = $"tab-movement-{movement.CodiTabe}";
+                        <div class="tab-pane fade" id="@movementTabId" role="tabpanel" aria-labelledby="@(movementTabId)-tab">
+                            <div class="tab-overlay" id="overlay-@movementTabId">
+                                <div class="overlay-content">
+                                    <div class="overlay-icon">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </div>
+                                    <h5>Nenhum registro selecionado</h5>
+                                    <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                                    <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                                        <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-3">
+                                @await Html.PartialAsync("_MovementSection", movement)
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            @if (inlineMovements.Any())
+            {
+                <div class="inline-movements-container mt-4" id="inlineMovementsContainer">
+                    <hr class="my-3" />
+                    @foreach (var movement in inlineMovements)
+                    {
+                        <div class="mb-4">
+                            @await Html.PartialAsync("_MovementSection", movement)
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <!-- Layout sem Guia Consulta -->
+            <form id="dynamicForm" class="needs-validation" novalidate>
+                @if (Model.Form.HasMultipleTabs)
+                {
+                    var tabGroups = Model.Form.GetTabGroups();
+                    var firstTab = tabGroups.FirstOrDefault();
+
+                    <ul class="nav nav-tabs" id="formTabs" role="tablist">
+                        @foreach (var tab in tabGroups)
+                        {
+                            var isActive = tab.TabIndex == firstTab?.TabIndex;
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link @(isActive ? "active" : "")"
+                                        id="tab-@tab.TabIndex-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#tab-@tab.TabIndex"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="tab-@tab.TabIndex"
+                                        aria-selected="@(isActive ? "true" : "false")">
+                                    @tab.TabName
+                                </button>
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="tab-content" id="formTabsContent">
+                        @foreach (var tab in tabGroups)
+                        {
+                            var isActive = tab.TabIndex == firstTab?.TabIndex;
+                            <div class="tab-pane fade @(isActive ? "show active" : "")"
+                                 id="tab-@tab.TabIndex"
+                                 role="tabpanel"
+                                 aria-labelledby="tab-@tab.TabIndex-tab">
+                                <div class="form-container p-3">
+                                    @await Html.PartialAsync("_FormTabContent", tab)
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="form-container">
+                        @await Html.PartialAsync("_FormContent", Model.Form)
+                    </div>
+                }
+
+                <hr class="my-4" />
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="reset" class="btn btn-outline-secondary">Limpar</button>
+                </div>
+            </form>
+        }
+    </div>
+
+    @if (hasMovementTables)
+    {
+        @await Html.PartialAsync("_MovementModal")
+    }
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/plsag-commands.js"></script>
+    <script src="/js/plsag-interpreter.js"></script>
+    <script src="/js/consulta-grid.js"></script>
+    <script src="/js/sag-events.js"></script>
+    @if (hasMovementTables)
+    {
+        <script src="/js/movement-manager.js"></script>
+    }
+
+    <script>
+        // Indica que estamos em modo embedded (para comunicação com Vue parent)
+        window.SAG_EMBEDDED = true;
+
+        // Inicializa sistema de eventos PLSAG
+        (function() {
+            var formEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FormEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var fieldEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FieldEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var isInsert = @(Model.EditingRecordId == null ? "true" : "false");
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    SagEvents.init(formEvents, fieldEvents, isInsert);
+                });
+            } else {
+                SagEvents.init(formEvents, fieldEvents, isInsert);
+            }
+        })();
+    </script>
+
+    @if (hasMovementTables)
+    {
+        <script>
+            (function() {
+                var parentTableId = @Model.Form.TableId;
+                var parentRecordId = @(Model.EditingRecordId?.ToString() ?? "null");
+                var movementMetadata = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                    Model.Form.MovementTables.Select(m => new {
+                        m.CodiTabe,
+                        m.NomeTabe,
+                        m.GravTabe,
+                        m.SiglTabe,
+                        m.SeriTabe,
+                        m.IsInline,
+                        m.PkColumnName,
+                        TabName = m.GetCleanTabName(),
+                        Columns = m.GetGridColumns()
+                    }),
+                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }
+                ));
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if (window.MovementManager) {
+                            MovementManager.init(parentTableId, parentRecordId, movementMetadata);
+                        }
+                    });
+                } else {
+                    if (window.MovementManager) {
+                        MovementManager.init(parentTableId, parentRecordId, movementMetadata);
+                    }
+                }
+            })();
+        </script>
+    }
+
+    <script>
+        // Estado do formulário
+        var formState = {
+            tableId: @Model.Form.TableId,
+            recordId: @(Model.EditingRecordId?.ToString() ?? "null"),
+            isNewRecord: false,
+            isDirty: false
+        };
+        window.formState = formState;
+
+        // Funções do formulário (igual ao Render.cshtml)
+        async function startNewRecord() {
+            try {
+                console.log('[Saga] Iniciando novo registro...');
+                const response = await fetch('/Form/CreateRecord?tableId=' + formState.tableId, { method: 'POST' });
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert('Erro ao criar registro: ' + (result.message || 'Erro desconhecido'));
+                    return false;
+                }
+
+                formState.recordId = result.recordId;
+                formState.isNewRecord = true;
+                formState.isDirty = false;
+
+                var hiddenInput = document.getElementById('editingRecordId');
+                if (hiddenInput) hiddenInput.value = result.recordId;
+
+                if (window.MovementManager) {
+                    MovementManager.syncWithHeader('load', { recordId: result.recordId });
+                }
+
+                var dadosTab = document.getElementById('tab-dados-tab');
+                if (dadosTab) dadosTab.click();
+
+                enableEditMode();
+
+                if (window.SagEvents && typeof SagEvents.execFieldEventsOnShow === 'function') {
+                    await SagEvents.execFieldEventsOnShow();
+                }
+
+                await loadRecordData(result.recordId);
+
+                // Notifica Vue parent
+                notifyParent('SAG_RECORD_CREATED', { recordId: result.recordId, tableId: formState.tableId });
+
+                return true;
+            } catch (error) {
+                console.error('[Saga] Erro:', error);
+                alert('Erro ao iniciar inclusão: ' + error.message);
+                return false;
+            }
+        }
+
+        async function cancelNewRecord() {
+            if (!formState.isNewRecord || !formState.recordId) return;
+            if (!confirm('Deseja cancelar a inclusão?')) return;
+
+            try {
+                await fetch('/Form/CancelRecord/' + formState.tableId + '/' + formState.recordId, { method: 'DELETE' });
+                formState.recordId = null;
+                formState.isNewRecord = false;
+                formState.isDirty = false;
+
+                var hiddenInput = document.getElementById('editingRecordId');
+                if (hiddenInput) hiddenInput.value = '';
+
+                if (window.MovementManager) MovementManager.syncWithHeader('clear', {});
+                disableEditMode();
+
+                var consultaTab = document.getElementById('tab-consulta-tab');
+                if (consultaTab) consultaTab.click();
+
+                if (window.consultaGrid) window.consultaGrid.loadData();
+
+                notifyParent('SAG_RECORD_CANCELLED', { tableId: formState.tableId });
+            } catch (error) {
+                console.error('[Saga] Erro:', error);
+            }
+        }
+
+        async function loadRecordData(recordId) {
+            try {
+                const response = await fetch(`/Form/GetRecord?tableId=${formState.tableId}&recordId=${recordId}`);
+                if (!response.ok) return;
+
+                const record = await response.json();
+                const form = document.getElementById('dynamicForm');
+                if (!form) return;
+
+                for (const [key, value] of Object.entries(record)) {
+                    const input = form.querySelector(`[name="${key}"], [name="${key.toUpperCase()}"], [name="${key.toLowerCase()}"]`);
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = value === 1 || value === true || value === 'S';
+                        } else if (input.type === 'date' && value) {
+                            input.value = String(value).substring(0, 10);
+                        } else {
+                            input.value = value ?? '';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[Saga] Erro:', error);
+            }
+        }
+
+        function enableEditMode() {
+            document.querySelectorAll('.tab-overlay:not(#overlay-consulta)').forEach(o => o.classList.add('hidden'));
+            var overlayConsulta = document.getElementById('overlay-consulta');
+            if (overlayConsulta) overlayConsulta.classList.remove('hidden');
+            var btnCancelar = document.getElementById('btnCancelar');
+            if (btnCancelar) btnCancelar.style.display = 'inline-block';
+        }
+
+        function disableEditMode() {
+            document.querySelectorAll('.tab-overlay:not(#overlay-consulta)').forEach(o => o.classList.remove('hidden'));
+            var overlayConsulta = document.getElementById('overlay-consulta');
+            if (overlayConsulta) overlayConsulta.classList.add('hidden');
+            var btnCancelar = document.getElementById('btnCancelar');
+            if (btnCancelar) btnCancelar.style.display = 'none';
+            var consultaTab = document.getElementById('tab-consulta-tab');
+            if (consultaTab) consultaTab.click();
+        }
+
+        window.startNewRecord = startNewRecord;
+        window.cancelNewRecord = cancelNewRecord;
+
+        // Comunicação com Vue parent via postMessage
+        function notifyParent(type, data) {
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: type, data: data }, '*');
+            }
+        }
+
+        // Validação e save
+        (function () {
+            var forms = document.querySelectorAll('.needs-validation');
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    if (form.checkValidity()) {
+                        saveForm(form);
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+
+        async function saveForm(form) {
+            if (window.SagEvents) {
+                const canSave = await SagEvents.beforeSave();
+                if (!canSave) return;
+            }
+
+            const formData = new FormData(form);
+            const fields = {};
+            formData.forEach((value, key) => fields[key] = value);
+
+            form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (!cb.checked && cb.name) fields[cb.name] = '0';
+            });
+
+            try {
+                const response = await fetch('/Form/SaveRecord', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tableId: formState.tableId,
+                        recordId: formState.recordId ? parseInt(formState.recordId) : null,
+                        fields: fields
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    if (window.SagEvents) {
+                        SagEvents.afterSave();
+                        SagEvents.refreshGrid();
+                    }
+
+                    formState.isNewRecord = false;
+                    formState.isDirty = false;
+
+                    if (result.recordId) {
+                        formState.recordId = result.recordId;
+                        var hiddenInput = document.getElementById('editingRecordId');
+                        if (hiddenInput) hiddenInput.value = result.recordId;
+                    }
+
+                    if (window.MovementManager && result.recordId) {
+                        MovementManager.syncWithHeader('save', { recordId: result.recordId });
+                    }
+
+                    alert(result.message || 'Registro salvo!');
+                    if (window.consultaGrid) window.consultaGrid.loadData();
+                    disableEditMode();
+
+                    // Notifica Vue parent
+                    notifyParent('SAG_RECORD_SAVED', { recordId: result.recordId, tableId: formState.tableId });
+                } else {
+                    alert('Erro: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                alert('Erro ao salvar registro');
+            }
+        }
+    </script>
+</body>
+</html>

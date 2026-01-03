@@ -101,6 +101,60 @@ public class FormController : Controller
     }
 
     /// <summary>
+    /// Renderiza um formulário para embedding (sem layout master).
+    /// Usado pelo Vision Web para carregar forms SAG dentro de iframe.
+    /// </summary>
+    /// <param name="id">ID da tabela (CodiTabe)</param>
+    [HttpGet("Form/RenderEmbedded/{id}")]
+    public async Task<IActionResult> RenderEmbedded(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Renderizando formulário embedded {TableId}", id);
+
+            var formMetadata = await _metadataService.GetFormMetadataAsync(id);
+
+            if (formMetadata.Fields.Count == 0)
+            {
+                _logger.LogWarning("Nenhum campo encontrado para tabela {TableId}", id);
+                return NotFound($"Nenhum campo encontrado para a tabela {id}");
+            }
+
+            // Popular LookupOptions para campos T/IT com SQL_CAMP
+            await PopulateLookupOptionsAsync(formMetadata.Fields);
+
+            // Carrega metadados da tabela e consultas
+            var tableMetadata = await _consultaService.GetTableMetadataAsync(id);
+            var consultas = await _consultaService.GetConsultasByTableAsync(id);
+
+            // Carrega eventos PLSAG
+            var formEvents = await _eventService.GetFormEventsAsync(id);
+            var fieldEvents = await _eventService.GetFieldEventsAsync(id);
+
+            _logger.LogInformation("Eventos carregados (embedded): Form={HasFormEvents}, Fields={FieldCount}",
+                formEvents.HasEvents, fieldEvents.Count);
+
+            // Monta o ViewModel
+            var viewModel = new FormRenderViewModel
+            {
+                Form = formMetadata,
+                Table = tableMetadata,
+                Consultas = consultas,
+                FormEvents = formEvents,
+                FieldEvents = fieldEvents
+            };
+
+            // View sem layout master
+            return View("RenderEmbedded", viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao renderizar formulário embedded {TableId}", id);
+            return Content($"<html><body><h3>Erro ao carregar formulário</h3><p>{ex.Message}</p></body></html>", "text/html");
+        }
+    }
+
+    /// <summary>
     /// Popula as opções de lookup para campos L/T/IT/IL que têm SQL_CAMP definido.
     /// </summary>
     private async Task PopulateLookupOptionsAsync(List<FieldMetadata> fields)

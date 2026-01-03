@@ -30,6 +30,23 @@ builder.Services.AddScoped<ISequenceService, SequenceService>();
 // Register ValidationService for protected field modification validation
 builder.Services.AddScoped<IValidationService, ValidationService>();
 
+// Configure CORS for Vision Web integration
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("VisionWeb", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173",    // Vite dev server
+                "http://localhost:8080",    // Alternate dev port
+                "http://127.0.0.1:5173",
+                "http://vision.local"       // Production (ajustar conforme necessário)
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // Log do provider selecionado
@@ -46,6 +63,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+
+// Enable CORS for Vision Web integration
+app.UseCors("VisionWeb");
 
 app.UseAuthorization();
 
