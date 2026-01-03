@@ -102,6 +102,19 @@
         <div class="tab-content" id="mainTabsContent">
             <!-- Conteudo Tab Consulta -->
             <div class="tab-pane fade show active" id="tab-consulta" role="tabpanel" aria-labelledby="tab-consulta-tab">
+                <!-- Overlay bloqueante durante edição (começa oculto) -->
+                <div class="tab-overlay hidden" id="overlay-consulta">
+                    <div class="overlay-content">
+                        <div class="overlay-icon">
+                            <i class="bi bi-pencil-square"></i>
+                        </div>
+                        <h5>Edição em andamento</h5>
+                        <p>Finalize a edição atual antes de acessar a consulta.</p>
+                        <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-dados-tab').click()">
+                            <i class="bi bi-arrow-right me-1"></i>Voltar para Edição
+                        </button>
+                    </div>
+                </div>
                 <div class="p-3">
                     @await Html.PartialAsync("_ConsultaTab", Model)
                 </div>
@@ -109,6 +122,19 @@
 
             <!-- Conteudo Tab Dados -->
             <div class="tab-pane fade" id="tab-dados" role="tabpanel" aria-labelledby="tab-dados-tab">
+                <!-- Overlay bloqueante -->
+                <div class="tab-overlay" id="overlay-dados">
+                    <div class="overlay-content">
+                        <div class="overlay-icon">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                        <h5>Nenhum registro selecionado</h5>
+                        <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                        <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                            <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                        </button>
+                    </div>
+                </div>
                 <div class="p-3">
                     @await Html.PartialAsync("_FormContent", Model.Form)
                 </div>
@@ -118,6 +144,19 @@
             {
                 <!-- Conteudo Tab Dados 2 -->
                 <div class="tab-pane fade" id="tab-dados2" role="tabpanel" aria-labelledby="tab-dados2-tab">
+                    <!-- Overlay bloqueante -->
+                    <div class="tab-overlay" id="overlay-dados2">
+                        <div class="overlay-content">
+                            <div class="overlay-icon">
+                                <i class="bi bi-lock-fill"></i>
+                            </div>
+                            <h5>Nenhum registro selecionado</h5>
+                            <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                            <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                                <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                            </button>
+                        </div>
+                    </div>
                     <div class="p-3">
                         @{
                             var tabGroups = Model.Form.GetTabGroups();
@@ -138,6 +177,19 @@
                 {
                     var movementTabId = $"tab-mov-{movementGroup.Key}";
                     <div class="tab-pane fade" id="@movementTabId" role="tabpanel" aria-labelledby="@(movementTabId)-tab">
+                        <!-- Overlay bloqueante -->
+                        <div class="tab-overlay" id="overlay-@movementTabId">
+                            <div class="overlay-content">
+                                <div class="overlay-icon">
+                                    <i class="bi bi-lock-fill"></i>
+                                </div>
+                                <h5>Nenhum registro selecionado</h5>
+                                <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                                <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                                    <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                                </button>
+                            </div>
+                        </div>
                         <div class="p-3">
                             @await Html.PartialAsync("_MovementTab", movementGroup)
                         </div>
@@ -152,6 +204,19 @@
                 {
                     var movementTabId = $"tab-movement-{movement.CodiTabe}";
                     <div class="tab-pane fade" id="@movementTabId" role="tabpanel" aria-labelledby="@(movementTabId)-tab">
+                        <!-- Overlay bloqueante -->
+                        <div class="tab-overlay" id="overlay-@movementTabId">
+                            <div class="overlay-content">
+                                <div class="overlay-icon">
+                                    <i class="bi bi-lock-fill"></i>
+                                </div>
+                                <h5>Nenhum registro selecionado</h5>
+                                <p>Clique em <strong>Novo</strong> para incluir ou selecione um registro na consulta.</p>
+                                <button class="btn btn-primary" type="button" onclick="document.getElementById('tab-consulta-tab').click()">
+                                    <i class="bi bi-arrow-left me-1"></i>Ir para Consulta
+                                </button>
+                            </div>
+                        </div>
                         <div class="p-3">
                             @await Html.PartialAsync("_MovementSection", movement)
                         </div>
@@ -508,6 +573,18 @@
                                     break;
                                 }
                             }
+                        } else if (input.type === 'date') {
+                            // HTML5 date inputs expect "YYYY-MM-DD" format
+                            // API returns ISO format "2026-01-02T00:00:00"
+                            if (value) {
+                                const dateStr = String(value);
+                                // Extract just the date part (YYYY-MM-DD)
+                                const datePart = dateStr.substring(0, 10);
+                                input.value = datePart;
+                                console.log(`[Saga] Date ${key} = ${datePart} (original: ${value})`);
+                            } else {
+                                input.value = '';
+                            }
                         } else {
                             input.value = value ?? '';
                         }
@@ -520,12 +597,18 @@
 
         /**
          * Habilita modo de edição na UI.
+         * Oculta overlays das tabs de edição e BLOQUEIA a tab Consulta.
          */
         function enableEditMode() {
-            // Desabilita tab Consulta durante edição (opcional - pode remover se preferir)
-            var consultaTab = document.getElementById('tab-consulta-tab');
-            if (consultaTab) {
-                consultaTab.classList.add('text-muted');
+            // Oculta overlays das tabs de edição (permite editar)
+            document.querySelectorAll('.tab-overlay:not(#overlay-consulta)').forEach(function(overlay) {
+                overlay.classList.add('hidden');
+            });
+
+            // MOSTRA overlay da Consulta (bloqueia durante edição)
+            var overlayConsulta = document.getElementById('overlay-consulta');
+            if (overlayConsulta) {
+                overlayConsulta.classList.remove('hidden');
             }
 
             // Mostra botão Cancelar
@@ -539,26 +622,45 @@
             if (form) {
                 form.classList.add('editing-mode');
             }
+
+            console.log('[EditMode] Modo de edição habilitado - Consulta bloqueada');
         }
 
         /**
          * Desabilita modo de edição na UI.
+         * Mostra overlays das tabs de edição e LIBERA a tab Consulta.
          */
         function disableEditMode() {
-            var consultaTab = document.getElementById('tab-consulta-tab');
-            if (consultaTab) {
-                consultaTab.classList.remove('text-muted');
+            // Mostra overlays das tabs de edição (bloqueia edição)
+            document.querySelectorAll('.tab-overlay:not(#overlay-consulta)').forEach(function(overlay) {
+                overlay.classList.remove('hidden');
+            });
+
+            // OCULTA overlay da Consulta (libera)
+            var overlayConsulta = document.getElementById('overlay-consulta');
+            if (overlayConsulta) {
+                overlayConsulta.classList.add('hidden');
             }
 
+            // Esconde botão Cancelar
             var btnCancelar = document.getElementById('btnCancelar');
             if (btnCancelar) {
                 btnCancelar.style.display = 'none';
             }
 
+            // Remove marcação de edição
             var form = document.getElementById('dynamicForm');
             if (form) {
                 form.classList.remove('editing-mode');
             }
+
+            // Volta para tab Consulta
+            var consultaTab = document.getElementById('tab-consulta-tab');
+            if (consultaTab) {
+                consultaTab.click();
+            }
+
+            console.log('[EditMode] Modo de edição desabilitado - Consulta liberada');
         }
 
         /**
@@ -720,14 +822,12 @@
 
                     alert(result.message || 'Registro salvo com sucesso!');
 
-                    // NÃO volta para Consulta automaticamente
-                    // Usuário pode continuar editando ou adicionando movimentos
                     // Recarrega grid em background
                     if (window.consultaGrid) {
                         window.consultaGrid.loadData();
                     }
 
-                    // Esconde botão Cancelar após salvar com sucesso
+                    // Desabilita modo edição e volta para Consulta (comportamento Delphi)
                     disableEditMode();
                 } else {
                     alert('Erro: ' + result.message);

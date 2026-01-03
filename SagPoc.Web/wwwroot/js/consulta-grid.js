@@ -442,6 +442,11 @@ class ConsultaGrid {
             // Ativa tab de dados
             document.getElementById('tab-dados-tab')?.click();
 
+            // Habilita modo de edição (oculta overlays das tabs)
+            if (typeof enableEditMode === 'function') {
+                enableEditMode();
+            }
+
             // IMPORTANTE: Executa eventos de campo para aplicar regras de visibilidade/habilitação
             // Similar ao comportamento do Delphi ao carregar um registro
             if (typeof SagEvents !== 'undefined' && SagEvents.onRecordLoaded) {
@@ -484,6 +489,18 @@ class ConsultaGrid {
                     if (!found) {
                         console.warn(`Option not found for ${key} = ${strValue}`);
                         input.value = strValue;
+                    }
+                } else if (input.type === 'date') {
+                    // HTML5 date inputs expect "YYYY-MM-DD" format
+                    // API returns ISO format "2026-01-02T00:00:00"
+                    if (value) {
+                        const dateStr = String(value);
+                        // Extract just the date part (YYYY-MM-DD)
+                        const datePart = dateStr.substring(0, 10);
+                        input.value = datePart;
+                        console.log(`Date ${key} = ${datePart} (original: ${value})`);
+                    } else {
+                        input.value = '';
                     }
                 } else {
                     input.value = value ?? '';
