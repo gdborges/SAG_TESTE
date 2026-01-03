@@ -57,6 +57,9 @@ const SagEvents = (function () {
         // Bind nos botões SAG (BTN) com ExprCamp
         bindSagButtons();
 
+        // Bind de arredondamento em campos numéricos (baseado em DeciCamp)
+        bindNumericRounding();
+
         // Bind de duplo clique em campos lookup (T, IT, L, IL)
         bindDuplCliq();
 
@@ -288,6 +291,51 @@ const SagEvents = (function () {
 
         if (count > 0) {
             console.log('[SagEvents] Botões SAG vinculados:', count);
+        }
+    }
+
+    // ============================================
+    // NUMERIC ROUNDING - Arredondamento de campos numéricos
+    // ============================================
+
+    /**
+     * Faz bind do evento blur em campos numéricos para arredondar baseado em DeciCamp.
+     * Replica o comportamento do Delphi onde DecimalPrecision/DecimalPlaces define
+     * quantas casas decimais o campo aceita, arredondando ao sair.
+     * Ex: DeciCamp=0 e valor 3.5 => 4 (arredondamento padrão)
+     * @param {HTMLElement} container - Container onde buscar os campos (default: document)
+     */
+    function bindNumericRounding(container = document) {
+        const fields = container.querySelectorAll('input[type="number"][data-decimals]');
+        let count = 0;
+
+        fields.forEach(field => {
+            // Evita duplo bind
+            if (field.dataset.numericRoundingBound) return;
+            field.dataset.numericRoundingBound = 'true';
+
+            field.addEventListener('blur', function(e) {
+                const decimals = parseInt(this.dataset.decimals, 10) || 0;
+                const value = parseFloat(this.value);
+
+                if (isNaN(value)) return;
+
+                // Arredonda para o número de casas decimais definido em DeciCamp
+                const factor = Math.pow(10, decimals);
+                const rounded = Math.round(value * factor) / factor;
+
+                // Atualiza o valor se mudou
+                if (this.value !== '' && rounded !== value) {
+                    this.value = rounded;
+                    // Dispara evento de change para triggers
+                    this.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+            count++;
+        });
+
+        if (count > 0) {
+            console.log('[SagEvents] Campos numéricos com arredondamento:', count);
         }
     }
 
@@ -2299,6 +2347,7 @@ const SagEvents = (function () {
         bindAllFields,
         bindLookupButtons,
         bindSagButtons,
+        bindNumericRounding,
         bindDuplCliq,
         collectFormData,
         execFieldEventsOnShow,

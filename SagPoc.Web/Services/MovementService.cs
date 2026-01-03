@@ -1,6 +1,7 @@
 using Dapper;
 using SagPoc.Web.Models;
 using SagPoc.Web.Services.Database;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -613,6 +614,12 @@ public class MovementService : IMovementService
         if (value.Equals("true", StringComparison.OrdinalIgnoreCase)) return 1;
         if (value.Equals("false", StringComparison.OrdinalIgnoreCase)) return 0;
         if (string.IsNullOrWhiteSpace(value)) return null;
+
+        // Tenta converter para decimal (suporta pt-BR vírgula e en-US ponto)
+        var normalizedValue = value.Replace(",", ".");
+        if (decimal.TryParse(normalizedValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var decValue))
+            return decValue;
+
         return value;
     }
 

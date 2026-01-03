@@ -2,6 +2,7 @@ using Dapper;
 using SagPoc.Web.Models;
 using SagPoc.Web.Services.Database;
 using System.Data;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -352,6 +353,11 @@ public class ConsultaService : IConsultaService
         {
             return dateValue;
         }
+
+        // Tenta converter para decimal (suporta pt-BR vírgula e en-US ponto)
+        var normalizedValue = value.Replace(",", ".");
+        if (decimal.TryParse(normalizedValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var decValue))
+            return decValue;
 
         return value;
     }

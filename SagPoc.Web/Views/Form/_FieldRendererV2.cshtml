@@ -130,7 +130,8 @@
                    placeholder="@hint"
                    @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
                    @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
-                   step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
+                   step="any"
+                   data-decimals="@field.DeciCamp"
                    @(isRequired ? "required" : "")
                    @(isDisabled ? "disabled" : "")
                    data-sag-codicamp="@sagCodicamp"
@@ -482,7 +483,8 @@
                    placeholder="@hint"
                    @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
                    @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
-                   step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
+                   step="any"
+                   data-decimals="@field.DeciCamp"
                    @(isDisabled ? "disabled" : "")
                    data-calc="true"
                    data-sag-codicamp="@sagCodicamp"

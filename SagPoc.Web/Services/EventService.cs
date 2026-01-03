@@ -115,14 +115,14 @@ public class EventService : IEventService
 
                 var eventData = new FieldEventData
                 {
-                    CodiCamp = codiCamp != null ? Convert.ToInt32(codiCamp) : 0,
+                    CodiCamp = int.TryParse(codiCamp?.ToString(), out var codiVal) ? codiVal : 0,
                     NomeCamp = (string)(nomeCamp ?? ""),
-                    IsRequired = obriCamp != null && Convert.ToInt32(obriCamp) != 0,
+                    IsRequired = int.TryParse(obriCamp?.ToString(), out var obriVal) && obriVal != 0,
                     CompCamp = compType,
-                    InicCamp = inicCamp != null ? Convert.ToInt32(inicCamp) : 0,
+                    InicCamp = int.TryParse(inicCamp?.ToString(), out var inicVal) ? inicVal : 0,
                     DefaultText = (string?)(vaGrCamp),
-                    DefaultNumber = padrCamp != null ? (double?)Convert.ToDouble(padrCamp) : null,
-                    IsSequential = tagQCamp != null && Convert.ToInt32(tagQCamp) == 1
+                    DefaultNumber = double.TryParse(padrCamp?.ToString(), out var padrVal) ? padrVal : null,
+                    IsSequential = int.TryParse(tagQCamp?.ToString(), out var tagQVal) && tagQVal == 1
                 };
 
                 var instructions = MergeInstructions(

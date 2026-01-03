@@ -58,4 +58,13 @@ public interface IConsultaService
     /// <param name="recordId">ID do registro a excluir</param>
     /// <returns>Resultado da operação</returns>
     Task<SaveRecordResponse> DeleteRecordWithMovementsAsync(int tableId, int recordId);
+
+    /// <summary>
+    /// Obtém os valores default para campos com InicCamp=1.
+    /// Usado para popular o formulário quando o usuário clica em "Novo".
+    /// Replica o comportamento do Delphi InicValoCampPers.
+    /// </summary>
+    /// <param name="tableId">ID da tabela</param>
+    /// <returns>Dicionário com nome do campo -> valor default</returns>
+    Task<Dictionary<string, object?>> GetFieldDefaultsAsync(int tableId);
 }

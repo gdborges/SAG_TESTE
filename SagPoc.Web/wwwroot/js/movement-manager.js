@@ -574,6 +574,11 @@ var MovementManager = (function() {
             SagEvents.bindLookupAutoFetch(container);
         }
 
+        // Inicializa arredondamento de campos numéricos (baseado em DeciCamp)
+        if (window.SagEvents && typeof SagEvents.bindNumericRounding === 'function') {
+            SagEvents.bindNumericRounding(container);
+        }
+
         // Inicializa máscaras se disponível
         if (window.IMask) {
             container.querySelectorAll('[data-mask]').forEach(function(input) {
