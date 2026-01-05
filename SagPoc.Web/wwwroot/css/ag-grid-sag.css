@@ -59,6 +59,11 @@ div.ag-theme-quartz,
     /* Cell */
     --ag-cell-horizontal-padding: 12px !important;
 
+    /* Borders mais sutis - apenas horizontais entre linhas */
+    --ag-cell-horizontal-border: none !important;
+    --ag-borders: none !important;
+    --ag-borders-row: solid 1px var(--neutral-300, #E9EDF5) !important;
+
     /* Focus ring */
     --ag-range-selection-border-color: #447BDA !important;
     --ag-range-selection-background-color: rgba(68, 123, 218, 0.1) !important;
