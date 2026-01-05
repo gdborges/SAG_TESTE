@@ -1,11 +1,11 @@
 @model SagPoc.Web.Models.FormRenderViewModel
 
 <div class="consulta-container" id="consultaContainer" data-table-id="@Model.Form.TableId">
-    <!-- Barra de ferramentas -->
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <label class="form-label fw-bold">Consulta</label>
-            <select id="consultaSelect" class="form-select">
+    <!-- Toolbar unificado -->
+    <div class="consulta-toolbar d-flex justify-content-between align-items-center mb-2">
+        <!-- Lado esquerdo: Select + Filtros + Refresh -->
+        <div class="d-flex align-items-center gap-2">
+            <select id="consultaSelect" class="form-select form-select-sm" style="width: 220px;">
                 @foreach (var consulta in Model.Consultas)
                 {
                     <option value="@consulta.CodiCons" data-busc="@consulta.BuscCons">
@@ -13,17 +13,44 @@
                     </option>
                 }
             </select>
-        </div>
-        <div class="col-md-8 d-flex align-items-end">
-            <button type="button" class="btn btn-outline-secondary me-2" id="btnRefresh" title="Atualizar">
-                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    data-bs-toggle="collapse" data-bs-target="#filterCollapse"
+                    aria-expanded="false" aria-controls="filterCollapse"
+                    id="btnToggleFilters" title="Mostrar/ocultar filtros">
+                <i class="bi bi-funnel"></i>
+                <span id="filterBadge" class="badge bg-primary ms-1" style="display:none;">0</span>
             </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefresh" title="Atualizar">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+
+        <!-- Lado direito: CRUD buttons -->
+        <div class="d-flex gap-2">
+            @if (Model.ShowBtnIncluir)
+            {
+                <button type="button" class="btn btn-success btn-sm" id="btnIncluir">
+                    <i class="bi bi-plus-lg"></i> Incluir
+                </button>
+            }
+            @if (Model.ShowBtnAlterar)
+            {
+                <button type="button" class="btn btn-primary btn-sm" id="btnAlterar" disabled>
+                    <i class="bi bi-pencil"></i> Alterar
+                </button>
+            }
+            @if (Model.ShowBtnExcluir)
+            {
+                <button type="button" class="btn btn-danger btn-sm" id="btnExcluir" disabled>
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            }
         </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="card mb-3">
-        <div class="card-body py-2">
+    <!-- Filtros colapsaveis (default: fechado) -->
+    <div class="collapse" id="filterCollapse">
+        <div class="card card-body py-2 mb-2">
             <div class="row g-2 align-items-center" id="filterRow">
                 <div class="col-md-3">
                     <select id="filterField" class="form-select form-select-sm">
@@ -56,37 +83,5 @@
     </div>
 
     <!-- AG Grid Container -->
-    <div id="consultaAgGrid" class="ag-theme-quartz" style="height: 400px; width: 100%;"></div>
-
-    <!-- Grid Info (abaixo do AG Grid) -->
-    <div class="d-flex justify-content-between align-items-center mt-2">
-        <div class="text-muted" id="gridInfo">
-            Mostrando 0 registros
-        </div>
-        <div id="gridPaginationInfo"></div>
-    </div>
-
-    <hr class="my-3">
-
-    <!-- Botoes CRUD -->
-    <div class="d-flex gap-2">
-        @if (Model.ShowBtnIncluir)
-        {
-            <button type="button" class="btn btn-success" id="btnIncluir">
-                <i class="bi bi-plus-circle"></i> Incluir
-            </button>
-        }
-        @if (Model.ShowBtnAlterar)
-        {
-            <button type="button" class="btn btn-primary" id="btnAlterar" disabled>
-                <i class="bi bi-pencil"></i> Alterar
-            </button>
-        }
-        @if (Model.ShowBtnExcluir)
-        {
-            <button type="button" class="btn btn-danger" id="btnExcluir" disabled>
-                <i class="bi bi-trash"></i> Excluir
-            </button>
-        }
-    </div>
+    <div id="consultaAgGrid" class="ag-theme-quartz"></div>
 </div>

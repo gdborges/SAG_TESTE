@@ -44,7 +44,7 @@ class ConsultaGrid {
         this.btnClearFilters = document.getElementById('btnClearFilters');
         this.btnRefresh = document.getElementById('btnRefresh');
         this.activeFilters = document.getElementById('activeFilters');
-        this.gridInfo = document.getElementById('gridInfo');
+        this.filterBadge = document.getElementById('filterBadge');
         this.btnIncluir = document.getElementById('btnIncluir');
         this.btnAlterar = document.getElementById('btnAlterar');
         this.btnExcluir = document.getElementById('btnExcluir');
@@ -173,7 +173,7 @@ class ConsultaGrid {
     }
 
     onPaginationChanged(event) {
-        this.updateGridInfo();
+        // AG Grid native pagination handles display
     }
 
     bindEvents() {
@@ -212,6 +212,7 @@ class ConsultaGrid {
         this.selectedRow = null;
         this.updateCrudButtons();
         this.renderActiveFilters();
+        this.updateFilterBadge();
         await this.loadConsultaColumns();
         await this.loadData();
     }
@@ -283,6 +284,7 @@ class ConsultaGrid {
 
         // Atualiza UI
         this.renderActiveFilters();
+        this.updateFilterBadge();
         this.page = 1;
         this.loadData();
     }
@@ -290,6 +292,7 @@ class ConsultaGrid {
     removeFilter(index) {
         this.filters.splice(index, 1);
         this.renderActiveFilters();
+        this.updateFilterBadge();
         this.page = 1;
         this.loadData();
     }
@@ -298,6 +301,7 @@ class ConsultaGrid {
         this.filters = [];
         if (this.filterValue) this.filterValue.value = '';
         this.renderActiveFilters();
+        this.updateFilterBadge();
         this.page = 1;
         this.loadData();
     }
@@ -377,28 +381,17 @@ class ConsultaGrid {
             this.selectedRow = null;
             this.updateCrudButtons();
 
-            this.updateGridInfo();
-
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
             this.gridApi.showNoRowsOverlay();
         }
     }
 
-    updateGridInfo() {
-        if (!this.gridInfo || !this.gridApi) return;
-
-        const totalRows = this.gridApi.getDisplayedRowCount();
-        const currentPage = this.gridApi.paginationGetCurrentPage() + 1;
-        const pageSize = this.gridApi.paginationGetPageSize();
-        const totalPages = this.gridApi.paginationGetTotalPages();
-
-        const start = (currentPage - 1) * pageSize + 1;
-        const end = Math.min(currentPage * pageSize, totalRows);
-
-        this.gridInfo.textContent = totalRows > 0
-            ? `Mostrando ${start} a ${end} de ${totalRows} registros`
-            : 'Nenhum registro encontrado';
+    updateFilterBadge() {
+        if (!this.filterBadge) return;
+        const count = this.filters.length;
+        this.filterBadge.textContent = count;
+        this.filterBadge.style.display = count > 0 ? 'inline' : 'none';
     }
 
     updateCrudButtons() {
