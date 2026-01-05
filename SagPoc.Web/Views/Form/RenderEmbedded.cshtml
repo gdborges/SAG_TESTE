@@ -51,21 +51,6 @@
 </head>
 <body>
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">@title</h4>
-            <div>
-                <span class="badge bg-info">@Model.Form.Fields.Count campos</span>
-                @if (hasConsultas)
-                {
-                    <span class="badge bg-success ms-1">@Model.Consultas.Count consultas</span>
-                }
-                @if (Model.Form.HasMultipleTabs)
-                {
-                    <span class="badge bg-secondary ms-1">@Model.Form.GetTabGroups().Count guias</span>
-                }
-            </div>
-        </div>
-
         @if (hasConsultas)
         {
             <!-- Layout com Guia Consulta + Guias de Dados -->
