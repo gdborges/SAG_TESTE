@@ -756,6 +756,10 @@ const SagEvents = (function () {
             animateRows: true,
             enableCellTextSelection: true,
 
+            // Alturas padrão Edata/Vision
+            rowHeight: 48,
+            headerHeight: 40,
+
             // Column menu (AG Grid Enterprise)
             columnMenu: 'new',
             suppressMenuHide: false,
@@ -792,6 +796,7 @@ const SagEvents = (function () {
                 sortable: true,
                 resizable: true,
                 filter: true,
+                minWidth: 80,
                 menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
             },
 
@@ -1978,6 +1983,10 @@ const SagEvents = (function () {
             animateRows: true,
             enableCellTextSelection: true,
 
+            // Alturas padrão Edata/Vision
+            rowHeight: 48,
+            headerHeight: 40,
+
             // Column menu (AG Grid Enterprise)
             columnMenu: 'new',
             suppressMenuHide: false,
@@ -2014,6 +2023,7 @@ const SagEvents = (function () {
                 sortable: true,
                 resizable: true,
                 filter: true,
+                minWidth: 80,
                 menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
             },
 

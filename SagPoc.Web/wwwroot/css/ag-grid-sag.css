@@ -41,8 +41,8 @@ div.ag-theme-quartz,
     --ag-header-foreground-color: #606B80 !important;
     --ag-header-height: 40px !important;
 
-    /* Rows */
-    --ag-row-height: 40px !important;
+    /* Rows - Altura padrão Edata/Vision: 48px */
+    --ag-row-height: 48px !important;
     --ag-row-border-color: #E9EDF5 !important;
     --ag-odd-row-background-color: #ffffff !important;
     --ag-row-hover-color: #EEF4FC !important;
@@ -144,11 +144,25 @@ div.ag-theme-quartz,
     background-color: #EEF4FC;
 }
 
-/* Cell text */
+/* Cell text - centralizado verticalmente */
 .ag-theme-quartz .ag-cell {
     color: #11161D;
     user-select: text;
     -webkit-user-select: text;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Wrapper interno da célula */
+.ag-theme-quartz .ag-cell-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+}
+
+.ag-theme-quartz .ag-cell-value {
+    display: flex !important;
+    align-items: center !important;
 }
 
 /* Pagination - estilo Vision */
@@ -399,4 +413,162 @@ div.ag-theme-quartz,
 
 .dark .ag-theme-quartz .ag-menu-option:hover {
     background-color: #11161D;
+}
+
+/* =====================================================
+   ACTION BUTTONS - Padrao Edata/Vision inline actions
+   Botoes de acao inline na primeira coluna do grid
+   ===================================================== */
+
+/* Container da celula de acoes */
+.action-buttons-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+    padding: 0 4px;
+}
+
+/* Botao base - suporta ícones Lucide SVG */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    padding: 0;
+}
+
+/* Estilo do SVG dentro do botão */
+.action-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.action-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(68, 123, 218, 0.3);
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
+
+/* Botao Editar - Primary (azul claro) */
+.action-btn-edit {
+    background-color: var(--primary-50, #EEF4FC);
+    color: var(--primary-500, #447BDA);
+}
+
+.action-btn-edit:hover {
+    background-color: var(--primary-100, #DBEAFE);
+    color: var(--primary-500, #447BDA);
+}
+
+/* Botao Excluir - Danger (vermelho claro) */
+.action-btn-delete {
+    background-color: #FEF2F2;
+    color: #DC2626;
+}
+
+.action-btn-delete:hover {
+    background-color: #FEE2E2;
+    color: #B91C1C;
+}
+
+/* Celula de acoes - centralizar verticalmente no AG Grid */
+.ag-theme-quartz .ag-cell[col-id="actions"] {
+    padding: 0 !important;
+    overflow: visible !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Wrapper interno do AG Grid na celula de acoes */
+.ag-theme-quartz .ag-cell[col-id="actions"] .ag-cell-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+
+.ag-theme-quartz .ag-cell[col-id="actions"] .ag-cell-value {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+}
+
+/* Header da coluna de acoes - centralizado */
+.ag-theme-quartz .ag-header-cell[col-id="actions"] {
+    text-align: center;
+}
+
+.ag-theme-quartz .ag-header-cell[col-id="actions"] .ag-header-cell-label {
+    justify-content: center;
+}
+
+/* =====================================================
+   BOTAO ADICIONAR - Padrao Edata/Vision
+   Botao azul no topo do grid
+   ===================================================== */
+
+.grid-add-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: var(--primary-500, #447BDA);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.grid-add-button:hover {
+    background-color: #3A6BC7;
+}
+
+.grid-add-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(68, 123, 218, 0.4);
+}
+
+.grid-add-button:active {
+    transform: scale(0.98);
+}
+
+.grid-add-button i {
+    font-size: 14px;
+}
+
+/* Dark mode para action buttons */
+.dark .action-btn-edit {
+    background-color: rgba(68, 123, 218, 0.2);
+    color: #93C5FD;
+}
+
+.dark .action-btn-edit:hover {
+    background-color: rgba(68, 123, 218, 0.3);
+}
+
+.dark .action-btn-delete {
+    background-color: rgba(220, 38, 38, 0.2);
+    color: #FCA5A5;
+}
+
+.dark .action-btn-delete:hover {
+    background-color: rgba(220, 38, 38, 0.3);
 }

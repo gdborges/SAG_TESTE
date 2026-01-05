@@ -106,19 +106,52 @@ var MovementManager = (function() {
         }
 
         // Cria definições de colunas para AG Grid
-        var columnDefs = columnsData.map(function(col) {
-            return {
+        var columnDefs = [];
+
+        // Coluna de ações como PRIMEIRA coluna (pinned left) - Padrão Edata
+        columnDefs.push({
+            headerName: 'Ações',
+            field: '__actions__',
+            colId: 'actions',
+            cellRenderer: ActionCellRenderer,
+            cellRendererParams: {
+                onEdit: function(data) {
+                    onActionEdit(movementId, data, pkColumn);
+                },
+                onDelete: function(data) {
+                    onActionDelete(movementId, data, pkColumn);
+                },
+                showEdit: true,
+                showDelete: true
+            },
+            width: 90,
+            minWidth: 90,
+            maxWidth: 90,
+            pinned: 'left',
+            sortable: false,
+            filter: false,
+            resizable: false,
+            suppressHeaderMenuButton: true,
+            suppressMovable: true,
+            lockPosition: true,
+            lockVisible: true,
+            suppressColumnsToolPanel: true
+        });
+
+        // Colunas de dados
+        columnsData.forEach(function(col) {
+            columnDefs.push({
                 field: col.fieldName || col.displayName,
                 headerName: col.displayName,
                 width: col.width || 100,
                 sortable: true,
                 resizable: true
-            };
+            });
         });
 
-        // Se não há colunas configuradas, deixa vazio (será preenchido ao carregar dados)
-        if (columnDefs.length === 0) {
-            columnDefs = [{ field: '_placeholder', headerName: 'Carregando...', flex: 1 }];
+        // Se não há colunas de dados configuradas, adiciona placeholder
+        if (columnsData.length === 0) {
+            columnDefs.push({ field: '_placeholder', headerName: 'Carregando...', flex: 1 });
         }
 
         var gridOptions = {
@@ -128,6 +161,10 @@ var MovementManager = (function() {
             animateRows: true,
             enableCellTextSelection: true,
             suppressCopyRowsToClipboard: true,
+
+            // Alturas padrão Edata/Vision
+            rowHeight: 48,
+            headerHeight: 40,
 
             // === ENTERPRISE FEATURES (igual ao Vision) ===
             columnMenu: 'new',
@@ -165,7 +202,7 @@ var MovementManager = (function() {
                 sortable: true,
                 resizable: true,
                 filter: true,
-                minWidth: 60,
+                minWidth: 80,
                 menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
             },
 
@@ -220,6 +257,24 @@ var MovementManager = (function() {
         var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
         state.selectedRows[movementId] = parseInt(recordId);
         openEditMovement(movementId);
+    }
+
+    /**
+     * Handler para ação de editar inline (chamado pelo ActionCellRenderer)
+     */
+    function onActionEdit(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+        openEditMovement(movementId);
+    }
+
+    /**
+     * Handler para ação de excluir inline (chamado pelo ActionCellRenderer)
+     */
+    function onActionDelete(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+        openDeleteConfirm(movementId);
     }
 
     /**
@@ -375,8 +430,41 @@ var MovementManager = (function() {
 
         // Atualiza colunas se vieram da API
         if (columns.length > 0) {
-            var columnDefs = columns.map(function(col) {
-                return {
+            var columnDefs = [];
+
+            // Coluna de ações como PRIMEIRA coluna (pinned left) - Padrão Edata
+            columnDefs.push({
+                headerName: 'Ações',
+                field: '__actions__',
+                colId: 'actions',
+                cellRenderer: ActionCellRenderer,
+                cellRendererParams: {
+                    onEdit: function(data) {
+                        onActionEdit(movementId, data, pkColumn);
+                    },
+                    onDelete: function(data) {
+                        onActionDelete(movementId, data, pkColumn);
+                    },
+                    showEdit: true,
+                    showDelete: true
+                },
+                width: 90,
+                minWidth: 90,
+                maxWidth: 90,
+                pinned: 'left',
+                sortable: false,
+                filter: false,
+                resizable: false,
+                suppressHeaderMenuButton: true,
+                suppressMovable: true,
+                lockPosition: true,
+                lockVisible: true,
+                suppressColumnsToolPanel: true
+            });
+
+            // Colunas de dados
+            columns.forEach(function(col) {
+                columnDefs.push({
                     field: col.fieldName || col.FieldName || col.displayName,
                     headerName: col.displayName || col.DisplayName,
                     width: col.width || col.Width || 100,
@@ -385,8 +473,9 @@ var MovementManager = (function() {
                     valueFormatter: function(params) {
                         return formatValue(params.value, col);
                     }
-                };
+                });
             });
+
             gridApi.setGridOption('columnDefs', columnDefs);
         }
 

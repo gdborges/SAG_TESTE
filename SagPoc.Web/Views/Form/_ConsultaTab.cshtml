@@ -1,6 +1,9 @@
 @model SagPoc.Web.Models.FormRenderViewModel
 
-<div class="consulta-container" id="consultaContainer" data-table-id="@Model.Form.TableId">
+<div class="consulta-container" id="consultaContainer"
+     data-table-id="@Model.Form.TableId"
+     data-show-edit="@Model.ShowBtnAlterar.ToString().ToLower()"
+     data-show-delete="@Model.ShowBtnExcluir.ToString().ToLower()">
     <!-- Toolbar unificado -->
     <div class="consulta-toolbar d-flex justify-content-between align-items-center mb-2">
         <!-- Lado esquerdo: Select + Filtros + Refresh -->
@@ -25,26 +28,15 @@
             </button>
         </div>
 
-        <!-- Lado direito: CRUD buttons -->
+        <!-- Lado direito: Botão Adicionar (padrão Edata/Vision) -->
         <div class="d-flex gap-2">
             @if (Model.ShowBtnIncluir)
             {
-                <button type="button" class="btn btn-success btn-sm" id="btnIncluir">
-                    <i class="bi bi-plus-lg"></i> Incluir
+                <button type="button" class="grid-add-button" id="btnIncluir">
+                    <i class="bi bi-plus-lg"></i> Adicionar
                 </button>
             }
-            @if (Model.ShowBtnAlterar)
-            {
-                <button type="button" class="btn btn-primary btn-sm" id="btnAlterar" disabled>
-                    <i class="bi bi-pencil"></i> Alterar
-                </button>
-            }
-            @if (Model.ShowBtnExcluir)
-            {
-                <button type="button" class="btn btn-danger btn-sm" id="btnExcluir" disabled>
-                    <i class="bi bi-trash"></i> Excluir
-                </button>
-            }
+            @* Botões Alterar e Excluir removidos - agora são inline no grid (coluna Ações) *@
         </div>
     </div>
 

@@ -21,6 +21,10 @@ class ConsultaGrid {
         this.sortField = null;
         this.sortDirection = 'ASC';
 
+        // Permissões para ações inline (lidas de data-attributes)
+        this.showEdit = this.container.dataset.showEdit !== 'false';
+        this.showDelete = this.container.dataset.showDelete !== 'false';
+
         // AG Grid references
         this.gridApi = null;
         this.gridElement = document.getElementById('consultaAgGrid');
@@ -46,8 +50,7 @@ class ConsultaGrid {
         this.activeFilters = document.getElementById('activeFilters');
         this.filterBadge = document.getElementById('filterBadge');
         this.btnIncluir = document.getElementById('btnIncluir');
-        this.btnAlterar = document.getElementById('btnAlterar');
-        this.btnExcluir = document.getElementById('btnExcluir');
+        // Botões Alterar e Excluir removidos - agora são inline no grid
     }
 
     initAgGrid() {
@@ -62,6 +65,10 @@ class ConsultaGrid {
             animateRows: true,
             enableCellTextSelection: true,
             suppressCopyRowsToClipboard: true,
+
+            // Alturas padrão Edata/Vision
+            rowHeight: 48,
+            headerHeight: 40,
 
             // Paginação
             pagination: true,
@@ -190,10 +197,9 @@ class ConsultaGrid {
         // Refresh
         this.btnRefresh?.addEventListener('click', () => this.loadData());
 
-        // CRUD
+        // Botão Incluir (+ Adicionar)
         this.btnIncluir?.addEventListener('click', () => this.incluir());
-        this.btnAlterar?.addEventListener('click', () => this.alterar());
-        this.btnExcluir?.addEventListener('click', () => this.excluir());
+        // Botões Alterar e Excluir removidos - agora são inline via ActionCellRenderer
     }
 
     async loadInitialData() {
@@ -236,17 +242,67 @@ class ConsultaGrid {
     updateAgGridColumns() {
         if (!this.gridApi || !this.columns.length) return;
 
-        const columnDefs = this.columns.map((col, index) => ({
-            field: col.fieldName || col.displayName,
-            headerName: col.displayName,
-            width: col.width || 120,
-            sortable: true,
-            resizable: true,
-            // Formata valores
-            valueFormatter: (params) => this.formatCellValue(params.value),
-        }));
+        const columnDefs = [];
+
+        // Coluna de ações como PRIMEIRA coluna (pinned left) - Padrão Edata
+        if (this.showEdit || this.showDelete) {
+            const self = this;
+            columnDefs.push({
+                headerName: 'Ações',
+                field: '__actions__',
+                colId: 'actions',
+                cellRenderer: ActionCellRenderer,
+                cellRendererParams: {
+                    onEdit: (data) => self.onActionEdit(data),
+                    onDelete: (data) => self.onActionDelete(data),
+                    showEdit: this.showEdit,
+                    showDelete: this.showDelete
+                },
+                width: 90,
+                minWidth: 90,
+                maxWidth: 90,
+                pinned: 'left',
+                sortable: false,
+                filter: false,
+                resizable: false,
+                suppressHeaderMenuButton: true,
+                suppressMovable: true,
+                lockPosition: true,
+                lockVisible: true,
+                suppressColumnsToolPanel: true
+            });
+        }
+
+        // Colunas de dados
+        this.columns.forEach((col) => {
+            columnDefs.push({
+                field: col.fieldName || col.displayName,
+                headerName: col.displayName,
+                width: col.width || 120,
+                sortable: true,
+                resizable: true,
+                valueFormatter: (params) => this.formatCellValue(params.value),
+            });
+        });
 
         this.gridApi.setGridOption('columnDefs', columnDefs);
+    }
+
+    // Handlers para ações inline (chamados pelo ActionCellRenderer)
+    onActionEdit(data) {
+        const keys = Object.keys(data);
+        const idKey = keys.find(k => k.toLowerCase().startsWith('codi')) || keys[0];
+        this.selectedId = data[idKey];
+        this.selectedRow = data;
+        this.alterar();
+    }
+
+    onActionDelete(data) {
+        const keys = Object.keys(data);
+        const idKey = keys.find(k => k.toLowerCase().startsWith('codi')) || keys[0];
+        this.selectedId = data[idKey];
+        this.selectedRow = data;
+        this.excluir();
     }
 
     formatCellValue(value) {
@@ -395,9 +451,8 @@ class ConsultaGrid {
     }
 
     updateCrudButtons() {
-        const hasSelection = this.selectedId != null;
-        if (this.btnAlterar) this.btnAlterar.disabled = !hasSelection;
-        if (this.btnExcluir) this.btnExcluir.disabled = !hasSelection;
+        // Método mantido para compatibilidade - botões inline não precisam de enable/disable
+        // pois cada linha já possui seus próprios botões de ação
     }
 
     // CRUD Operations
