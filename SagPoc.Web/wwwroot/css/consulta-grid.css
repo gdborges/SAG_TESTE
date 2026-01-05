@@ -160,7 +160,26 @@
     padding: var(--spacing-xs, 4px) 0;
 }
 
+/* Botões da toolbar com ícones SVG centralizados */
+.consulta-toolbar .btn-outline-secondary {
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.consulta-toolbar .btn-outline-secondary svg {
+    flex-shrink: 0;
+}
+
 /* Badge no botão de filtros */
+#btnToggleFilters {
+    width: auto !important;
+    padding: 0 8px !important;
+}
+
 #btnToggleFilters .badge {
     font-size: 0.65rem;
     padding: 2px 5px;
