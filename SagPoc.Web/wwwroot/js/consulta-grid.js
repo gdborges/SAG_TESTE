@@ -1,5 +1,6 @@
 /**
- * ConsultaGrid - Gerenciador do grid de consulta
+ * ConsultaGrid - Gerenciador do grid de consulta com AG Grid Enterprise
+ * Versão 2.0 - Migrado para AG Grid
  */
 class ConsultaGrid {
     constructor(containerId) {
@@ -14,10 +15,15 @@ class ConsultaGrid {
         this.columns = [];
         this.filters = [];
         this.page = 1;
-        this.pageSize = 20;
+        this.pageSize = 25;
         this.selectedId = null;
+        this.selectedRow = null;
         this.sortField = null;
         this.sortDirection = 'ASC';
+
+        // AG Grid references
+        this.gridApi = null;
+        this.gridElement = document.getElementById('consultaAgGrid');
 
         this.init();
     }
@@ -25,6 +31,7 @@ class ConsultaGrid {
     init() {
         this.bindElements();
         this.bindEvents();
+        this.initAgGrid();
         this.loadInitialData();
     }
 
@@ -37,13 +44,136 @@ class ConsultaGrid {
         this.btnClearFilters = document.getElementById('btnClearFilters');
         this.btnRefresh = document.getElementById('btnRefresh');
         this.activeFilters = document.getElementById('activeFilters');
-        this.gridHeader = document.getElementById('gridHeader');
-        this.gridBody = document.getElementById('gridBody');
         this.gridInfo = document.getElementById('gridInfo');
-        this.gridPagination = document.getElementById('gridPagination');
         this.btnIncluir = document.getElementById('btnIncluir');
         this.btnAlterar = document.getElementById('btnAlterar');
         this.btnExcluir = document.getElementById('btnExcluir');
+    }
+
+    initAgGrid() {
+        if (!this.gridElement || typeof agGrid === 'undefined') {
+            console.error('AG Grid not available');
+            return;
+        }
+
+        const gridOptions = {
+            // Configurações básicas
+            rowSelection: 'single',
+            animateRows: true,
+            enableCellTextSelection: true,
+            suppressCopyRowsToClipboard: true,
+
+            // Paginação
+            pagination: true,
+            paginationPageSize: this.pageSize,
+            paginationPageSizeSelector: [10, 25, 50, 100],
+
+            // === ENTERPRISE FEATURES (igual ao Vision) ===
+            // Menu de coluna moderno
+            columnMenu: 'new',
+
+            // Painel lateral de colunas (direita)
+            sideBar: {
+                toolPanels: [
+                    {
+                        id: 'columns',
+                        labelDefault: 'Colunas',
+                        labelKey: 'columns',
+                        iconKey: 'columns',
+                        toolPanel: 'agColumnsToolPanel',
+                        toolPanelParams: {
+                            suppressRowGroups: false,
+                            suppressValues: true,
+                            suppressPivots: true,
+                            suppressPivotMode: true,
+                        }
+                    }
+                ],
+                defaultToolPanel: '', // Começa fechado
+            },
+
+            // Barra de agrupamento de linhas (topo)
+            rowGroupPanelShow: 'always',
+
+            // Permitir arrastar colunas para agrupar
+            suppressDragLeaveHidesColumns: true,
+
+            // Overlay de loading
+            overlayLoadingTemplate: '<div class="ag-overlay-loading-center"><div class="spinner-border spinner-border-sm me-2"></div> Carregando...</div>',
+            overlayNoRowsTemplate: '<div class="ag-overlay-no-rows-center">Nenhum registro encontrado</div>',
+
+            // Callbacks de eventos
+            onRowSelected: (event) => this.onRowSelected(event),
+            onRowDoubleClicked: (event) => this.onRowDoubleClicked(event),
+            onSortChanged: (event) => this.onSortChanged(event),
+            onPaginationChanged: (event) => this.onPaginationChanged(event),
+            onGridReady: (event) => this.onGridReady(event),
+
+            // Definição de colunas (será atualizada dinamicamente)
+            columnDefs: [],
+            rowData: [],
+
+            // Default column definition (igual ao Vision)
+            defaultColDef: {
+                sortable: true,
+                resizable: true,
+                filter: true, // Habilita filtro nas colunas
+                floatingFilter: false, // Sem filtro flutuante
+                minWidth: 80,
+                // Menu de coluna com todas as opções
+                menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+            },
+
+            // Identificador de linha
+            getRowId: (params) => {
+                // Tenta encontrar o ID do registro
+                const keys = Object.keys(params.data);
+                const idKey = keys.find(k => k.toLowerCase().startsWith('codi')) || keys[0];
+                return String(params.data[idKey] ?? params.node.rowIndex);
+            },
+        };
+
+        // Cria o grid
+        this.gridApi = agGrid.createGrid(this.gridElement, gridOptions);
+    }
+
+    onGridReady(event) {
+        console.log('[AG Grid] Grid ready');
+    }
+
+    onRowSelected(event) {
+        if (event.node.isSelected()) {
+            const data = event.data;
+            const keys = Object.keys(data);
+            const idKey = keys.find(k => k.toLowerCase().startsWith('codi')) || keys[0];
+            this.selectedId = data[idKey];
+            this.selectedRow = data;
+            this.updateCrudButtons();
+        }
+    }
+
+    onRowDoubleClicked(event) {
+        if (this.selectedId) {
+            this.alterar();
+        }
+    }
+
+    onSortChanged(event) {
+        const sortModel = this.gridApi.getColumnState()
+            .filter(col => col.sort)
+            .map(col => ({ colId: col.colId, sort: col.sort }));
+
+        if (sortModel.length > 0) {
+            this.sortField = sortModel[0].colId;
+            this.sortDirection = sortModel[0].sort.toUpperCase();
+        } else {
+            this.sortField = null;
+            this.sortDirection = 'ASC';
+        }
+    }
+
+    onPaginationChanged(event) {
+        this.updateGridInfo();
     }
 
     bindEvents() {
@@ -79,6 +209,7 @@ class ConsultaGrid {
         this.page = 1;
         this.filters = [];
         this.selectedId = null;
+        this.selectedRow = null;
         this.updateCrudButtons();
         this.renderActiveFilters();
         await this.loadConsultaColumns();
@@ -94,10 +225,33 @@ class ConsultaGrid {
             if (current && current.columns) {
                 this.columns = current.columns;
                 this.updateFilterFieldOptions();
+                this.updateAgGridColumns();
             }
         } catch (error) {
             console.error('Erro ao carregar colunas:', error);
         }
+    }
+
+    updateAgGridColumns() {
+        if (!this.gridApi || !this.columns.length) return;
+
+        const columnDefs = this.columns.map((col, index) => ({
+            field: col.fieldName || col.displayName,
+            headerName: col.displayName,
+            width: col.width || 120,
+            sortable: true,
+            resizable: true,
+            // Formata valores
+            valueFormatter: (params) => this.formatCellValue(params.value),
+        }));
+
+        this.gridApi.setGridOption('columnDefs', columnDefs);
+    }
+
+    formatCellValue(value) {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'boolean') return value ? 'S' : 'N';
+        return String(value);
     }
 
     updateFilterFieldOptions() {
@@ -142,7 +296,7 @@ class ConsultaGrid {
 
     clearFilters() {
         this.filters = [];
-        this.filterValue.value = '';
+        if (this.filterValue) this.filterValue.value = '';
         this.renderActiveFilters();
         this.page = 1;
         this.loadData();
@@ -175,9 +329,13 @@ class ConsultaGrid {
 
     async loadData() {
         if (!this.consultaId) return;
+        if (!this.gridApi) {
+            console.warn('AG Grid not initialized');
+            return;
+        }
 
         try {
-            this.showLoading();
+            this.gridApi.showLoadingOverlay();
 
             const response = await fetch('/Form/ExecuteConsulta', {
                 method: 'POST',
@@ -188,8 +346,8 @@ class ConsultaGrid {
                     filters: this.filters,
                     sortField: this.sortField,
                     sortDirection: this.sortDirection,
-                    page: this.page,
-                    pageSize: this.pageSize
+                    page: 1,
+                    pageSize: 10000 // Carrega todos e deixa AG Grid paginar
                 })
             });
 
@@ -198,124 +356,49 @@ class ConsultaGrid {
             if (result.columns && result.columns.length > 0) {
                 this.columns = result.columns;
                 this.updateFilterFieldOptions();
+                this.updateAgGridColumns();
             }
 
-            this.renderHeader();
-            this.renderData(result.data);
-            this.renderPagination(result);
-            this.updateGridInfo(result);
+            // Atualiza dados do grid
+            if (result.data && result.data.length > 0) {
+                this.gridApi.setGridOption('rowData', result.data);
+
+                // Auto-dimensiona colunas pelo conteúdo (igual Vision)
+                setTimeout(() => {
+                    this.gridApi.autoSizeAllColumns();
+                }, 100);
+            } else {
+                this.gridApi.setGridOption('rowData', []);
+                this.gridApi.showNoRowsOverlay();
+            }
+
+            // Limpa seleção
+            this.selectedId = null;
+            this.selectedRow = null;
+            this.updateCrudButtons();
+
+            this.updateGridInfo();
 
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
-            this.showError('Erro ao carregar dados');
+            this.gridApi.showNoRowsOverlay();
         }
     }
 
-    showLoading() {
-        if (this.gridBody) {
-            this.gridBody.innerHTML = `
-                <tr>
-                    <td colspan="${this.columns.length || 10}" class="text-center py-4">
-                        <div class="spinner-border spinner-border-sm" role="status"></div>
-                        <span class="ms-2">Carregando...</span>
-                    </td>
-                </tr>
-            `;
-        }
-    }
+    updateGridInfo() {
+        if (!this.gridInfo || !this.gridApi) return;
 
-    showError(message) {
-        if (this.gridBody) {
-            this.gridBody.innerHTML = `
-                <tr>
-                    <td colspan="${this.columns.length || 10}" class="text-center text-danger py-4">
-                        <i class="bi bi-exclamation-triangle"></i> ${message}
-                    </td>
-                </tr>
-            `;
-        }
-    }
+        const totalRows = this.gridApi.getDisplayedRowCount();
+        const currentPage = this.gridApi.paginationGetCurrentPage() + 1;
+        const pageSize = this.gridApi.paginationGetPageSize();
+        const totalPages = this.gridApi.paginationGetTotalPages();
 
-    renderHeader() {
-        if (!this.gridHeader) return;
+        const start = (currentPage - 1) * pageSize + 1;
+        const end = Math.min(currentPage * pageSize, totalRows);
 
-        this.gridHeader.innerHTML = this.columns.map(col => `
-            <th style="width: ${col.width}px; cursor: pointer;"
-                onclick="window.consultaGrid.sortBy('${col.displayName}')">
-                ${col.displayName}
-                ${this.getSortIcon(col.displayName)}
-            </th>
-        `).join('');
-    }
-
-    getSortIcon(field) {
-        if (this.sortField !== field) return '';
-        return this.sortDirection === 'ASC'
-            ? '<i class="bi bi-sort-up"></i>'
-            : '<i class="bi bi-sort-down"></i>';
-    }
-
-    sortBy(field) {
-        if (this.sortField === field) {
-            this.sortDirection = this.sortDirection === 'ASC' ? 'DESC' : 'ASC';
-        } else {
-            this.sortField = field;
-            this.sortDirection = 'ASC';
-        }
-        this.loadData();
-    }
-
-    renderData(data) {
-        if (!this.gridBody) return;
-
-        if (!data || data.length === 0) {
-            this.gridBody.innerHTML = `
-                <tr>
-                    <td colspan="${this.columns.length}" class="text-center text-muted py-4">
-                        Nenhum registro encontrado
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        this.gridBody.innerHTML = data.map((row, index) => {
-            // Tenta encontrar o ID do registro (primeiro campo ou campo CODI*)
-            const keys = Object.keys(row);
-            const idKey = keys.find(k => k.toLowerCase().startsWith('codi')) || keys[0];
-            const recordId = row[idKey];
-
-            const cells = this.columns.map(col => {
-                const value = row[col.displayName] ?? row[col.fieldName] ?? '';
-                return `<td>${this.formatValue(value)}</td>`;
-            }).join('');
-
-            return `
-                <tr data-id="${recordId}"
-                    onclick="window.consultaGrid.selectRow(${recordId}, this)"
-                    ondblclick="window.consultaGrid.alterar()"
-                    class="${this.selectedId === recordId ? 'table-primary' : ''}">
-                    ${cells}
-                </tr>
-            `;
-        }).join('');
-    }
-
-    formatValue(value) {
-        if (value === null || value === undefined) return '';
-        if (typeof value === 'boolean') return value ? 'S' : 'N';
-        return String(value);
-    }
-
-    selectRow(id, row) {
-        // Remove selecao anterior
-        this.gridBody.querySelectorAll('tr').forEach(tr => tr.classList.remove('table-primary'));
-
-        // Seleciona nova linha
-        row.classList.add('table-primary');
-        this.selectedId = id;
-
-        this.updateCrudButtons();
+        this.gridInfo.textContent = totalRows > 0
+            ? `Mostrando ${start} a ${end} de ${totalRows} registros`
+            : 'Nenhum registro encontrado';
     }
 
     updateCrudButtons() {
@@ -324,87 +407,21 @@ class ConsultaGrid {
         if (this.btnExcluir) this.btnExcluir.disabled = !hasSelection;
     }
 
-    renderPagination(result) {
-        if (!this.gridPagination) return;
-
-        const { currentPage, totalPages } = result;
-
-        if (totalPages <= 1) {
-            this.gridPagination.innerHTML = '';
-            return;
-        }
-
-        let html = '';
-
-        // Anterior
-        html += `
-            <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="window.consultaGrid.goToPage(${currentPage - 1}); return false;">
-                    &laquo;
-                </a>
-            </li>
-        `;
-
-        // Paginas
-        const startPage = Math.max(1, currentPage - 2);
-        const endPage = Math.min(totalPages, currentPage + 2);
-
-        for (let i = startPage; i <= endPage; i++) {
-            html += `
-                <li class="page-item ${i === currentPage ? 'active' : ''}">
-                    <a class="page-link" href="#" onclick="window.consultaGrid.goToPage(${i}); return false;">${i}</a>
-                </li>
-            `;
-        }
-
-        // Proximo
-        html += `
-            <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="window.consultaGrid.goToPage(${currentPage + 1}); return false;">
-                    &raquo;
-                </a>
-            </li>
-        `;
-
-        this.gridPagination.innerHTML = html;
-    }
-
-    goToPage(page) {
-        this.page = page;
-        this.loadData();
-    }
-
-    updateGridInfo(result) {
-        if (!this.gridInfo) return;
-
-        const start = (result.currentPage - 1) * result.pageSize + 1;
-        const end = Math.min(result.currentPage * result.pageSize, result.totalRecords);
-
-        this.gridInfo.textContent = result.totalRecords > 0
-            ? `Mostrando ${start} a ${end} de ${result.totalRecords} registros`
-            : 'Nenhum registro encontrado';
-    }
-
     // CRUD Operations
     async incluir() {
         // Usa Saga Pattern: cria registro vazio no banco imediatamente
-        // Isso permite que movimentos sejam adicionados antes do save final
         if (typeof startNewRecord === 'function') {
             console.log('[ConsultaGrid] Iniciando novo registro via Saga Pattern');
             await startNewRecord();
         } else {
-            // Fallback para comportamento antigo (sem Saga)
+            // Fallback para comportamento antigo
             console.warn('[ConsultaGrid] startNewRecord não disponível, usando fallback');
-
-            // Limpa formulario
             const form = document.getElementById('dynamicForm');
             if (form) form.reset();
 
-            // Limpa ID de edicao
             const editingId = document.getElementById('editingRecordId');
             if (editingId) editingId.value = '';
 
-            // Ativa tab de dados
             document.getElementById('tab-dados-tab')?.click();
         }
     }
@@ -427,14 +444,14 @@ class ConsultaGrid {
             const editingId = document.getElementById('editingRecordId');
             if (editingId) editingId.value = this.selectedId;
 
-            // Atualiza formState para refletir modo de edição (não é novo registro)
+            // Atualiza formState
             if (window.formState) {
                 window.formState.recordId = this.selectedId;
                 window.formState.isNewRecord = false;
                 window.formState.isDirty = false;
             }
 
-            // Sincroniza MovementManager com o registro sendo editado
+            // Sincroniza MovementManager
             if (window.MovementManager) {
                 MovementManager.syncWithHeader('load', { recordId: this.selectedId });
             }
@@ -442,13 +459,12 @@ class ConsultaGrid {
             // Ativa tab de dados
             document.getElementById('tab-dados-tab')?.click();
 
-            // Habilita modo de edição (oculta overlays das tabs)
+            // Habilita modo de edição
             if (typeof enableEditMode === 'function') {
                 enableEditMode();
             }
 
-            // IMPORTANTE: Executa eventos de campo para aplicar regras de visibilidade/habilitação
-            // Similar ao comportamento do Delphi ao carregar um registro
+            // Executa eventos de campo
             if (typeof SagEvents !== 'undefined' && SagEvents.onRecordLoaded) {
                 await SagEvents.onRecordLoaded();
             }
@@ -463,18 +479,12 @@ class ConsultaGrid {
         const form = document.getElementById('dynamicForm');
         if (!form) return;
 
-        console.log('fillForm record:', record);
-
         for (const [key, value] of Object.entries(record)) {
-            // Tenta encontrar o campo pelo nome (case insensitive)
             const input = form.querySelector(`[name="${key}"], [name="${key.toUpperCase()}"], [name="${key.toLowerCase()}"]`);
             if (input) {
-                console.log(`Setting ${key} = ${value}, input type: ${input.type}, tagName: ${input.tagName}`);
-
                 if (input.type === 'checkbox') {
                     input.checked = value === 1 || value === true || value === 'S';
                 } else if (input.tagName === 'SELECT') {
-                    // Para selects, tenta encontrar a option pelo value
                     const strValue = String(value ?? '');
                     let found = false;
 
@@ -487,18 +497,13 @@ class ConsultaGrid {
                     }
 
                     if (!found) {
-                        console.warn(`Option not found for ${key} = ${strValue}`);
                         input.value = strValue;
                     }
                 } else if (input.type === 'date') {
-                    // HTML5 date inputs expect "YYYY-MM-DD" format
-                    // API returns ISO format "2026-01-02T00:00:00"
                     if (value) {
                         const dateStr = String(value);
-                        // Extract just the date part (YYYY-MM-DD)
                         const datePart = dateStr.substring(0, 10);
                         input.value = datePart;
-                        console.log(`Date ${key} = ${datePart} (original: ${value})`);
                     } else {
                         input.value = '';
                     }
@@ -526,6 +531,7 @@ class ConsultaGrid {
             if (result.success) {
                 alert(result.message);
                 this.selectedId = null;
+                this.selectedRow = null;
                 this.updateCrudButtons();
                 this.loadData();
             } else {
@@ -537,12 +543,20 @@ class ConsultaGrid {
             alert('Erro ao excluir registro');
         }
     }
+
+    // Método público para refresh (usado por SagEvents)
+    refresh() {
+        this.loadData();
+    }
 }
 
 // Inicializa quando DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('consultaContainer');
     if (container) {
-        window.consultaGrid = new ConsultaGrid('consultaContainer');
+        // Aguarda um tick para garantir que AG Grid está carregado
+        setTimeout(() => {
+            window.consultaGrid = new ConsultaGrid('consultaContainer');
+        }, 100);
     }
 });

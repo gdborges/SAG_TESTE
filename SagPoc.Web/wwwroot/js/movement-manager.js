@@ -1,8 +1,9 @@
 /**
  * MovementManager - Gerenciador de movimentos (registros filhos) para SAG Web
+ * Versão 2.0 - Migrado para AG Grid Enterprise
  *
  * Responsável por:
- * - Carregar dados dos grids de movimento
+ * - Carregar dados dos grids de movimento via AG Grid
  * - Gerenciar seleção de linhas
  * - Abrir modal para inserir/editar
  * - Executar operações CRUD via API
@@ -17,6 +18,7 @@ var MovementManager = (function() {
         parentRecordId: null,
         movements: {},        // Metadados indexados por CodiTabe
         selectedRows: {},     // Linhas selecionadas por CodiTabe
+        gridApis: {},         // AG Grid APIs por CodiTabe
         currentPage: {},      // Página atual por CodiTabe
         pageSize: 50,
         modalInstance: null,
@@ -45,6 +47,9 @@ var MovementManager = (function() {
 
             // Carrega eventos PLSAG de cada movimento
             loadAllMovementEvents();
+
+            // Inicializa AG Grids para cada movimento
+            initAllAgGrids();
         }
 
         // Inicializa modais Bootstrap
@@ -59,6 +64,162 @@ var MovementManager = (function() {
         }
 
         console.log('[MovementManager] Inicialização completa');
+    }
+
+    /**
+     * Inicializa AG Grids para todos os movimentos
+     */
+    function initAllAgGrids() {
+        if (typeof agGrid === 'undefined') {
+            console.error('[MovementManager] AG Grid não disponível');
+            return;
+        }
+
+        Object.keys(state.movements).forEach(function(movementId) {
+            initMovementAgGrid(parseInt(movementId));
+        });
+    }
+
+    /**
+     * Inicializa AG Grid para um movimento específico
+     * @param {number} movementId - ID da tabela de movimento
+     */
+    function initMovementAgGrid(movementId) {
+        var gridContainer = document.getElementById('movement-ag-grid-' + movementId);
+        if (!gridContainer) {
+            console.warn('[MovementManager] Container AG Grid não encontrado para movimento', movementId);
+            return;
+        }
+
+        // Obtém colunas do container ou metadata
+        var container = document.getElementById('movement-grid-' + movementId);
+        var columnsData = [];
+        var pkColumn = 'id';
+
+        if (container) {
+            try {
+                columnsData = JSON.parse(container.dataset.columns || '[]');
+                pkColumn = container.dataset.pkColumn || 'id';
+            } catch (e) {
+                console.warn('[MovementManager] Erro ao parsear colunas:', e);
+            }
+        }
+
+        // Cria definições de colunas para AG Grid
+        var columnDefs = columnsData.map(function(col) {
+            return {
+                field: col.fieldName || col.displayName,
+                headerName: col.displayName,
+                width: col.width || 100,
+                sortable: true,
+                resizable: true
+            };
+        });
+
+        // Se não há colunas configuradas, deixa vazio (será preenchido ao carregar dados)
+        if (columnDefs.length === 0) {
+            columnDefs = [{ field: '_placeholder', headerName: 'Carregando...', flex: 1 }];
+        }
+
+        var gridOptions = {
+            columnDefs: columnDefs,
+            rowData: [],
+            rowSelection: 'single',
+            animateRows: true,
+            enableCellTextSelection: true,
+            suppressCopyRowsToClipboard: true,
+
+            // === ENTERPRISE FEATURES (igual ao Vision) ===
+            columnMenu: 'new',
+
+            // Painel lateral de colunas (igual ao consulta-grid)
+            sideBar: {
+                toolPanels: [
+                    {
+                        id: 'columns',
+                        labelDefault: 'Colunas',
+                        labelKey: 'columns',
+                        iconKey: 'columns',
+                        toolPanel: 'agColumnsToolPanel',
+                        toolPanelParams: {
+                            suppressRowGroups: false,
+                            suppressValues: true,
+                            suppressPivots: true,
+                            suppressPivotMode: true,
+                        }
+                    }
+                ],
+                defaultToolPanel: '',
+            },
+
+            // Barra de agrupamento no topo
+            rowGroupPanelShow: 'always',
+            suppressDragLeaveHidesColumns: true,
+
+            // Overlay de loading
+            overlayLoadingTemplate: '<div class="ag-overlay-loading-center"><div class="spinner-border spinner-border-sm me-2"></div> Carregando...</div>',
+            overlayNoRowsTemplate: '<div class="ag-overlay-no-rows-center"><i class="bi bi-inbox fs-4 d-block mb-2"></i>Nenhum registro<br><small class="text-muted">Clique em "Novo" para adicionar</small></div>',
+
+            // Default column definition (igual ao Vision)
+            defaultColDef: {
+                sortable: true,
+                resizable: true,
+                filter: true,
+                minWidth: 60,
+                menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
+            },
+
+            // Identificador de linha
+            getRowId: function(params) {
+                var pk = params.data[pkColumn] || params.data[pkColumn.toUpperCase()] || params.data.id;
+                return String(pk ?? params.node.rowIndex);
+            },
+
+            // Callbacks de eventos
+            onRowSelected: function(event) {
+                if (event.node.isSelected()) {
+                    onAgGridRowSelected(movementId, event.data, pkColumn);
+                }
+            },
+            onRowDoubleClicked: function(event) {
+                onAgGridRowDoubleClicked(movementId, event.data, pkColumn);
+            },
+            onGridReady: function(event) {
+                console.log('[MovementManager] AG Grid ready para movimento', movementId);
+            }
+        };
+
+        // Cria o grid
+        var gridApi = agGrid.createGrid(gridContainer, gridOptions);
+        state.gridApis[movementId] = gridApi;
+
+        console.log('[MovementManager] AG Grid inicializado para movimento', movementId);
+    }
+
+    /**
+     * Callback quando linha é selecionada no AG Grid
+     */
+    function onAgGridRowSelected(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+
+        // Habilita botões de editar/excluir
+        var btnGroup = document.getElementById('btn-group-' + movementId);
+        if (btnGroup) {
+            var editBtn = btnGroup.querySelector('.btn-movement-edit');
+            var deleteBtn = btnGroup.querySelector('.btn-movement-delete');
+            if (editBtn) editBtn.disabled = false;
+            if (deleteBtn) deleteBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Callback quando linha é clicada duas vezes no AG Grid
+     */
+    function onAgGridRowDoubleClicked(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+        openEditMovement(movementId);
     }
 
     /**
@@ -81,7 +242,7 @@ var MovementManager = (function() {
     }
 
     /**
-     * Configura os event listeners para botões e grid
+     * Configura os event listeners para botões (AG Grid já tem seus próprios listeners)
      */
     function setupEventListeners() {
         // Botões Novo
@@ -120,42 +281,8 @@ var MovementManager = (function() {
             btnDelete.addEventListener('click', confirmDelete);
         }
 
-        // Click nas linhas do grid (delegação de eventos)
-        document.querySelectorAll('.movement-grid-table tbody').forEach(function(tbody) {
-            tbody.addEventListener('click', function(e) {
-                var row = e.target.closest('tr');
-                if (row && row.dataset.recordId) {
-                    var movementId = parseInt(tbody.closest('.movement-grid-container').dataset.movement);
-                    selectRow(movementId, row);
-                }
-            });
-
-            // Double-click para editar
-            tbody.addEventListener('dblclick', function(e) {
-                var row = e.target.closest('tr');
-                if (row && row.dataset.recordId) {
-                    var movementId = parseInt(tbody.closest('.movement-grid-container').dataset.movement);
-                    selectRow(movementId, row);
-                    openEditMovement(movementId);
-                }
-            });
-        });
-
-        // Paginação
-        document.querySelectorAll('.movement-pagination .page-link').forEach(function(link) {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                var paginationNav = this.closest('.movement-pagination');
-                var movementId = parseInt(paginationNav.id.replace('pagination-', ''));
-                var action = this.dataset.page;
-
-                if (action === 'prev') {
-                    changePage(movementId, state.currentPage[movementId] - 1);
-                } else if (action === 'next') {
-                    changePage(movementId, state.currentPage[movementId] + 1);
-                }
-            });
-        });
+        // Nota: Eventos de seleção e double-click agora são tratados pelo AG Grid
+        // via onRowSelected e onRowDoubleClicked em initMovementAgGrid()
     }
 
     /**
@@ -202,11 +329,10 @@ var MovementManager = (function() {
             return;
         }
 
-        var loading = document.getElementById('loading-' + movementId);
-        var tbody = document.getElementById('tbody-' + movementId);
-        var emptyRow = document.getElementById('empty-' + movementId);
-
-        if (loading) loading.classList.remove('d-none');
+        var gridApi = state.gridApis[movementId];
+        if (gridApi) {
+            gridApi.showLoadingOverlay();
+        }
 
         var url = '/api/movement/' + state.parentRecordId + '/' + movementId + '/data?page=' + page + '&pageSize=' + state.pageSize;
 
@@ -216,82 +342,83 @@ var MovementManager = (function() {
                 return response.json();
             })
             .then(function(data) {
-                if (loading) loading.classList.add('d-none');
                 renderGrid(movementId, data);
                 state.currentPage[movementId] = page;
-                updatePagination(movementId, data);
             })
             .catch(function(error) {
                 console.error('[MovementManager] Erro ao carregar movimento:', error);
-                if (loading) loading.classList.add('d-none');
+                if (gridApi) {
+                    gridApi.showNoRowsOverlay();
+                }
                 showError('Erro ao carregar dados: ' + error.message);
             });
     }
 
     /**
-     * Renderiza o grid com os dados recebidos
+     * Renderiza o grid com os dados recebidos via AG Grid
      * @param {number} movementId - ID do movimento
-     * @param {object} data - Dados retornados pela API
+     * @param {object} apiData - Dados retornados pela API
      */
     function renderGrid(movementId, apiData) {
-        var tbody = document.getElementById('tbody-' + movementId);
-        var emptyRow = document.getElementById('empty-' + movementId);
+        var gridApi = state.gridApis[movementId];
         var metadata = state.movements[movementId];
 
-        if (!tbody || !metadata) return;
+        if (!gridApi || !metadata) {
+            console.warn('[MovementManager] Grid API ou metadata não encontrado para movimento', movementId);
+            return;
+        }
 
         // API retorna 'data' (camelCase de 'Data'), não 'records'
         var records = apiData.data || apiData.records || [];
         var columns = apiData.columns || metadata.columns || [];
-
-        // Limpa tbody
-        tbody.innerHTML = '';
-
-        if (records.length === 0) {
-            // Mostra linha vazia
-            var colCount = metadata.columns ? metadata.columns.length : 3;
-            tbody.innerHTML = '<tr class="text-center text-muted empty-row">' +
-                '<td colspan="' + colCount + '">' +
-                '<div class="py-4">' +
-                '<i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>' +
-                '<span>Nenhum registro</span><br/>' +
-                '<small class="text-muted">Clique em "Novo" para adicionar</small>' +
-                '</div></td></tr>';
-            return;
-        }
-
-        // Usa colunas da API ou do metadata (já com fallback acima)
         var pkColumn = apiData.pkColumnName || metadata.pkColumnName || 'id';
 
-        // Renderiza linhas
-        records.forEach(function(record) {
-            var tr = document.createElement('tr');
-            tr.dataset.recordId = record[pkColumn] || record[pkColumn.toUpperCase()] || record.id;
-            tr.classList.add('movement-row');
-
-            // Renderiza colunas
-            if (columns.length > 0) {
-                columns.forEach(function(col) {
-                    var td = document.createElement('td');
-                    // Tenta fieldName, depois uppercase (Oracle retorna maiúsculo)
-                    var fieldName = col.fieldName || col.FieldName || '';
-                    var value = record[fieldName] || record[fieldName.toUpperCase()] || '';
-                    td.textContent = formatValue(value, col);
-                    tr.appendChild(td);
-                });
-            } else {
-                // Fallback: usa todas as propriedades do registro
-                Object.keys(record).forEach(function(key) {
-                    if (key !== pkColumn && key !== 'id') {
-                        var td = document.createElement('td');
-                        td.textContent = record[key] || '';
-                        tr.appendChild(td);
+        // Atualiza colunas se vieram da API
+        if (columns.length > 0) {
+            var columnDefs = columns.map(function(col) {
+                return {
+                    field: col.fieldName || col.FieldName || col.displayName,
+                    headerName: col.displayName || col.DisplayName,
+                    width: col.width || col.Width || 100,
+                    sortable: true,
+                    resizable: true,
+                    valueFormatter: function(params) {
+                        return formatValue(params.value, col);
                     }
-                });
-            }
+                };
+            });
+            gridApi.setGridOption('columnDefs', columnDefs);
+        }
 
-            tbody.appendChild(tr);
-        });
+        // Atualiza dados
+        if (records.length > 0) {
+            gridApi.setGridOption('rowData', records);
+
+            // Auto-dimensiona colunas após carregar dados (igual Vision)
+            setTimeout(function() {
+                gridApi.autoSizeAllColumns();
+            }, 100);
+        } else {
+            gridApi.setGridOption('rowData', []);
+            gridApi.showNoRowsOverlay();
+        }
+
+        // Limpa seleção
+        state.selectedRows[movementId] = null;
+        var btnGroup = document.getElementById('btn-group-' + movementId);
+        if (btnGroup) {
+            var editBtn = btnGroup.querySelector('.btn-movement-edit');
+            var deleteBtn = btnGroup.querySelector('.btn-movement-delete');
+            if (editBtn) editBtn.disabled = true;
+            if (deleteBtn) deleteBtn.disabled = true;
+        }
+
+        // Atualiza info de registros
+        var infoEl = document.getElementById('movement-info-' + movementId);
+        if (infoEl) {
+            var total = apiData.totalRecords || records.length;
+            infoEl.textContent = total > 0 ? total + ' registro(s)' : 'Nenhum registro';
+        }
 
         // Atualiza contagem
         var summaryCount = document.getElementById('summary-count-' + movementId);
@@ -359,72 +486,8 @@ var MovementManager = (function() {
         return String(value);
     }
 
-    /**
-     * Atualiza a paginação
-     * @param {number} movementId - ID do movimento
-     * @param {object} data - Dados da API com info de paginação
-     */
-    function updatePagination(movementId, apiData) {
-        var pagination = document.getElementById('pagination-' + movementId);
-        if (!pagination) return;
-
-        var records = apiData.data || apiData.records || [];
-        var totalRecords = apiData.totalRecords || apiData.totalCount || 0;
-        var totalPages = Math.ceil(totalRecords / state.pageSize);
-        var currentPage = state.currentPage[movementId];
-
-        if (totalPages > 1) {
-            pagination.classList.remove('d-none');
-
-            var prev = document.getElementById('prev-' + movementId);
-            var next = document.getElementById('next-' + movementId);
-            var pageInfo = document.getElementById('page-info-' + movementId);
-            var totalInfo = document.getElementById('total-info-' + movementId);
-            var currentPageEl = document.getElementById('current-page-' + movementId);
-
-            if (prev) prev.classList.toggle('disabled', currentPage <= 1);
-            if (next) next.classList.toggle('disabled', currentPage >= totalPages);
-            if (currentPageEl) currentPageEl.querySelector('.page-link').textContent = currentPage;
-            if (pageInfo) pageInfo.textContent = records.length || 0;
-            if (totalInfo) totalInfo.textContent = totalRecords;
-        } else {
-            pagination.classList.add('d-none');
-        }
-    }
-
-    /**
-     * Muda para outra página
-     * @param {number} movementId - ID do movimento
-     * @param {number} page - Nova página
-     */
-    function changePage(movementId, page) {
-        if (page < 1) return;
-        loadMovementData(movementId, page);
-    }
-
-    /**
-     * Seleciona uma linha do grid
-     * @param {number} movementId - ID do movimento
-     * @param {HTMLElement} row - Elemento TR selecionado
-     */
-    function selectRow(movementId, row) {
-        // Remove seleção anterior
-        var tbody = row.closest('tbody');
-        tbody.querySelectorAll('tr.selected').forEach(function(tr) {
-            tr.classList.remove('selected', 'table-primary');
-        });
-
-        // Seleciona nova linha
-        row.classList.add('selected', 'table-primary');
-        state.selectedRows[movementId] = parseInt(row.dataset.recordId);
-
-        // Habilita botões de editar/excluir
-        var btnGroup = document.getElementById('btn-group-' + movementId);
-        if (btnGroup) {
-            btnGroup.querySelector('.btn-movement-edit').disabled = false;
-            btnGroup.querySelector('.btn-movement-delete').disabled = false;
-        }
-    }
+    // Nota: Funções updatePagination, changePage e selectRow removidas
+    // AG Grid gerencia paginação e seleção internamente
 
     /**
      * Abre modal para novo registro
@@ -943,30 +1006,25 @@ var MovementManager = (function() {
     }
 
     /**
-     * Limpa todos os grids de movimento
+     * Limpa todos os grids de movimento via AG Grid
      */
     function clearAllMovements() {
         Object.keys(state.movements).forEach(function(movementId) {
-            var tbody = document.getElementById('tbody-' + movementId);
-            var metadata = state.movements[movementId];
+            var gridApi = state.gridApis[movementId];
 
-            if (tbody && metadata) {
-                var colCount = metadata.columns ? metadata.columns.length : 3;
-                tbody.innerHTML = '<tr class="text-center text-muted empty-row">' +
-                    '<td colspan="' + colCount + '">' +
-                    '<div class="py-4">' +
-                    '<i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>' +
-                    '<span>Nenhum registro</span><br/>' +
-                    '<small class="text-muted">Salve o cabeçalho para adicionar movimentos</small>' +
-                    '</div></td></tr>';
+            if (gridApi) {
+                gridApi.setGridOption('rowData', []);
+                gridApi.showNoRowsOverlay();
             }
 
             // Limpa seleção
             state.selectedRows[movementId] = null;
 
-            // Oculta paginação
-            var pagination = document.getElementById('pagination-' + movementId);
-            if (pagination) pagination.classList.add('d-none');
+            // Atualiza info
+            var infoEl = document.getElementById('movement-info-' + movementId);
+            if (infoEl) {
+                infoEl.textContent = 'Nenhum registro';
+            }
 
             // Oculta resumo
             var summary = document.getElementById('summary-' + movementId);

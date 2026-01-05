@@ -55,31 +55,15 @@
         </div>
     </div>
 
-    <!-- Grid -->
-    <div class="table-responsive">
-        <table class="table table-striped table-hover table-sm" id="consultaGrid">
-            <thead class="table-dark">
-                <tr id="gridHeader"></tr>
-            </thead>
-            <tbody id="gridBody">
-                <tr>
-                    <td colspan="10" class="text-center text-muted py-4">
-                        Selecione uma consulta para carregar os dados...
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <!-- AG Grid Container -->
+    <div id="consultaAgGrid" class="ag-theme-quartz" style="height: 400px; width: 100%;"></div>
 
-    <!-- Paginacao -->
+    <!-- Grid Info (abaixo do AG Grid) -->
     <div class="d-flex justify-content-between align-items-center mt-2">
         <div class="text-muted" id="gridInfo">
             Mostrando 0 registros
         </div>
-        <nav>
-            <ul class="pagination pagination-sm mb-0" id="gridPagination">
-            </ul>
-        </nav>
+        <div id="gridPaginationInfo"></div>
     </div>
 
     <hr class="my-3">

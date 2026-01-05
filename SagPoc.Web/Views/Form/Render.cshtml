@@ -383,6 +383,11 @@
             try {
                 console.log('[Saga] Iniciando novo registro...');
 
+                // 0. Limpa campos descritivos de lookups (evita dados do registro anterior)
+                if (window.SagEvents && typeof SagEvents.clearLookupDescriptions === 'function') {
+                    SagEvents.clearLookupDescriptions();
+                }
+
                 // 1. Cria registro vazio no servidor
                 const response = await fetch('/Form/CreateRecord?tableId=' + formState.tableId, {
                     method: 'POST'

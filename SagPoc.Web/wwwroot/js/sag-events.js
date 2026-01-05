@@ -27,6 +27,201 @@ const SagEvents = (function () {
     let activeMovementContext = null;
 
     /**
+     * Formata nome de coluna do banco para exibição amigável.
+     * Converte padrões comuns como CODICONT -> Código, NOMECONT -> Nome, etc.
+     *
+     * @param {string} columnName - Nome técnico da coluna do banco
+     * @returns {string} Nome formatado para exibição
+     */
+    function formatColumnName(columnName) {
+        if (!columnName) return '';
+
+        // Se já tem aspas ou parece um label amigável, retorna como está
+        if (columnName.includes(' ') || /[áéíóúàèìòùãõâêîôû]/i.test(columnName)) {
+            return columnName;
+        }
+
+        const upper = columnName.toUpperCase();
+
+        // Padrões comuns de prefixos/sufixos do SAG
+        const patterns = [
+            // Padrão CODI* -> Código
+            { regex: /^CODI(.+)$/, format: (match) => 'Código' },
+            // Padrão NOME* -> Nome
+            { regex: /^NOME(.+)$/, format: (match) => 'Nome' },
+            // Padrão DESC* -> Descrição
+            { regex: /^DESC(.+)$/, format: (match) => 'Descrição' },
+            // Padrão SIGL* -> Sigla
+            { regex: /^SIGL(.+)$/, format: (match) => 'Sigla' },
+            // Padrão DATA* -> Data
+            { regex: /^DATA(.+)$/, format: (match) => 'Data' },
+            // Padrão VALO* -> Valor
+            { regex: /^VALO(.+)$/, format: (match) => 'Valor' },
+            // Padrão QUAN* ou QTDE* -> Quantidade
+            { regex: /^(QUAN|QTDE)(.+)$/, format: (match) => 'Quantidade' },
+            // Padrão PREC* -> Preço
+            { regex: /^PREC(.+)$/, format: (match) => 'Preço' },
+            // Padrão TOTA* -> Total
+            { regex: /^TOTA(.+)$/, format: (match) => 'Total' },
+            // Padrão TIPO* -> Tipo
+            { regex: /^TIPO(.+)$/, format: (match) => 'Tipo' },
+            // Padrão STAT* -> Status
+            { regex: /^STAT(.+)$/, format: (match) => 'Status' },
+            // Padrão OBSE* -> Observação
+            { regex: /^OBSE(.+)$/, format: (match) => 'Observação' },
+            // Padrão NATU* -> Natureza
+            { regex: /^NATU(.+)$/, format: (match) => 'Natureza' },
+            // Padrão UNID* -> Unidade
+            { regex: /^UNID(.+)$/, format: (match) => 'Unidade' },
+            // Padrão FONE* ou TELE* -> Telefone
+            { regex: /^(FONE|TELE)(.*)$/, format: (match) => 'Telefone' },
+            // Padrão EMAI* -> E-mail
+            { regex: /^EMAI(.*)$/, format: (match) => 'E-mail' },
+            // Padrão ENDE* -> Endereço
+            { regex: /^ENDE(.*)$/, format: (match) => 'Endereço' },
+            // Padrão BAIR* -> Bairro
+            { regex: /^BAIR(.*)$/, format: (match) => 'Bairro' },
+            // Padrão CIDA* -> Cidade
+            { regex: /^CIDA(.*)$/, format: (match) => 'Cidade' },
+            // Padrão ESTA* -> Estado
+            { regex: /^ESTA(.*)$/, format: (match) => 'Estado' },
+            // Padrão PAIS* -> País
+            { regex: /^PAIS(.*)$/, format: (match) => 'País' },
+            // Padrão CEP* -> CEP
+            { regex: /^CEP(.*)$/, format: (match) => 'CEP' },
+            // Padrão CGC_* ou *CGC* -> CPF/CNPJ
+            { regex: /^CGC_(.*)$/, format: (match) => 'CPF/CNPJ' },
+            { regex: /^(.*)_CGC$/, format: (match) => 'CPF/CNPJ' },
+            // Padrão CNPJ* ou CPF* -> CPF/CNPJ
+            { regex: /^(CNPJ|CPF)(.*)$/, format: (match) => match[1] },
+            // Padrão FANT* -> Fantasia
+            { regex: /^FANT(.*)$/, format: (match) => 'Fantasia' },
+            // Padrão RAZA* ou RAZAO* -> Razão Social
+            { regex: /^(RAZA|RAZAO)(.*)$/, format: (match) => 'Razão Social' },
+            // Padrão RG_* ou *_RG -> RG
+            { regex: /^RG_(.*)$/, format: (match) => 'RG' },
+            { regex: /^(.*)_RG$/, format: (match) => 'RG' },
+            // Padrão IE_* ou *_IE -> Insc. Estadual
+            { regex: /^IE_(.*)$/, format: (match) => 'Insc. Estadual' },
+            { regex: /^(.*)_IE$/, format: (match) => 'Insc. Estadual' },
+            // Padrão INSC* -> Inscrição
+            { regex: /^INSC(.*)$/, format: (match) => 'Inscrição' },
+            // Padrão PERC* -> Percentual
+            { regex: /^PERC(.+)$/, format: (match) => 'Percentual' },
+            // Padrão ATIV* -> Ativo
+            { regex: /^ATIV(.*)$/, format: (match) => 'Ativo' },
+            // Padrão SALD* -> Saldo
+            { regex: /^SALD(.+)$/, format: (match) => 'Saldo' },
+            // Padrão LIMI* -> Limite
+            { regex: /^LIMI(.+)$/, format: (match) => 'Limite' },
+            // Padrão CLAS* -> Classificação
+            { regex: /^CLAS(.+)$/, format: (match) => 'Classificação' },
+            // Padrão GRUP* -> Grupo
+            { regex: /^GRUP(.+)$/, format: (match) => 'Grupo' },
+            // Padrão CONT* -> Conta
+            { regex: /^CONT(.+)$/, format: (match) => 'Conta' },
+            // Padrão BANC* -> Banco
+            { regex: /^BANC(.+)$/, format: (match) => 'Banco' },
+            // Padrão AGEN* -> Agência
+            { regex: /^AGEN(.+)$/, format: (match) => 'Agência' },
+            // Padrão REFE* -> Referência
+            { regex: /^REFE(.*)$/, format: (match) => 'Referência' },
+            // Padrão SITU* -> Situação
+            { regex: /^SITU(.*)$/, format: (match) => 'Situação' },
+            // Padrão ORIG* -> Origem
+            { regex: /^ORIG(.*)$/, format: (match) => 'Origem' },
+            // Padrão DEST* -> Destino
+            { regex: /^DEST(.*)$/, format: (match) => 'Destino' },
+            // Padrão NOTA* -> Nota
+            { regex: /^NOTA(.*)$/, format: (match) => 'Nota' },
+            // Padrão SERI* -> Série
+            { regex: /^SERI(.*)$/, format: (match) => 'Série' },
+            // Padrão NFIS* -> NF
+            { regex: /^NFIS(.*)$/, format: (match) => 'NF' },
+            // Padrão CFOP* -> CFOP
+            { regex: /^CFOP(.*)$/, format: (match) => 'CFOP' },
+            // Padrão HIST* -> Histórico
+            { regex: /^HIST(.*)$/, format: (match) => 'Histórico' },
+            // Padrão VENC* -> Vencimento
+            { regex: /^VENC(.*)$/, format: (match) => 'Vencimento' },
+            // Padrão PARC* -> Parcela
+            { regex: /^PARC(.*)$/, format: (match) => 'Parcela' },
+            // Padrão DOCU* -> Documento
+            { regex: /^DOCU(.*)$/, format: (match) => 'Documento' },
+            // Padrão PROD* -> Produto
+            { regex: /^PROD(.*)$/, format: (match) => 'Produto' },
+            // Padrão SERV* -> Serviço
+            { regex: /^SERV(.*)$/, format: (match) => 'Serviço' },
+            // Padrão EMIS* -> Emissão
+            { regex: /^EMIS(.*)$/, format: (match) => 'Emissão' },
+            // Padrão ENTR* -> Entrada
+            { regex: /^ENTR(.*)$/, format: (match) => 'Entrada' },
+            // Padrão SAID* -> Saída
+            { regex: /^SAID(.*)$/, format: (match) => 'Saída' },
+            // Padrão PESS* -> Pessoa
+            { regex: /^PESS(.*)$/, format: (match) => 'Pessoa' },
+            // Padrão CLIE* -> Cliente
+            { regex: /^CLIE(.*)$/, format: (match) => 'Cliente' },
+            // Padrão FORN* -> Fornecedor
+            { regex: /^FORN(.*)$/, format: (match) => 'Fornecedor' },
+            // Padrão VEND* -> Vendedor
+            { regex: /^VEND(.*)$/, format: (match) => 'Vendedor' },
+            // Padrão FUNC* -> Funcionário
+            { regex: /^FUNC(.*)$/, format: (match) => 'Funcionário' },
+            // Padrão HORA* -> Hora
+            { regex: /^HORA(.*)$/, format: (match) => 'Hora' },
+            // Padrão MENS* -> Mensagem
+            { regex: /^MENS(.*)$/, format: (match) => 'Mensagem' },
+            // Padrão FLAG* -> Flag
+            { regex: /^FLAG(.*)$/, format: (match) => 'Flag' },
+            // Padrão MARC* -> Marca
+            { regex: /^MARC(.*)$/, format: (match) => 'Marca' },
+            // Padrão MODE* -> Modelo
+            { regex: /^MODE(.*)$/, format: (match) => 'Modelo' },
+            // Padrão LOCA* -> Local
+            { regex: /^LOCA(.*)$/, format: (match) => 'Local' },
+            // Padrão ALMO* -> Almoxarifado
+            { regex: /^ALMO(.*)$/, format: (match) => 'Almoxarifado' },
+            // Padrão DEPO* -> Depósito
+            { regex: /^DEPO(.*)$/, format: (match) => 'Depósito' },
+            // Padrão ESTO* -> Estoque
+            { regex: /^ESTO(.*)$/, format: (match) => 'Estoque' },
+            // Padrão CUSTO* ou CUST* -> Custo
+            { regex: /^CUST(.*)$/, format: (match) => 'Custo' },
+            // Padrão PESO* -> Peso
+            { regex: /^PESO(.*)$/, format: (match) => 'Peso' },
+            // Padrão LARG* -> Largura
+            { regex: /^LARG(.*)$/, format: (match) => 'Largura' },
+            // Padrão ALTU* -> Altura
+            { regex: /^ALTU(.*)$/, format: (match) => 'Altura' },
+            // Padrão COMP* -> Comprimento (cuidado com CompCamp que é diferente)
+            { regex: /^COMP(?!CAMP)(.*)$/, format: (match) => 'Comprimento' },
+            // Padrão VOLU* -> Volume
+            { regex: /^VOLU(.*)$/, format: (match) => 'Volume' },
+            // Padrão MEDI* -> Medida
+            { regex: /^MEDI(.*)$/, format: (match) => 'Medida' },
+            // Padrão DIME* -> Dimensão
+            { regex: /^DIME(.*)$/, format: (match) => 'Dimensão' },
+            // Padrão USER* ou USUA* -> Usuário
+            { regex: /^(USER|USUA)(.*)$/, format: (match) => 'Usuário' },
+            // Padrão EMPR* -> Empresa
+            { regex: /^EMPR(.*)$/, format: (match) => 'Empresa' },
+            // Padrão FILI* -> Filial
+            { regex: /^FILI(.*)$/, format: (match) => 'Filial' },
+        ];
+
+        for (const pattern of patterns) {
+            const match = upper.match(pattern.regex);
+            if (match) {
+                return pattern.format(match);
+            }
+        }
+
+        // Fallback: retorna o nome original com capitalização
+        return columnName.charAt(0).toUpperCase() + columnName.slice(1).toLowerCase();
+    }
+
+    /**
      * Inicializa o sistema de eventos PLSAG.
      * @param {Object} formEventsData - Eventos do formulário (ciclo de vida)
      * @param {Object} fieldEventsData - Eventos dos campos (indexado por CodiCamp)
@@ -481,11 +676,8 @@ const SagEvents = (function () {
             existingModal.remove();
         }
 
-        // Prepara cabeçalhos da tabela (até 6 colunas para não ficar muito largo)
+        // Prepara colunas (até 6 colunas para não ficar muito largo)
         const displayColumns = columns.slice(0, 6);
-        const headerHtml = displayColumns.map(col =>
-            `<th>${escapeHtml(col)}</th>`
-        ).join('');
 
         // Obtém o label do campo
         const fieldName = fieldElement.dataset.sagNomecamp || fieldElement.name || 'Campo';
@@ -501,8 +693,8 @@ const SagEvents = (function () {
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
+                        <div class="modal-body p-0">
+                            <div class="p-3 pb-0">
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-funnel"></i></span>
                                     <input type="text" class="form-control" id="expandedLookupFilter"
@@ -512,14 +704,9 @@ const SagEvents = (function () {
                                     </button>
                                 </div>
                             </div>
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-hover table-sm table-striped" id="expandedLookupTable">
-                                    <thead class="table-light sticky-top">
-                                        <tr>${headerHtml}</tr>
-                                    </thead>
-                                    <tbody id="expandedLookupTableBody"></tbody>
-                                </table>
-                            </div>
+                            <div id="expandedLookupAgGrid"
+                                 class="ag-theme-quartz"
+                                 style="height: 400px; width: 100%;"></div>
                         </div>
                         <div class="modal-footer">
                             <span class="text-muted me-auto" id="expandedLookupRecordCount"></span>
@@ -535,89 +722,148 @@ const SagEvents = (function () {
 
         const modal = document.getElementById('sagExpandedLookupModal');
         const bsModal = new bootstrap.Modal(modal);
-        const tableBody = document.getElementById('expandedLookupTableBody');
+        const gridContainer = document.getElementById('expandedLookupAgGrid');
         const filterInput = document.getElementById('expandedLookupFilter');
         const clearBtn = document.getElementById('expandedLookupClear');
         const recordCount = document.getElementById('expandedLookupRecordCount');
 
-        // Função para renderizar registros
-        function renderRecords(recordList) {
-            tableBody.innerHTML = '';
-            recordCount.textContent = `${recordList.length} registro(s)`;
+        // Variável para armazenar a API do AG Grid
+        let gridApi = null;
 
-            if (!recordList || recordList.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="${displayColumns.length}" class="text-muted text-center py-4">
-                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum registro encontrado
-                </td></tr>`;
-                return;
-            }
+        // Prepara dados no formato AG Grid (usa record.data como dados da linha)
+        const rowData = records.map(record => ({
+            ...record.data,
+            _originalRecord: record // Preserva o registro original para seleção
+        }));
 
-            recordList.forEach(record => {
-                const row = document.createElement('tr');
-                row.style.cursor = 'pointer';
-                row.classList.add('lookup-row');
+        // Atualiza contador
+        recordCount.textContent = `${records.length} registro(s)`;
 
-                // Renderiza células para cada coluna
-                let cellsHtml = '';
-                displayColumns.forEach(col => {
-                    const value = record.data[col] ?? '';
-                    cellsHtml += `<td>${escapeHtml(String(value))}</td>`;
-                });
-                row.innerHTML = cellsHtml;
+        // Configura colunas do AG Grid (com labels amigáveis)
+        const columnDefs = displayColumns.map(col => ({
+            field: col,
+            headerName: formatColumnName(col),
+            sortable: true,
+            resizable: true,
+            minWidth: 100
+        }));
 
-                // Ao clicar na linha, seleciona o registro
-                row.addEventListener('click', () => {
-                    selectLookupRecord(fieldElement, record);
+        // Opções do AG Grid
+        const gridOptions = {
+            columnDefs: columnDefs,
+            rowData: rowData,
+            rowSelection: 'single',
+            animateRows: true,
+            enableCellTextSelection: true,
+
+            // Column menu (AG Grid Enterprise)
+            columnMenu: 'new',
+            suppressMenuHide: false,
+
+            // Painel lateral de colunas (igual ao Vision)
+            sideBar: {
+                toolPanels: [
+                    {
+                        id: 'columns',
+                        labelDefault: 'Colunas',
+                        labelKey: 'columns',
+                        iconKey: 'columns',
+                        toolPanel: 'agColumnsToolPanel',
+                        toolPanelParams: {
+                            suppressRowGroups: false,
+                            suppressValues: true,
+                            suppressPivots: true,
+                            suppressPivotMode: true,
+                        }
+                    }
+                ],
+                defaultToolPanel: '',
+            },
+
+            // Barra de agrupamento no topo
+            rowGroupPanelShow: 'always',
+            suppressDragLeaveHidesColumns: true,
+
+            // Overlay de loading
+            overlayNoRowsTemplate: '<div class="ag-overlay-no-rows-center"><i class="bi bi-inbox fs-4 d-block mb-2"></i>Nenhum registro encontrado</div>',
+
+            // Default column definition
+            defaultColDef: {
+                sortable: true,
+                resizable: true,
+                filter: true,
+                menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
+            },
+
+            // Callback de double-click para seleção
+            onRowDoubleClicked: (event) => {
+                const originalRecord = event.data._originalRecord;
+                if (originalRecord) {
+                    selectLookupRecord(fieldElement, originalRecord);
                     bsModal.hide();
-                });
+                }
+            },
 
-                // Destaque na linha ao passar o mouse (hover)
-                row.addEventListener('mouseenter', () => row.classList.add('table-active'));
-                row.addEventListener('mouseleave', () => row.classList.remove('table-active'));
+            // Callback de single-click para seleção
+            onRowClicked: (event) => {
+                const originalRecord = event.data._originalRecord;
+                if (originalRecord) {
+                    selectLookupRecord(fieldElement, originalRecord);
+                    bsModal.hide();
+                }
+            },
 
-                tableBody.appendChild(row);
-            });
-        }
+            // Callback de grid ready - autoSize das colunas
+            onGridReady: (params) => {
+                gridApi = params.api;
+                // Auto-dimensiona colunas pelo conteúdo
+                params.api.autoSizeAllColumns();
+            }
+        };
 
-        // Renderiza registros iniciais
-        renderRecords(records);
+        // Cria o AG Grid quando o modal estiver visível
+        modal.addEventListener('shown.bs.modal', () => {
+            // Verifica se AG Grid está disponível
+            if (typeof agGrid !== 'undefined') {
+                agGrid.createGrid(gridContainer, gridOptions);
+            } else {
+                console.error('[SagEvents] AG Grid não disponível para lookup modal');
+                // Fallback: exibe mensagem
+                gridContainer.innerHTML = '<div class="p-4 text-center text-muted">AG Grid não disponível</div>';
+            }
+            filterInput.focus();
+        });
 
-        // Filtro em tempo real
+        // Filtro em tempo real usando quickFilter do AG Grid
         let filterTimeout = null;
         filterInput.addEventListener('input', () => {
             clearTimeout(filterTimeout);
             filterTimeout = setTimeout(() => {
-                const filter = filterInput.value.trim().toLowerCase();
-                if (filter.length === 0) {
-                    renderRecords(records);
-                    return;
+                const filter = filterInput.value.trim();
+                if (gridApi) {
+                    gridApi.setGridOption('quickFilterText', filter);
+                    // Atualiza contador
+                    const displayedRows = gridApi.getDisplayedRowCount();
+                    recordCount.textContent = `${displayedRows} de ${records.length} registro(s)`;
                 }
-
-                // Filtra por qualquer coluna exibida
-                const filtered = records.filter(record =>
-                    displayColumns.some(col => {
-                        const value = String(record.data[col] || '');
-                        return value.toLowerCase().includes(filter);
-                    })
-                );
-                renderRecords(filtered);
             }, 200);
         });
 
         // Botão de limpar filtro
         clearBtn.addEventListener('click', () => {
             filterInput.value = '';
-            renderRecords(records);
-            filterInput.focus();
-        });
-
-        // Foca no input de filtro ao abrir
-        modal.addEventListener('shown.bs.modal', () => {
+            if (gridApi) {
+                gridApi.setGridOption('quickFilterText', '');
+                recordCount.textContent = `${records.length} registro(s)`;
+            }
             filterInput.focus();
         });
 
         // Limpa modal ao fechar
         modal.addEventListener('hidden.bs.modal', () => {
+            if (gridApi) {
+                gridApi.destroy();
+            }
             modal.remove();
         });
 
@@ -1637,11 +1883,8 @@ const SagEvents = (function () {
             existingModal.remove();
         }
 
-        // Prepara cabeçalhos da tabela (até 5 colunas para não ficar muito largo)
+        // Prepara colunas (até 5 colunas para não ficar muito largo)
         const displayColumns = columns.slice(0, 5);
-        const headerHtml = displayColumns.map(col =>
-            `<th>${escapeHtml(col)}</th>`
-        ).join('');
 
         // Cria o modal
         const fieldName = fieldElement.dataset.sagNomecamp || fieldElement.name || 'Campo';
@@ -1654,19 +1897,14 @@ const SagEvents = (function () {
                             <h5 class="modal-title">Pesquisar: ${escapeHtml(labelText)}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
+                        <div class="modal-body p-0">
+                            <div class="p-3 pb-0">
                                 <input type="text" class="form-control" id="lookupFilter"
                                        placeholder="Digite para filtrar..." autocomplete="off">
                             </div>
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-hover table-sm" id="lookupTable">
-                                    <thead class="table-light sticky-top">
-                                        <tr>${headerHtml}</tr>
-                                    </thead>
-                                    <tbody id="lookupTableBody"></tbody>
-                                </table>
-                            </div>
+                            <div id="lookupAgGrid"
+                                 class="ag-theme-quartz"
+                                 style="height: 400px; width: 100%;"></div>
                         </div>
                         <div class="modal-footer">
                             <span class="text-muted me-auto" id="lookupRecordCount"></span>
@@ -1680,96 +1918,158 @@ const SagEvents = (function () {
 
         const modal = document.getElementById('sagLookupModal');
         const bsModal = new bootstrap.Modal(modal);
-        const tableBody = document.getElementById('lookupTableBody');
+        const gridContainer = document.getElementById('lookupAgGrid');
         const filterInput = document.getElementById('lookupFilter');
         const recordCount = document.getElementById('lookupRecordCount');
 
-        // Função para renderizar registros
-        function renderRecords(recordList) {
-            tableBody.innerHTML = '';
-            recordCount.textContent = `${recordList.length} registro(s)`;
+        // Variável para armazenar a API do AG Grid
+        let gridApi = null;
 
-            if (!recordList || recordList.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="${displayColumns.length}" class="text-muted text-center">Nenhum registro encontrado</td></tr>`;
-                return;
+        // Prepara dados no formato AG Grid (usa record.data como dados da linha)
+        const rowData = records.map(record => ({
+            ...record.data,
+            _originalRecord: record // Preserva o registro original para seleção
+        }));
+
+        // Atualiza contador
+        recordCount.textContent = `${records.length} registro(s)`;
+
+        // Configura colunas do AG Grid (com labels amigáveis)
+        const columnDefs = displayColumns.map(col => ({
+            field: col,
+            headerName: formatColumnName(col),
+            sortable: true,
+            resizable: true,
+            minWidth: 100
+        }));
+
+        // Função para selecionar registro e fechar modal
+        function selectRecord(record) {
+            // 1. Preenche o campo de lookup com a chave (primeira coluna)
+            fieldElement.value = record.key;
+
+            // 2. Preenche o campo de descrição automático (TDBLookNume behavior)
+            const descId = fieldElement.dataset.lookupDescId;
+            if (descId) {
+                const descField = document.getElementById(descId);
+                if (descField) {
+                    // Usa a segunda coluna como descrição (record.value)
+                    descField.value = record.value || '';
+                }
             }
 
-            recordList.forEach(record => {
-                const row = document.createElement('tr');
-                row.style.cursor = 'pointer';
+            // 3. Armazena TODOS os dados no cache para campos IE
+            const lookupFieldName = fieldElement.dataset.sagNomecamp || fieldElement.name;
+            setLookupData(lookupFieldName, record.data);
 
-                // Renderiza células para cada coluna
-                let cellsHtml = '';
-                displayColumns.forEach(col => {
-                    const value = record.data[col] || '';
-                    cellsHtml += `<td>${escapeHtml(value)}</td>`;
-                });
-                row.innerHTML = cellsHtml;
+            // 4. Dispara eventos change e blur para processar OnExit
+            fieldElement.dispatchEvent(new Event('change', { bubbles: true }));
+            fieldElement.dispatchEvent(new Event('blur', { bubbles: true }));
 
-                // Ao clicar na linha, seleciona o registro
-                row.addEventListener('click', () => {
-                    // 1. Preenche o campo de lookup com a chave (primeira coluna)
-                    fieldElement.value = record.key;
-
-                    // 2. Preenche o campo de descrição automático (TDBLookNume behavior)
-                    const descId = fieldElement.dataset.lookupDescId;
-                    if (descId) {
-                        const descField = document.getElementById(descId);
-                        if (descField) {
-                            // Usa a segunda coluna como descrição (record.value)
-                            descField.value = record.value || '';
-                        }
-                    }
-
-                    // 3. Armazena TODOS os dados no cache para campos IE
-                    const lookupFieldName = fieldElement.dataset.sagNomecamp || fieldElement.name;
-                    setLookupData(lookupFieldName, record.data);
-
-                    // 4. Dispara eventos change e blur para processar OnExit
-                    fieldElement.dispatchEvent(new Event('change', { bubbles: true }));
-                    fieldElement.dispatchEvent(new Event('blur', { bubbles: true }));
-
-                    // 5. Fecha o modal
-                    bsModal.hide();
-                });
-
-                tableBody.appendChild(row);
-            });
+            // 5. Fecha o modal
+            bsModal.hide();
         }
 
-        // Renderiza registros iniciais
-        renderRecords(records);
+        // Opções do AG Grid
+        const gridOptions = {
+            columnDefs: columnDefs,
+            rowData: rowData,
+            rowSelection: 'single',
+            animateRows: true,
+            enableCellTextSelection: true,
 
-        // Filtro em tempo real
+            // Column menu (AG Grid Enterprise)
+            columnMenu: 'new',
+            suppressMenuHide: false,
+
+            // Painel lateral de colunas (igual ao Vision)
+            sideBar: {
+                toolPanels: [
+                    {
+                        id: 'columns',
+                        labelDefault: 'Colunas',
+                        labelKey: 'columns',
+                        iconKey: 'columns',
+                        toolPanel: 'agColumnsToolPanel',
+                        toolPanelParams: {
+                            suppressRowGroups: false,
+                            suppressValues: true,
+                            suppressPivots: true,
+                            suppressPivotMode: true,
+                        }
+                    }
+                ],
+                defaultToolPanel: '',
+            },
+
+            // Barra de agrupamento no topo
+            rowGroupPanelShow: 'always',
+            suppressDragLeaveHidesColumns: true,
+
+            // Overlay de loading
+            overlayNoRowsTemplate: '<div class="ag-overlay-no-rows-center"><i class="bi bi-inbox fs-4 d-block mb-2"></i>Nenhum registro encontrado</div>',
+
+            // Default column definition
+            defaultColDef: {
+                sortable: true,
+                resizable: true,
+                filter: true,
+                menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
+            },
+
+            // Callback de click para seleção
+            onRowClicked: (event) => {
+                const originalRecord = event.data._originalRecord;
+                if (originalRecord) {
+                    selectRecord(originalRecord);
+                }
+            },
+
+            // Callback de grid ready - autoSize das colunas
+            onGridReady: (params) => {
+                gridApi = params.api;
+                // Auto-dimensiona colunas pelo conteúdo
+                params.api.autoSizeAllColumns();
+            }
+        };
+
+        // Cria o AG Grid quando o modal estiver visível
+        modal.addEventListener('shown.bs.modal', () => {
+            // Verifica se AG Grid está disponível
+            if (typeof agGrid !== 'undefined') {
+                agGrid.createGrid(gridContainer, gridOptions);
+            } else {
+                console.error('[SagEvents] AG Grid não disponível para lookup modal');
+                gridContainer.innerHTML = '<div class="p-4 text-center text-muted">AG Grid não disponível</div>';
+            }
+            filterInput.focus();
+        });
+
+        // Filtro em tempo real usando quickFilter do AG Grid
         let filterTimeout = null;
         filterInput.addEventListener('input', () => {
             clearTimeout(filterTimeout);
-            filterTimeout = setTimeout(async () => {
-                const filter = filterInput.value.trim().toLowerCase();
-                if (filter.length === 0) {
-                    renderRecords(records);
-                    return;
+            filterTimeout = setTimeout(() => {
+                const filter = filterInput.value.trim();
+                if (gridApi) {
+                    gridApi.setGridOption('quickFilterText', filter);
+                    // Atualiza contador
+                    const displayedRows = gridApi.getDisplayedRowCount();
+                    recordCount.textContent = `${displayedRows} de ${records.length} registro(s)`;
                 }
-
-                // Filtra por qualquer coluna exibida
-                const filtered = records.filter(record =>
-                    displayColumns.some(col => {
-                        const value = record.data[col] || '';
-                        return value.toLowerCase().includes(filter);
-                    })
-                );
-                renderRecords(filtered);
-            }, 300);
+            }, 200);
         });
 
         // Limpa modal ao fechar
         modal.addEventListener('hidden.bs.modal', () => {
+            if (gridApi) {
+                gridApi.destroy();
+            }
             modal.remove();
         });
 
         // Mostra o modal
         bsModal.show();
-        setTimeout(() => filterInput.focus(), 300);
     }
 
     /**

@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -9,12 +10,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- AG Grid Enterprise (via CDN) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@33.0.1/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@33.0.1/styles/ag-theme-quartz.css" />
     <!-- Stylesheets -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/form-renderer.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/vision-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/ag-grid-sag.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/SagPoc.Web.styles.css" asp-append-version="true" />
 </head>
 <body>
@@ -53,6 +58,15 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <!-- AG Grid Enterprise (via CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@33.0.1/dist/ag-grid-community.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@33.0.1/dist/ag-grid-enterprise.min.js"></script>
+    <script>
+        // Configura licença AG Grid Enterprise
+        if (typeof agGrid !== 'undefined' && agGrid.LicenseManager) {
+            agGrid.LicenseManager.setLicenseKey('@Html.Raw(Configuration["AgGrid:LicenseKey"])');
+        }
+    </script>
     <!-- PLSAG Interpreter (Fase 2) - ordem importante: commands antes de interpreter -->
     <script src="~/js/plsag-commands.js" asp-append-version="true"></script>
     <script src="~/js/plsag-interpreter.js" asp-append-version="true"></script>
