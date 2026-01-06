@@ -53,7 +53,6 @@ public class MetadataService : IMetadataService
             TableId = codiTabe,
             TableName = tableInfo.GravTabe ?? $"Tabela{codiTabe}",
             SiglTabe = tableInfo.SiglTabe,
-            FinaTabe = tableInfo.FinaTabe,
             Title = tableInfo.NomeTabe ?? $"Formulário {codiTabe}",
             Fields = fieldsList,
             MovementTables = movementTables
@@ -64,11 +63,10 @@ public class MetadataService : IMetadataService
     /// Busca informações da tabela do SISTTABE.
     /// GravTabe = nome físico da tabela (ex: "POCALESI")
     /// SIGLTABE = sufixo de 4 caracteres (ex: "LESI") usado para PK: CODI{SIGLTABE}
-    /// FINATABE = sufixo de finalização (ex: "NOTA") usado para proteção: ApAt{FINATABE}
     /// </summary>
-    private async Task<(string? NomeTabe, string? GravTabe, string? SiglTabe, string? FinaTabe)> GetTableInfoAsync(int codiTabe)
+    private async Task<(string? NomeTabe, string? GravTabe, string? SiglTabe)> GetTableInfoAsync(int codiTabe)
     {
-        var sql = $"SELECT NOMETABE, GravTabe, SIGLTABE, FINATABE FROM SISTTABE WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}";
+        var sql = $"SELECT NOMETABE, GravTabe, SIGLTABE FROM SISTTABE WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}";
 
         try
         {
@@ -81,8 +79,7 @@ public class MetadataService : IMetadataService
                 return (
                     result.NOMETABE?.ToString(),
                     result.GRAVTABE?.ToString()?.Trim(),
-                    result.SIGLTABE?.ToString()?.Trim(),
-                    result.FINATABE?.ToString()?.Trim()
+                    result.SIGLTABE?.ToString()?.Trim()
                 );
             }
         }
@@ -91,7 +88,7 @@ public class MetadataService : IMetadataService
             _logger.LogWarning(ex, "Erro ao buscar info da tabela {CodiTabe}", codiTabe);
         }
 
-        return (null, null, null, null);
+        return (null, null, null);
     }
 
     /// <inheritdoc/>

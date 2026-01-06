@@ -18,6 +18,12 @@ public interface IConsultaService
     Task<List<ConsultaMetadata>> GetConsultasByTableAsync(int tableId);
 
     /// <summary>
+    /// Obtém as consultas com fallback para GRIDTABE quando SISTCONS está vazio.
+    /// Retorna também a fonte dos dados (SISTCONS ou SISTTABE).
+    /// </summary>
+    Task<ConsultasResponse> GetConsultasWithFallbackAsync(int tableId);
+
+    /// <summary>
     /// Obtém uma consulta específica.
     /// </summary>
     Task<ConsultaMetadata?> GetConsultaAsync(int consultaId);

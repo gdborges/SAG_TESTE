@@ -202,7 +202,7 @@ Retorna info detalhada de um form específico.
 
 ---
 
-## Fase 2: Vue - Criar Infraestrutura [PENDENTE]
+## Fase 2: Vue - Criar Infraestrutura [CONCLUIDA]
 
 ### 2.1 Adicionar Prefixo SAG ao Mapeamento
 **Arquivo:** `frontend-v2/src/stores/sidebarStore.ts`
@@ -362,7 +362,7 @@ export async function healthCheck() {
 
 ---
 
-## Fase 3: Registrar Forms SAG no Menu [PENDENTE]
+## Fase 3: Registrar Forms SAG no Menu [CONCLUIDA]
 
 ### Opção A: Via API Dinâmica (Recomendada)
 
@@ -419,16 +419,17 @@ iframeRef.value?.contentWindow?.postMessage({
 | `SagPoc.Web/Views/Form/RenderEmbedded.cshtml` | ✓ Criado | View sem layout |
 | `SagPoc.Web/Controllers/SagApiController.cs` | ✓ Criado | API REST |
 
-### Vision Web (frontend-v2) [PENDENTE]
+### Vision Web (frontend-v2) [CONCLUIDO]
 
-| Arquivo | Status | Descrição |
+| Arquivo | Status | Descricao |
 |---------|--------|-----------|
-| `src/stores/sidebarStore.ts` | Pendente | Adicionar prefixo SAG |
-| `src/components/menu/CustomMenuGroup.vue` | Pendente | Adicionar SAG ao navigateTo |
-| `src/router/register.routes.ts` | Pendente | Rota /sag-form |
-| `src/views/private/sag/sag-form-viewer.vue` | Pendente | Viewer com iframe |
-| `src/services/sagService.ts` | Pendente | Service para API SAG |
-| `.env` | Pendente | VITE_SAG_URL |
+| `src/stores/sidebarStore.ts` | Modificado | Adicionado prefixo SAG |
+| `src/components/menu/CustomMenuGroup.vue` | Modificado | Adicionado SAG ao navigateTo e sortCustomItems |
+| `src/router/register.routes.ts` | Modificado | Rota /sag-form/:tag/:tableId |
+| `src/views/private/sag/sag-form-viewer.vue` | Criado | Viewer com iframe e postMessage |
+| `src/server/api/sag/sagService.ts` | Criado | Service para API SAG |
+| `.env.development.local` | Modificado | VITE_SAG_URL=http://localhost:5255 |
+| `src/components/menu/Sidebar.vue` | Modificado | getSagForms() carrega forms SAG no menu |
 
 ---
 
@@ -482,11 +483,11 @@ npm run dev
 
 ---
 
-## Próximos Passos
+## Proximos Passos
 
-1. [ ] Implementar Fase 2 - Infraestrutura Vue
-2. [ ] Implementar Fase 3 - Integrar forms no menu
-3. [ ] Testar integração completa
+1. [x] Implementar Fase 2 - Infraestrutura Vue
+2. [x] Implementar Fase 3 - Integrar forms no menu (via API dinamica)
+3. [ ] Testar integracao completa
 4. [ ] (Opcional) Implementar Fase 4 - PostMessage bidirecional
 
 ---

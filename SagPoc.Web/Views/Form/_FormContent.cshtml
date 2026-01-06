@@ -5,7 +5,9 @@
     <input type="hidden" id="editingRecordId" name="editingRecordId" value="" data-pk-field="@Model.PkColumnName" />
 
     @{
-        var bevelGroups = Model.GetBevelGroups();
+        // Usa apenas campos da primeira aba (GuiaCamp = 0 ou 1)
+        // Campos com GuiaCamp=2 são renderizados na aba "Dados Adicionais" separadamente
+        var bevelGroups = Model.GetBevelGroupsForFirstTab();
     }
 
     @foreach (var group in bevelGroups)

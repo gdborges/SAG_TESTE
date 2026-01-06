@@ -386,6 +386,13 @@ const PlsagInterpreter = (function() {
             return text;
         }
 
+        // Detecta templates incompletos (abre { mas não fecha })
+        // Exemplos: {C-T-CODITP, {C-S-PDGEPE, [P-ERS-AGD-
+        const incompletePattern = /\{[A-Z][A-Z0-9]?-[^}]*$/;
+        if (incompletePattern.test(text)) {
+            console.warn(`[PLSAG] Template incompleto detectado: "${text.substring(text.lastIndexOf('{'), text.length)}"`);
+        }
+
         // Padrao: {TIPO-CAMPO} onde TIPO = DG, DM, D2, D3, VA, VP, PU, QY, FC, LI, etc.
         const templatePattern = /\{([A-Z][A-Z0-9])-([^}]+)\}/g;
 
@@ -464,7 +471,9 @@ const PlsagInterpreter = (function() {
 
         switch (type) {
             case 'DG':
-                // DG: Campo do formulário principal (header/cabeçalho)
+            case 'DD':
+                // DG/DD: Campo do formulário principal (header/cabeçalho)
+                // DD (Data Detail) sem modificador é equivalente a DG
                 return getFormFieldValue(fieldTrimmed);
 
             case 'DM':
@@ -483,7 +492,8 @@ const PlsagInterpreter = (function() {
             case 'CC': // Campo Combo
             case 'CE': // Campo Editor
             case 'CN': // Campo Numerico
-            case 'CT': // Campo Tabela
+            case 'CT': // Campo Tabela (Lookup)
+            case 'IT': // Input Tabela (Lookup Informado)
             case 'CM': // Campo Memo
             case 'CS': // Campo Sim/Nao
             case 'CD': // Campo Data
@@ -758,6 +768,7 @@ const PlsagInterpreter = (function() {
 
     /**
      * Resolve template de query {QY-NOME-CAMPO}
+     * Inclui suporte a {QY-DAD<CodiTabe>-<expression>} para agregações de grid
      */
     function resolveQueryTemplate(fieldSpec) {
         const parts = fieldSpec.split('-');
@@ -765,12 +776,177 @@ const PlsagInterpreter = (function() {
             const queryName = parts[0].trim();
             const fieldName = parts.slice(1).join('-').trim();
 
+            // Detecta templates QY-DAD<CodiTabe>-<expression>
+            // Exemplo: DAD83603-SUM(Qtde), DAD83603-NUMEREGI
+            if (queryName.startsWith('DAD')) {
+                const tableId = queryName.substring(3); // "83603"
+                return resolveQyDadTemplate(tableId, fieldName);
+            }
+
             const queryResult = context.queryResults[queryName];
             if (queryResult && queryResult[fieldName] !== undefined) {
                 return queryResult[fieldName];
             }
         }
         return undefined;
+    }
+
+    /**
+     * Resolve template {QY-DAD<CodiTabe>-<expression>} para agregações de grid de movimento
+     *
+     * Expressões suportadas:
+     * - NUMEREGI: Número de linhas no grid
+     * - SUM(coluna): Soma da coluna
+     * - MIN(coluna): Valor mínimo
+     * - MAX(coluna): Valor máximo
+     * - AVG(coluna): Média
+     * - COUNT(*): Contagem de registros
+     *
+     * @param {string} tableId - ID da tabela de movimento (ex: "83603")
+     * @param {string} expression - Expressão de agregação (ex: "SUM(Qtde)")
+     * @returns {number|string} Resultado da agregação
+     */
+    function resolveQyDadTemplate(tableId, expression) {
+        const gridApi = getMovementGridApi(tableId);
+        if (!gridApi) {
+            console.warn(`[PLSAG] QY-DAD${tableId}: Grid não encontrado`);
+            return 0;
+        }
+
+        // NUMEREGI - número de registros
+        if (expression.toUpperCase() === 'NUMEREGI') {
+            const count = gridApi.getDisplayedRowCount();
+            console.log(`[PLSAG] QY-DAD${tableId}-NUMEREGI = ${count}`);
+            return count;
+        }
+
+        // Expressões de agregação: SUM(col), MIN(col), MAX(col), AVG(col), COUNT(*)
+        const aggMatch = expression.match(/^(SUM|MIN|MAX|AVG|COUNT)\((.+)\)$/i);
+        if (aggMatch) {
+            const func = aggMatch[1].toUpperCase();
+            const column = aggMatch[2].trim();
+            const result = calculateGridAggregate(gridApi, func, column);
+            console.log(`[PLSAG] QY-DAD${tableId}-${func}(${column}) = ${result}`);
+            return result;
+        }
+
+        // Campo direto (sem agregação) - retorna valor da primeira linha
+        const firstRow = gridApi.getDisplayedRowAtIndex(0);
+        if (firstRow && firstRow.data) {
+            const value = getGridCellValue(firstRow.data, expression);
+            console.log(`[PLSAG] QY-DAD${tableId}-${expression} = ${value}`);
+            return value ?? 0;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Obtém referência ao AG Grid API de um movimento
+     * @param {string} tableId - ID da tabela de movimento
+     * @returns {Object|null} AG Grid API ou null
+     */
+    function getMovementGridApi(tableId) {
+        // Tenta encontrar o grid pelo ID do container
+        const gridElement = document.querySelector(`#movement-grid-${tableId}`);
+        if (gridElement && gridElement.__agGridApi) {
+            return gridElement.__agGridApi;
+        }
+
+        // Tenta via MovementManager se disponível
+        if (window.MovementManager && MovementManager.getGridApi) {
+            const api = MovementManager.getGridApi(tableId);
+            if (api) return api;
+        }
+
+        // Fallback: procura grid no container de movimento
+        const container = document.querySelector(`[data-movement="${tableId}"]`);
+        if (container) {
+            const gridDiv = container.querySelector('.ag-theme-quartz, .ag-theme-alpine');
+            if (gridDiv && gridDiv.__agGridApi) {
+                return gridDiv.__agGridApi;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Calcula agregação em dados do grid
+     * @param {Object} gridApi - AG Grid API
+     * @param {string} func - Função de agregação (SUM, MIN, MAX, AVG, COUNT)
+     * @param {string} column - Nome ou header da coluna
+     * @returns {number} Resultado da agregação
+     */
+    function calculateGridAggregate(gridApi, func, column) {
+        const values = [];
+        const rowCount = gridApi.getDisplayedRowCount();
+
+        for (let i = 0; i < rowCount; i++) {
+            const rowNode = gridApi.getDisplayedRowAtIndex(i);
+            if (rowNode && rowNode.data) {
+                const value = getGridCellValue(rowNode.data, column);
+                if (value !== null && value !== undefined) {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                        values.push(numValue);
+                    }
+                }
+            }
+        }
+
+        if (values.length === 0) {
+            return func === 'COUNT' ? rowCount : 0;
+        }
+
+        switch (func) {
+            case 'SUM':
+                return values.reduce((a, b) => a + b, 0);
+            case 'MIN':
+                return Math.min(...values);
+            case 'MAX':
+                return Math.max(...values);
+            case 'AVG':
+                return values.reduce((a, b) => a + b, 0) / values.length;
+            case 'COUNT':
+                return column === '*' ? rowCount : values.length;
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * Obtém valor de uma célula do grid por nome de campo ou header
+     * @param {Object} rowData - Dados da linha
+     * @param {string} column - Nome do campo ou texto do header
+     * @returns {*} Valor da célula ou null
+     */
+    function getGridCellValue(rowData, column) {
+        // Tenta match exato
+        if (rowData[column] !== undefined) {
+            return rowData[column];
+        }
+
+        // Tenta case-insensitive
+        const upperColumn = column.toUpperCase();
+        for (const [key, value] of Object.entries(rowData)) {
+            if (key.toUpperCase() === upperColumn) {
+                return value;
+            }
+        }
+
+        // Tenta match por display name (header pode ser diferente do field)
+        // Ex: "Valor Tab." pode ser o header mas o field é "VALOTABE"
+        for (const [key, value] of Object.entries(rowData)) {
+            // Normaliza para comparação (remove espaços, pontos, etc)
+            const normalizedKey = key.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            const normalizedColumn = column.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            if (normalizedKey === normalizedColumn || normalizedKey.includes(normalizedColumn)) {
+                return value;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -907,16 +1083,28 @@ const PlsagInterpreter = (function() {
         }
 
         // Padrão para IF(condição, valorTrue, valorFalse)
-        // Precisa tratar virgulas dentro de aspas e parênteses aninhados
-        const ifPattern = /IF\s*\((.+)\)/i;
-        const match = expression.match(ifPattern);
+        // Também captura prefixo opcional CAMPO-IF(...) - padrão SAG
+        // Ex: CODIPESS-IF({QY-CODIPESS-SITUCLIE}='BQMA',0,1) -> 0 ou 1
+        const ifPatternWithPrefix = /(\w+)-IF\s*\((.+)\)/i;
+        const ifPatternSimple = /IF\s*\((.+)\)/i;
+
+        // Tenta primeiro o padrão com prefixo (CAMPO-IF)
+        let match = expression.match(ifPatternWithPrefix);
+        let hasPrefix = false;
+
+        if (match) {
+            hasPrefix = true;
+        } else {
+            // Fallback para padrão simples (IF sem prefixo)
+            match = expression.match(ifPatternSimple);
+        }
 
         if (!match) {
             return expression;
         }
 
         const fullMatch = match[0];
-        const innerContent = match[1];
+        const innerContent = hasPrefix ? match[2] : match[1];
 
         // Divide os argumentos do IF respeitando aspas e parênteses
         const args = splitIfArguments(innerContent);
@@ -934,7 +1122,12 @@ const PlsagInterpreter = (function() {
         const condResult = evaluateCondition(condition);
         const result = condResult ? trueValue : falseValue;
 
-        // Substitui a função IF pelo resultado
+        // Debug: mostra quando prefixo foi removido
+        if (hasPrefix) {
+            console.log(`[PLSAG-DEBUG] IF com prefixo: "${fullMatch}" -> "${result}" (prefixo ${match[1]} removido)`);
+        }
+
+        // Substitui a função IF (com ou sem prefixo) pelo resultado
         const newExpression = expression.replace(fullMatch, result);
 
         // Avalia recursivamente caso haja mais IFs aninhados
@@ -1584,11 +1777,11 @@ const PlsagInterpreter = (function() {
                 return;
             }
 
-            // Comandos de mensagem (MA, MC, ME, MI, MP)
-            // ME com SQL (validacao) precisa de substituicao SQL-aware
-            if (prefix === 'MA' || prefix === 'MC' || prefix === 'ME' || prefix === 'MI' || prefix === 'MP') {
+            // Comandos de mensagem (MA, MB, MC, ME, MI, MP)
+            // ME/MB com SQL (validacao) precisa de substituicao SQL-aware
+            if (prefix === 'MA' || prefix === 'MB' || prefix === 'MC' || prefix === 'ME' || prefix === 'MI' || prefix === 'MP') {
                 let msgParam = parameter;
-                if (prefix === 'ME') {
+                if (prefix === 'ME' || prefix === 'MB') {
                     const rawParam = token.parameter || '';
                     // ME com SQL: "SELECT ... |||mensagem" - substitui SQL com quotes
                     if (rawParam.trim().toUpperCase().startsWith('SELECT')) {
@@ -1603,9 +1796,10 @@ const PlsagInterpreter = (function() {
                     }
                 }
                 const result = await PlsagCommands.executeMessageCommand(prefix, identifier, msgParam, context);
-                // ME (Message Error) - para execucao apenas se retornar 'STOP'
-                // (query de validacao retornou 0 ou ME simples sem query)
-                if (prefix === 'ME' && result === 'STOP') {
+                // ME/MB (Message Error/Button) - para execucao se retornar 'STOP'
+                // ME: erro com query de validacao (retornou 0) ou simples
+                // MB: mensagem informativa mas tambem para execucao
+                if ((prefix === 'ME' || prefix === 'MB') && result === 'STOP') {
                     context.control.shouldStop = true;
                 }
                 // MC retorna resultado (S ou N)
@@ -1636,19 +1830,38 @@ const PlsagInterpreter = (function() {
                 return;
             }
 
-            // Comandos de gravacao (DG, DM, D2, D3)
+            // Comandos de gravacao (DG, DM, D2, D3, DD)
             // Para SQL (SELECT...), usa substituicao SQL-aware com quotes em strings
-            if (prefix === 'DG' || prefix === 'DM' || prefix === 'D2' || prefix === 'D3') {
+            // DD sem modificador (DD-CAMPO-VALOR) funciona como DG mas em contexto de movimento vai para form pai
+            if (prefix === 'DG' || prefix === 'DM' || prefix === 'D2' || prefix === 'D3' || prefix === 'DD') {
                 const rawParam = token.parameter || '';
                 const isSQL = rawParam.trim().toUpperCase().startsWith('SELECT');
                 const dataParam = isSQL ? substituteTemplatesForSQL(rawParam) : parameter;
-                await PlsagCommands.executeDataCommand(prefix, identifier, dataParam, context);
+                // DD sem isDataDireto = usa logica de contexto (movimento vai para pai)
+                const effectivePrefix = prefix === 'DD' ? 'DD' : prefix;
+                await PlsagCommands.executeDataCommand(effectivePrefix, identifier, dataParam, context);
                 return;
             }
 
             // Comandos especiais EX
             if (prefix === 'EX') {
                 await PlsagCommands.executeExCommand(identifier, parameter, context);
+                return;
+            }
+
+            // Comando EY - Execute Immediately (SQL direto, mesmo durante OnShow)
+            // Diferente de EX-SQL que pode ser enfileirado, EY executa imediatamente
+            if (prefix === 'EY') {
+                await PlsagCommands.executeEyCommand(identifier, parameter, context);
+                return;
+            }
+
+            // Comandos FO/FV/FM - Navegacao de Formularios
+            // FO: Abre formulario e coleta instrucoes para executar apos fechar
+            // FV: Marca retorno do formulario (instrucoes pos-fechamento)
+            // FM: Abre formulario via menu
+            if (prefix === 'FO' || prefix === 'FV' || prefix === 'FM') {
+                await PlsagCommands.executeFormNavigationCommand(prefix, identifier, parameter, context);
                 return;
             }
 
@@ -1661,6 +1874,24 @@ const PlsagInterpreter = (function() {
             // Comandos de botao (BT)
             if (prefix === 'BT' || prefix.startsWith('BT')) {
                 await PlsagCommands.executeButtonCommand(prefix, identifier, parameter, context, modifier);
+                return;
+            }
+
+            // Comandos de acao de botao (BO, BC, BF)
+            // BO: Click programatico no botao Confirmar
+            // BC: Click programatico no botao Cancelar
+            // BF: Controla visibilidade dos botoes (0=so fecha, 1=confirma+cancela)
+            if (prefix === 'BO' || prefix === 'BC' || prefix === 'BF') {
+                const result = await PlsagCommands.executeButtonActionCommand(prefix, identifier, parameter, context);
+                if (result === 'STOP') {
+                    context.control.shouldStop = true;
+                }
+                return;
+            }
+
+            // Comando TI - Timer control (ATIV/DESA)
+            if (prefix === 'TI') {
+                await PlsagCommands.executeTimerCommand(identifier, parameter, context);
                 return;
             }
 

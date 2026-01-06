@@ -204,14 +204,43 @@ class ConsultaGrid {
 
     async loadInitialData() {
         if (this.consultaSelect && this.consultaSelect.options.length > 0) {
+            // Tenta restaurar consulta salva no localStorage
+            const savedConsultaId = this.getSavedConsultaId();
+            if (savedConsultaId) {
+                // Verifica se a consulta salva ainda existe no dropdown
+                const optionExists = Array.from(this.consultaSelect.options)
+                    .some(opt => parseInt(opt.value) === savedConsultaId);
+                if (optionExists) {
+                    this.consultaSelect.value = savedConsultaId;
+                    console.log(`[ConsultaGrid] Restaurada consulta salva: ${savedConsultaId}`);
+                }
+            }
+
             this.consultaId = parseInt(this.consultaSelect.value) || 0;
             await this.loadConsultaColumns();
             await this.loadData();
         }
     }
 
+    // Persiste consulta selecionada no localStorage
+    saveConsultaId(consultaId) {
+        const key = `sag_consulta_${this.tableId}`;
+        localStorage.setItem(key, consultaId.toString());
+    }
+
+    // Recupera consulta salva do localStorage
+    getSavedConsultaId() {
+        const key = `sag_consulta_${this.tableId}`;
+        const saved = localStorage.getItem(key);
+        return saved ? parseInt(saved) : null;
+    }
+
     async onConsultaChange() {
         this.consultaId = parseInt(this.consultaSelect.value) || 0;
+
+        // Salva consulta selecionada no localStorage
+        this.saveConsultaId(this.consultaId);
+
         this.page = 1;
         this.filters = [];
         this.selectedId = null;
@@ -226,11 +255,20 @@ class ConsultaGrid {
     async loadConsultaColumns() {
         try {
             const response = await fetch(`/Form/GetConsultas?tableId=${this.tableId}`);
-            const consultas = await response.json();
+            const data = await response.json();
+
+            // Novo formato: { consultas: [...], source: "SISTCONS"|"SISTTABE" }
+            const consultas = data.consultas || data;
+            this.consultaSource = data.source || 'SISTCONS';
+
+            // Log da fonte para debug
+            console.log(`[ConsultaGrid] Fonte: ${this.consultaSource}, ${consultas.length} consultas`);
+
             const current = consultas.find(c => c.codiCons === this.consultaId);
 
-            if (current && current.columns) {
-                this.columns = current.columns;
+            if (current) {
+                this.columns = current.columns || [];
+                this.currentConsulta = current; // Guarda consulta atual para WherCons/OrByCons
                 this.updateFilterFieldOptions();
                 this.updateAgGridColumns();
             }

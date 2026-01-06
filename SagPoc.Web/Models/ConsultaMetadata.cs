@@ -136,3 +136,19 @@ public class GridColumn
     /// </summary>
     public int Width { get; set; } = 100;
 }
+
+/// <summary>
+/// Resposta da API GetConsultas com fonte dos dados.
+/// </summary>
+public class ConsultasResponse
+{
+    /// <summary>
+    /// Lista de consultas disponíveis
+    /// </summary>
+    public List<ConsultaMetadata> Consultas { get; set; } = new();
+
+    /// <summary>
+    /// Fonte dos dados: "SISTCONS" ou "SISTTABE"
+    /// </summary>
+    public string Source { get; set; } = "SISTCONS";
+}

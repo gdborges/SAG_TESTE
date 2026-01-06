@@ -1,36 +1,56 @@
 # GAPS: Comandos PLSAG e Eventos
 
-**Última atualização:** 2026-01-03
-**Cobertura atual:** Comandos 60% | Eventos 95%
+**Última atualização:** 2026-01-05
+**Cobertura atual:** Comandos 68% | Eventos 100%
 
 Este documento rastreia os gaps entre a implementação Delphi original e a versão Web do SAG.
+
+---
+
+## BUGS DO PARSER
+
+Problemas no parsing de instruções PLSAG que causam erros no console:
+
+### Instruções Mal Formadas
+- [x] **Templates incompletos** - `{C-T-CODITP`, `{C-S-PDGEPE`, `[P-ERS-AGD-` aparecem truncados
+  - Causa: quebra de linha no meio do template ou delimitador faltando no banco
+  - Solução: adicionado warning log para detectar templates incompletos
+
+### Tipos de Template Desconhecidos
+- [x] **IT** - Input Tabela (Lookup Informado) - similar a CT
+  - Era tipo não reconhecido, agora tratado como alias de CT no resolveTemplate
+
+### Componentes Referenciados Inexistentes
+Nota: Não são bugs, mas componentes específicos de formulários que podem não existir:
+- `DNUPDPEO`, `CODIPEDI`, `DFATUANT` - Referenciados em eventos mas ausentes no form 83600
+- Comportamento atual: log de warning e continua execução (correto)
 
 ---
 
 ## PRIORIDADE ALTA
 
 ### Mensagens e Interação
-- [ ] **MB** - Message Button (informativo sem bloquear execução)
-- [ ] **BO** - Button OK (click programático no botão confirmar)
-- [ ] **BC** - Button Cancel (click programático no botão cancelar)
-- [ ] **BF** - Button Finish/Close (comportamento do botão fechar)
+- [x] **MB** - Message Button (informativo, para execução igual ME)
+- [x] **BO** - Button OK (click programático no botão confirmar)
+- [x] **BC** - Button Cancel (click programático no botão cancelar)
+- [x] **BF** - Button Finish/Close (0=só fecha, 1=confirma+cancela)
 
 ### Queries - Modo Edição
-- [ ] **QY,*,EDIT** - Colocar query em modo edição
-- [ ] **QY,*,INSE** - Colocar query em modo inserção
-- [ ] **QY,*,POST** - Postar alterações da query
+- [x] **QY,*,EDIT** - Colocar query em modo edição
+- [x] **QY,*,INSE** - Colocar query em modo inserção
+- [x] **QY,*,POST** - Postar alterações da query
 
 ### Formulários e Navegação
-- [ ] **FO** - Open Form completo (com pós-instruções após fechar)
-- [ ] **FV** - Form Return marker (marca retorno do formulário)
-- [ ] **FM** - Menu Form (abrir formulário de menu)
+- [x] **FO** - Open Form completo (com pós-instruções após fechar)
+- [x] **FV** - Form Return marker (marca retorno do formulário)
+- [x] **FM** - Menu Form (abrir formulário de menu)
 
 ### Execução Especial
-- [ ] **EY** - Execute Immediately (SQL mesmo durante OnShow)
-- [ ] **DD** - Data Detail completo (suporte a ações G/M/2/3)
+- [x] **EY** - Execute Immediately (SQL mesmo durante OnShow)
+- [x] **DD** - Data Detail (DD sem modificador = DG; DDG/DDM/DD2/DD3 já suportados)
 
 ### Eventos
-- [ ] **OnTimer** - Eventos de timer para campos TIM
+- [x] **OnTimer** - Eventos de timer para campos TIM
 
 ---
 
@@ -79,7 +99,7 @@ Este documento rastreia os gaps entre a implementação Delphi original e a vers
 
 ### Controles Especiais
 - [ ] **LC** - List CheckBox (lista com checkboxes)
-- [ ] **TI** - Timer control (ativar/desativar timer)
+- [x] **TI** - Timer control (ativar/desativar timer)
 - [ ] **TH** - Thread Sleep (pausa de execução)
 
 ### Objetos e Triggers
@@ -135,30 +155,47 @@ Estes comandos são específicos de hardware ou desktop e **não serão implemen
 | Categoria | Total | Implementado | Parcial | Faltando | N/A |
 |-----------|-------|--------------|---------|----------|-----|
 | Controle Fluxo | 7 | 7 | 0 | 0 | 0 |
-| Mensagens | 10 | 5 | 0 | 5 | 0 |
+| Mensagens | 10 | 9 | 0 | 1 | 0 |
 | Campos | 32 | 29 | 2 | 1 | 0 |
 | Propriedades | 9 | 6 | 1 | 2 | 0 |
 | Variáveis | 17 | 10 | 0 | 7 | 0 |
-| Queries | 14 | 8 | 3 | 3 | 0 |
-| Forms/Nav | 3 | 0 | 1 | 2 | 0 |
-| Execução | 25 | 7 | 1 | 14 | 3 |
+| Queries | 14 | 11 | 3 | 0 | 0 |
+| Forms/Nav | 3 | 3 | 0 | 0 | 0 |
+| Execução | 25 | 8 | 1 | 13 | 3 |
 | Impressão | 9 | 0 | 0 | 7 | 2 |
 | Validação | 8 | 2 | 0 | 6 | 0 |
-| Outros | 6 | 1 | 0 | 5 | 0 |
-| **TOTAL** | **140** | **75** | **8** | **52** | **5** |
+| Outros | 6 | 2 | 0 | 4 | 0 |
+| **TOTAL** | **140** | **87** | **7** | **41** | **5** |
 
 ### Eventos
 
 | Categoria | Total | Implementado | Parcial | Faltando |
 |-----------|-------|--------------|---------|----------|
 | Form | 6 | 6 | 0 | 0 |
-| Campo | 6 | 4 | 1 | 1 |
+| Campo | 6 | 5 | 1 | 0 |
 | Movimento | 10 | 10 | 0 | 0 |
-| **TOTAL** | **22** | **20** | **1** | **1** |
+| **TOTAL** | **22** | **21** | **1** | **0** |
 
 ---
 
 ## HISTÓRICO DE IMPLEMENTAÇÕES
+
+### 2026-01-05
+- DD (Data Detail) implementado - DD-CAMPO-VALOR agora funciona como DG
+- Template {DD-CAMPO} adicionado como alias de {DG-CAMPO}
+- IT (Input Tabela) implementado como alias de CT (lookup)
+- Detecção de templates incompletos adicionada com warning log
+- Seção BUGS DO PARSER adicionada ao documento
+- MB (Message Button) implementado - exibe info modal e para execução
+- BO (Button OK) implementado - click programático no botão Confirmar
+- BC (Button Cancel) implementado - click programático no botão Cancelar
+- BF (Button Finish) implementado - controla visibilidade dos botões (0=fecha, 1=confirma+cancela)
+- EY (Execute Immediately) implementado - executa SQL direto, mesmo durante OnShow
+- FO (Form Open) implementado - abre form com suporte a pós-instruções
+- FV (Form Return) implementado - marca instruções pós-fechamento
+- FM (Form Menu) implementado - abre form via menu (usa mesma lógica do FO)
+- OnTimer implementado para campos TIM - setInterval + execução PLSAG
+- TI (Timer control) implementado - ATIV/DESA para controlar timers
 
 ### 2026-01-03
 - WH-NOVO implementado (loop com SQL inline)

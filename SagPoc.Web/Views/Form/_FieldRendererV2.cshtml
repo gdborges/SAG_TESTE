@@ -983,7 +983,26 @@
         break;
 
     case ComponentType.Timer:
-        // TIM - Timer (não visual, não renderiza nada)
+        // TIM - Timer (não visual, mas precisa de data-attribute para JavaScript inicializar)
+        // PadrCamp = intervalo em segundos
+        // ExprCamp = instruções PLSAG a executar
+        var timerInterval = field.PadrCamp ?? 0;
+        var timerInstructions = field.ExprCamp ?? "";
+        if (timerInterval > 0)
+        {
+            <script type="application/json"
+                    class="sag-timer-config"
+                    data-timer-name="@field.NomeCamp"
+                    data-timer-interval="@(timerInterval * 1000)"
+                    data-timer-enabled="true">
+            {
+                "name": "@field.NomeCamp",
+                "interval": @(timerInterval * 1000),
+                "instructions": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(timerInstructions)),
+                "enabled": true
+            }
+            </script>
+        }
         break;
 
     case ComponentType.CheckList:

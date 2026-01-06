@@ -233,15 +233,23 @@ public class FieldMetadata
 
     /// <summary>
     /// Indica se o campo deve ser oculto (não renderizado visualmente).
-    /// Campos ocultos: DEPOSHOW, ATUAGRID, OrdeCamp=9999
+    /// Campos ocultos: eventos, configuração (GuiaCamp=999), OrdeCamp=9999, etc.
     /// </summary>
     public bool IsHidden
     {
         get
         {
-            // Campos especiais pelo nome
+            // Campos especiais pelo nome (eventos e configuração)
             var nome = NomeCamp?.ToUpper()?.Trim() ?? "";
-            if (nome == "DEPOSHOW" || nome == "ATUAGRID")
+            if (nome == "DEPOSHOW" || nome == "ATUAGRID" ||
+                nome.StartsWith("ANTEIAE_") || nome.StartsWith("DEPOINCL_") ||
+                nome.StartsWith("ANTECRIA") || nome.StartsWith("DEPOCRIA") ||
+                nome == "GUIARESU" || nome == "ANTEREMO")
+                return true;
+
+            // GuiaCamp=999 é RESERVADO para campos de configuração/eventos no SAG
+            // Esses campos NÃO devem criar guias visuais - são apenas metadados
+            if (GuiaCamp == 999)
                 return true;
 
             // Campos com OrdeCamp = 9999 não recebem foco no Delphi

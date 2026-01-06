@@ -203,20 +203,28 @@ public class FormController : Controller
 
     /// <summary>
     /// Retorna as consultas disponíveis para uma tabela.
+    /// Prioriza SISTCONS, com fallback para GRIDTABE de SISTTABE.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetConsultas(int tableId)
     {
         try
         {
-            var consultas = await _consultaService.GetConsultasByTableAsync(tableId);
-            return Json(consultas.Select(c => new
+            var response = await _consultaService.GetConsultasWithFallbackAsync(tableId);
+            return Json(new
             {
-                c.CodiCons,
-                c.NomeCons,
-                c.BuscCons,
-                Columns = c.GetColumns()
-            }));
+                consultas = response.Consultas.Select(c => new
+                {
+                    c.CodiCons,
+                    c.NomeCons,
+                    c.BuscCons,
+                    c.SqlCons,
+                    c.WherCons,
+                    c.OrByCons,
+                    Columns = c.GetColumns()
+                }),
+                source = response.Source
+            });
         }
         catch (Exception ex)
         {

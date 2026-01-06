@@ -375,13 +375,14 @@ var MovementManager = (function() {
      * Carrega dados de um movimento específico
      * @param {number} movementId - ID da tabela de movimento (CodiTabe)
      * @param {number} page - Página a carregar (default: 1)
+     * @returns {Promise<void>} Promise que resolve quando os dados são carregados
      */
     function loadMovementData(movementId, page) {
         page = page || state.currentPage[movementId] || 1;
 
         if (!state.parentRecordId) {
             console.log('[MovementManager] Sem registro pai, não carrega dados');
-            return;
+            return Promise.resolve();
         }
 
         var gridApi = state.gridApis[movementId];
@@ -391,7 +392,7 @@ var MovementManager = (function() {
 
         var url = '/api/movement/' + state.parentRecordId + '/' + movementId + '/data?page=' + page + '&pageSize=' + state.pageSize;
 
-        fetch(url)
+        return fetch(url)
             .then(function(response) {
                 if (!response.ok) throw new Error('Erro ao carregar dados');
                 return response.json();
@@ -869,10 +870,11 @@ var MovementManager = (function() {
                     state.modalInstance.hide();
                 }
 
-                // Recarrega grid
-                loadMovementData(tableId);
+                // Recarrega grid e AGUARDA completar antes de disparar eventos
+                // Isso garante que templates QY-DAD leiam dados atualizados
+                await loadMovementData(tableId);
 
-                // Dispara eventos PLSAG após salvar
+                // Dispara eventos PLSAG após salvar (inclui ATUAGRID via onGridRefresh)
                 if (window.SagEvents) {
                     var savedRecordId = mode === 'insert' ? result.recordId : parseInt(recordId);
                     await SagEvents.afterMovementOperation(
@@ -965,14 +967,19 @@ var MovementManager = (function() {
                 state.selectedRows[tableId] = null;
                 var btnGroup = document.getElementById('btn-group-' + tableId);
                 if (btnGroup) {
-                    btnGroup.querySelector('.btn-movement-edit').disabled = true;
-                    btnGroup.querySelector('.btn-movement-delete').disabled = true;
+                    var editBtn = btnGroup.querySelector('.btn-movement-edit');
+                    var deleteBtn = btnGroup.querySelector('.btn-movement-delete');
+                    if (editBtn) editBtn.disabled = true;
+                    if (deleteBtn) deleteBtn.disabled = true;
                 }
 
-                // Recarrega grid
-                loadMovementData(tableId);
+                // Recarrega grid e AGUARDA completar antes de disparar eventos
+                // Isso garante que templates QY-DAD leiam dados atualizados
+                console.log('[MovementManager] Recarregando grid após exclusão...');
+                await loadMovementData(tableId);
+                console.log('[MovementManager] Grid recarregado após exclusão');
 
-                // Dispara eventos PLSAG após excluir
+                // Dispara eventos PLSAG após excluir (inclui ATUAGRID via onGridRefresh)
                 if (window.SagEvents) {
                     await SagEvents.afterMovementOperation('delete', tableId, recordId, {});
                 }
@@ -1139,6 +1146,49 @@ var MovementManager = (function() {
         };
     }
 
+    /**
+     * Obtém AG Grid API de um movimento específico
+     * Usado pelo PlsagInterpreter para templates QY-DAD
+     * @param {number|string} movementId - ID da tabela de movimento
+     * @returns {Object|null} AG Grid API ou null
+     */
+    function getGridApi(movementId) {
+        var id = typeof movementId === 'string' ? parseInt(movementId) : movementId;
+        return state.gridApis[id] || null;
+    }
+
+    /**
+     * Dispara evento ATUAGRID após operações CRUD no grid de movimento.
+     * O evento ATUAGRID_{CodiTabe} recalcula totais usando templates QY-DAD.
+     *
+     * NOTA: Este método é um wrapper que usa o mecanismo existente de SagEvents.
+     * O evento ATUAGRID já é disparado automaticamente via afterMovementOperation(),
+     * mas este método pode ser usado para disparo manual se necessário.
+     *
+     * @param {number} movementId - ID da tabela de movimento
+     * @param {string} operation - Tipo de operação: 'insert', 'update', 'delete'
+     */
+    async function fireAtuaGridEvent(movementId, operation) {
+        if (!window.SagEvents) {
+            console.log('[MovementManager] SagEvents não disponível, ATUAGRID não disparado');
+            return;
+        }
+
+        console.log(`[MovementManager] Disparando ATUAGRID_${movementId} após ${operation}`);
+
+        try {
+            // Usa o mecanismo existente de triggerMovementEvent
+            // que já busca e executa as instruções do ATUAGRID
+            await SagEvents.triggerMovementEvent('onGridRefresh', movementId, null, {
+                operation: operation,
+                parentTableId: state.parentTableId,
+                parentRecordId: state.parentRecordId
+            });
+        } catch (error) {
+            console.error(`[MovementManager] Erro ao executar ATUAGRID_${movementId}:`, error);
+        }
+    }
+
     // API pública
     return {
         init: init,
@@ -1151,7 +1201,9 @@ var MovementManager = (function() {
         openEditMovement: openEditMovement,
         syncWithHeader: syncWithHeader,
         clearAllMovements: clearAllMovements,
-        getState: getState
+        getState: getState,
+        getGridApi: getGridApi,
+        fireAtuaGridEvent: fireAtuaGridEvent
     };
 
 })();

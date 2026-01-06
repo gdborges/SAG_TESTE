@@ -261,6 +261,9 @@ const SagEvents = (function () {
         // Bind de auto-fetch em campos lookup (L, IL) - busca descrição ao digitar código
         bindLookupAutoFetch();
 
+        // Inicializa timers (campos TIM)
+        initTimers();
+
         // Observa novos campos adicionados dinamicamente
         observeDom();
 
@@ -2644,6 +2647,176 @@ const SagEvents = (function () {
         return true;
     }
 
+    // ============================================
+    // TIMER SYSTEM - OnTimer Events
+    // Similar ao TsgTim do Delphi
+    // ============================================
+
+    // Armazena referências aos timers ativos
+    const activeTimers = new Map();
+
+    /**
+     * Inicializa todos os timers definidos nos campos TIM.
+     * Os timers são configurados via elementos <script class="sag-timer-config">.
+     */
+    function initTimers() {
+        // Busca configurações de timer no DOM
+        const timerConfigs = document.querySelectorAll('.sag-timer-config');
+
+        if (timerConfigs.length === 0) {
+            console.log('[SagEvents] Nenhum timer configurado');
+            return;
+        }
+
+        console.log(`[SagEvents] Inicializando ${timerConfigs.length} timer(s)`);
+
+        timerConfigs.forEach(configEl => {
+            try {
+                const config = JSON.parse(configEl.textContent);
+
+                if (!config.name || !config.interval || config.interval <= 0) {
+                    console.warn('[SagEvents] Timer config inválido:', config);
+                    return;
+                }
+
+                // Não inicia se já existe um timer com esse nome
+                if (activeTimers.has(config.name)) {
+                    console.warn(`[SagEvents] Timer ${config.name} já existe, ignorando`);
+                    return;
+                }
+
+                // Cria o timer
+                startTimer(config);
+
+            } catch (error) {
+                console.error('[SagEvents] Erro ao processar timer config:', error);
+            }
+        });
+    }
+
+    /**
+     * Inicia um timer.
+     * @param {Object} config - Configuração do timer
+     * @param {string} config.name - Nome do timer
+     * @param {number} config.interval - Intervalo em milissegundos
+     * @param {string} config.instructions - Instruções PLSAG a executar
+     * @param {boolean} config.enabled - Se o timer está habilitado
+     */
+    function startTimer(config) {
+        if (!config.enabled) {
+            console.log(`[SagEvents] Timer ${config.name} desabilitado`);
+            return;
+        }
+
+        console.log(`[SagEvents] Iniciando timer ${config.name}: ${config.interval}ms`);
+
+        const allInstructions = config.instructions || '';
+
+        if (!allInstructions.trim()) {
+            console.warn(`[SagEvents] Timer ${config.name} sem instruções`);
+            return;
+        }
+
+        const timerId = setInterval(async () => {
+            console.log(`[SagEvents] OnTimer: ${config.name}`);
+
+            try {
+                // Executa instruções PLSAG via PlsagInterpreter
+                if (window.PlsagInterpreter && window.PlsagInterpreter.execute) {
+                    const tableId = window.SAG_TABLE_ID || document.querySelector('[data-table-id]')?.dataset.tableId;
+
+                    await window.PlsagInterpreter.execute(allInstructions, {
+                        tableId: parseInt(tableId, 10) || 0,
+                        eventType: 'OnTimer',
+                        fieldName: config.name,
+                        formData: collectFormData()
+                    });
+                } else {
+                    console.warn('[SagEvents] PlsagInterpreter não disponível para timer');
+                }
+            } catch (error) {
+                console.error(`[SagEvents] Erro no OnTimer ${config.name}:`, error);
+            }
+        }, config.interval);
+
+        // Armazena referência
+        activeTimers.set(config.name, {
+            id: timerId,
+            config: config
+        });
+    }
+
+    /**
+     * Para um timer específico.
+     * @param {string} name - Nome do timer
+     */
+    function stopTimer(name) {
+        const timer = activeTimers.get(name);
+        if (timer) {
+            clearInterval(timer.id);
+            activeTimers.delete(name);
+            console.log(`[SagEvents] Timer ${name} parado`);
+        }
+    }
+
+    /**
+     * Para todos os timers.
+     * Deve ser chamado ao fechar o formulário.
+     */
+    function stopAllTimers() {
+        activeTimers.forEach((timer, name) => {
+            clearInterval(timer.id);
+            console.log(`[SagEvents] Timer ${name} parado`);
+        });
+        activeTimers.clear();
+    }
+
+    /**
+     * Habilita ou desabilita um timer.
+     * @param {string} name - Nome do timer
+     * @param {boolean} enabled - Se deve habilitar
+     */
+    function setTimerEnabled(name, enabled) {
+        const timer = activeTimers.get(name);
+
+        if (enabled && !timer) {
+            // Precisa iniciar - busca config no DOM
+            const configEl = document.querySelector(`.sag-timer-config[data-timer-name="${name}"]`);
+            if (configEl) {
+                const config = JSON.parse(configEl.textContent);
+                config.enabled = true;
+                startTimer(config);
+            }
+        } else if (!enabled && timer) {
+            stopTimer(name);
+        }
+    }
+
+    /**
+     * Define o intervalo de um timer.
+     * @param {string} name - Nome do timer
+     * @param {number} interval - Novo intervalo em milissegundos
+     */
+    function setTimerInterval(name, interval) {
+        const timer = activeTimers.get(name);
+        if (timer) {
+            // Para o timer atual
+            clearInterval(timer.id);
+
+            // Atualiza config e reinicia
+            timer.config.interval = interval;
+            startTimer(timer.config);
+        }
+    }
+
+    /**
+     * Obtém lista de timers ativos.
+     * @returns {Array} Lista de nomes de timers ativos
+     */
+    function getActiveTimers() {
+        return Array.from(activeTimers.keys());
+    }
+
     return {
         init,
         beforeSave,
@@ -2692,7 +2865,15 @@ const SagEvents = (function () {
         validateProtectedFields,
         validateBeforeSave,
         // Lookup Auto-Fetch API
-        bindLookupAutoFetch
+        bindLookupAutoFetch,
+        // Timer API (OnTimer)
+        initTimers,
+        startTimer,
+        stopTimer,
+        stopAllTimers,
+        setTimerEnabled,
+        setTimerInterval,
+        getActiveTimers
     };
 })();
 

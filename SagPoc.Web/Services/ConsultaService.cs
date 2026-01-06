@@ -466,6 +466,67 @@ public class ConsultaService : IConsultaService
     }
 
     /// <inheritdoc/>
+    public async Task<ConsultasResponse> GetConsultasWithFallbackAsync(int tableId)
+    {
+        var response = new ConsultasResponse();
+
+        // Primeiro tenta carregar do SISTCONS
+        var consultas = await GetConsultasByTableAsync(tableId);
+
+        if (consultas.Count > 0)
+        {
+            response.Consultas = consultas;
+            response.Source = "SISTCONS";
+            _logger.LogInformation("Tabela {TableId}: {Count} consultas carregadas do SISTCONS",
+                tableId, consultas.Count);
+            return response;
+        }
+
+        // Fallback: cria consulta padrão usando GRIDTABE/GRCOTABE de SISTTABE
+        _logger.LogInformation("Tabela {TableId}: SISTCONS vazio, usando fallback GRIDTABE", tableId);
+
+        var tableMetadata = await GetTableMetadataAsync(tableId);
+        if (tableMetadata == null)
+        {
+            _logger.LogWarning("Tabela {TableId}: metadados não encontrados", tableId);
+            response.Source = "SISTTABE";
+            return response;
+        }
+
+        // Cria consulta padrão baseada em GRIDTABE
+        var fallbackConsulta = new ConsultaMetadata
+        {
+            CodiCons = tableId * 1000, // ID sintético
+            CodiTabe = tableId,
+            NomeCons = "Padrão",
+            BuscCons = $"{tableMetadata.SiglTabe?.Trim()}000-Padrão",
+            SqlCons = tableMetadata.GridTabe,
+            FiltCons = null, // GRCOTABE seria usado aqui se existisse
+            AtivCons = 1,
+            AcceCons = 1
+        };
+
+        // Se GridTabe estiver vazio, cria SQL básico com SELECT *
+        if (string.IsNullOrEmpty(fallbackConsulta.SqlCons))
+        {
+            if (!string.IsNullOrEmpty(tableMetadata.GravTabe))
+            {
+                fallbackConsulta.SqlCons = $"SELECT * FROM {tableMetadata.GravTabe}";
+                _logger.LogInformation("Tabela {TableId}: criado SQL fallback: SELECT * FROM {GravTabe}",
+                    tableId, tableMetadata.GravTabe);
+            }
+        }
+
+        if (!string.IsNullOrEmpty(fallbackConsulta.SqlCons))
+        {
+            response.Consultas.Add(fallbackConsulta);
+        }
+
+        response.Source = "SISTTABE";
+        return response;
+    }
+
+    /// <inheritdoc/>
     public async Task<ConsultaMetadata?> GetConsultaAsync(int consultaId)
     {
         var sql = $@"

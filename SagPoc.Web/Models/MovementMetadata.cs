@@ -159,32 +159,38 @@ public class MovementMetadata
     public string GetCleanTabName() => Gui1Tabe?.Replace("&", "") ?? NomeTabe ?? $"Movimento {CodiTabe}";
 
     /// <summary>
-    /// Nome da coluna PK seguindo convenção SAG: CODI + sufixo da tabela
-    /// Prioriza extração do GravTabe (nome físico) sobre SIGLTABE.
+    /// Nome da coluna PK seguindo convenção SAG: CODI + SIGLTABE (sufixo de 4 chars).
+    /// SIGLTABE é a fonte autoritativa - sempre priorizar sobre extração do nome da tabela.
     /// </summary>
     public string PkColumnName
     {
         get
         {
-            // Prioriza extração do nome físico da tabela (mais confiável)
+            // SIGLTABE é a fonte autoritativa para o sufixo da PK
+            // Exemplo: SIGLTABE=MVPO -> CODIMVPO, SIGLTABE=PROD -> CODIPROD
+            if (!string.IsNullOrWhiteSpace(SiglTabe))
+            {
+                return $"CODI{SiglTabe.Trim()}";
+            }
+
+            // Fallback: tenta extrair do nome físico da tabela removendo prefixos conhecidos
             if (!string.IsNullOrWhiteSpace(GravTabe))
             {
                 var suffix = GravTabe
                     .Replace("POCA", "", StringComparison.OrdinalIgnoreCase)
                     .Replace("POGE", "", StringComparison.OrdinalIgnoreCase)
                     .Replace("FPCA", "", StringComparison.OrdinalIgnoreCase)
-                    .Replace("ADMN", "", StringComparison.OrdinalIgnoreCase);
+                    .Replace("ADMN", "", StringComparison.OrdinalIgnoreCase)
+                    .Replace("VDCA", "", StringComparison.OrdinalIgnoreCase)  // Vendas Cadastros
+                    .Replace("VDGE", "", StringComparison.OrdinalIgnoreCase)  // Vendas Gerais
+                    .Replace("MPCA", "", StringComparison.OrdinalIgnoreCase)  // MP Cadastros
+                    .Replace("MPGE", "", StringComparison.OrdinalIgnoreCase)  // MP Gerais
+                    .Replace("ISCA", "", StringComparison.OrdinalIgnoreCase); // Integração Cadastros
 
                 if (!string.IsNullOrWhiteSpace(suffix))
                 {
                     return $"CODI{suffix}";
                 }
-            }
-
-            // Fallback: usa SIGLTABE se disponível
-            if (!string.IsNullOrWhiteSpace(SiglTabe))
-            {
-                return $"CODI{SiglTabe.Trim()}";
             }
 
             return "ID";

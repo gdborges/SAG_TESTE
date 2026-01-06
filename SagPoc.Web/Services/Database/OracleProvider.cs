@@ -11,11 +11,16 @@ public class OracleProvider : IDbProvider
 {
     private readonly string _connectionString;
     private readonly ILogger<OracleProvider> _logger;
+    private readonly string? _empresa;
+    private readonly string? _usuario;
 
-    public OracleProvider(string connectionString, ILogger<OracleProvider> logger)
+    public OracleProvider(string connectionString, ILogger<OracleProvider> logger,
+        string? empresa = null, string? usuario = null)
     {
         _connectionString = connectionString;
         _logger = logger;
+        _empresa = empresa;
+        _usuario = usuario;
     }
 
     public string ProviderName => "Oracle";
@@ -24,7 +29,53 @@ public class OracleProvider : IDbProvider
 
     public IDbConnection CreateConnection()
     {
-        return new OracleConnection(_connectionString);
+        var connection = new OracleConnection(_connectionString);
+
+        // Inicializa contexto SAG ao abrir a conexão
+        if (!string.IsNullOrEmpty(_empresa) || !string.IsNullOrEmpty(_usuario))
+        {
+            connection.StateChange += (sender, e) =>
+            {
+                if (e.CurrentState == ConnectionState.Open)
+                {
+                    InitializeSagContext(connection);
+                }
+            };
+        }
+
+        return connection;
+    }
+
+    /// <summary>
+    /// Inicializa o contexto SAG_USUARIO no Oracle (equivalente ao login do Delphi)
+    /// </summary>
+    private void InitializeSagContext(OracleConnection connection)
+    {
+        try
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandType = CommandType.Text;
+
+            // Cria contexto SAG_USUARIO se não existir e define valores
+            // PEMP = Empresa, PUSU = Usuário
+            var sql = @"BEGIN
+                DBMS_SESSION.SET_CONTEXT('SAG_USUARIO', 'PEMP', :empresa);
+                DBMS_SESSION.SET_CONTEXT('SAG_USUARIO', 'PUSU', :usuario);
+            END;";
+
+            cmd.CommandText = sql;
+            cmd.Parameters.Add(new OracleParameter("empresa", _empresa ?? ""));
+            cmd.Parameters.Add(new OracleParameter("usuario", _usuario ?? ""));
+            cmd.ExecuteNonQuery();
+
+            _logger.LogDebug("Contexto SAG inicializado: Empresa={Empresa}, Usuario={Usuario}",
+                _empresa, _usuario);
+        }
+        catch (OracleException ex)
+        {
+            // Log mas não falha - algumas views podem funcionar sem contexto
+            _logger.LogWarning(ex, "Não foi possível inicializar contexto SAG: {Message}", ex.Message);
+        }
     }
 
     public string NullFunction(string column, string defaultValue)

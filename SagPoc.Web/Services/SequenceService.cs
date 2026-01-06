@@ -28,18 +28,21 @@ public class SequenceService : ISequenceService
             connection.Open();
 
             // Busca configuração atual da sequência
+            // Colunas existentes em POCANUME: CODINUME, TABENUME, CAMPNUME, NUMENUME,
+            // PEMPNUME, PSISNUME, PUSUNUME, PDATNUME, CODIPRAT
+            // Colunas NÃO existentes (usamos defaults): NOMENUME, INCRNUME, MININUME, MAXINUME, PREFNUME, SUFINUME
             var selectSql = $@"
                 SELECT
                     CODINUME as CodiNume,
-                    {_dbProvider.NullFunction("NOMENUME", "''")} as NomeNume,
+                    '' as NomeNume,
                     {_dbProvider.NullFunction("TABENUME", "0")} as TabeNume,
                     {_dbProvider.NullFunction("CAMPNUME", "''")} as CampNume,
                     {_dbProvider.NullFunction("NUMENUME", "0")} as NumeNume,
-                    {_dbProvider.NullFunction("INCRNUME", "1")} as IncrNume,
-                    {_dbProvider.NullFunction("MININUME", "0")} as MiniNume,
-                    {_dbProvider.NullFunction("MAXINUME", "999999999")} as MaxiNume,
-                    {_dbProvider.NullFunction("PREFNUME", "''")} as PrefNume,
-                    {_dbProvider.NullFunction("SUFINUME", "''")} as SufiNume
+                    1 as IncrNume,
+                    0 as MiniNume,
+                    999999999 as MaxiNume,
+                    '' as PrefNume,
+                    '' as SufiNume
                 FROM POCANUME
                 WHERE CODINUME = {_dbProvider.FormatParameter("CodiNume")}";
 
@@ -188,18 +191,21 @@ public class SequenceService : ISequenceService
             using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
+            // Colunas existentes em POCANUME: CODINUME, TABENUME, CAMPNUME, NUMENUME,
+            // PEMPNUME, PSISNUME, PUSUNUME, PDATNUME, CODIPRAT
+            // Colunas NÃO existentes (usamos defaults): NOMENUME, INCRNUME, MININUME, MAXINUME, PREFNUME, SUFINUME
             var sql = $@"
                 SELECT
                     CODINUME as CodiNume,
-                    {_dbProvider.NullFunction("NOMENUME", "''")} as NomeNume,
+                    '' as NomeNume,
                     {_dbProvider.NullFunction("TABENUME", "0")} as TabeNume,
                     {_dbProvider.NullFunction("CAMPNUME", "''")} as CampNume,
                     {_dbProvider.NullFunction("NUMENUME", "0")} as NumeNume,
-                    {_dbProvider.NullFunction("INCRNUME", "1")} as IncrNume,
-                    {_dbProvider.NullFunction("MININUME", "0")} as MiniNume,
-                    {_dbProvider.NullFunction("MAXINUME", "999999999")} as MaxiNume,
-                    {_dbProvider.NullFunction("PREFNUME", "''")} as PrefNume,
-                    {_dbProvider.NullFunction("SUFINUME", "''")} as SufiNume
+                    1 as IncrNume,
+                    0 as MiniNume,
+                    999999999 as MaxiNume,
+                    '' as PrefNume,
+                    '' as SufiNume
                 FROM POCANUME
                 WHERE TABENUME = {_dbProvider.FormatParameter("TabeNume")}
                   AND UPPER(CAMPNUME) = UPPER({_dbProvider.FormatParameter("CampNume")})";

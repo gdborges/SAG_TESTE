@@ -294,11 +294,37 @@ public class FormMetadata
     /// Retorna os bevels com seus campos filhos agrupados por OrdeCamp.
     /// Um campo pertence a um bevel se seu OrdeCamp está entre o OrdeCamp desse bevel e o próximo.
     /// Usa apenas campos do cabeçalho (GuiaCamp menor que 10), excluindo movimentos.
+    /// NOTA: Este método retorna TODOS os campos de cabeçalho. Para uma aba específica,
+    /// use GetBevelGroupsForTab(int guiaCamp).
     /// </summary>
     public List<BevelGroup> GetBevelGroups()
     {
         // Usa apenas HeaderFields (GuiaCamp < 10, excluindo ocultos)
         return GetBevelGroupsForFields(HeaderFields.ToList());
+    }
+
+    /// <summary>
+    /// Retorna os bevels com seus campos filhos para uma aba específica.
+    /// Filtra campos pelo GuiaCamp antes de agrupar.
+    /// </summary>
+    /// <param name="guiaCamp">Valor do GuiaCamp da aba desejada (0/1 = Dados, 2 = Dados Adicionais)</param>
+    /// <returns>Lista de BevelGroups com campos filtrados pela aba</returns>
+    public List<BevelGroup> GetBevelGroupsForTab(int guiaCamp)
+    {
+        // Filtra HeaderFields pelo GuiaCamp específico
+        var tabFields = HeaderFields.Where(f => f.GuiaCamp == guiaCamp).ToList();
+        return GetBevelGroupsForFields(tabFields);
+    }
+
+    /// <summary>
+    /// Retorna os bevels com campos para a primeira aba (GuiaCamp = 0 ou 1).
+    /// Inclui campos com GuiaCamp 0 e 1 juntos, pois ambos representam a primeira aba "Dados Gerais".
+    /// </summary>
+    public List<BevelGroup> GetBevelGroupsForFirstTab()
+    {
+        // GuiaCamp 0 ou 1 geralmente representam a primeira aba
+        var tabFields = HeaderFields.Where(f => f.GuiaCamp == 0 || f.GuiaCamp == 1).ToList();
+        return GetBevelGroupsForFields(tabFields);
     }
 
     /// <summary>

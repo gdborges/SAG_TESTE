@@ -843,6 +843,161 @@ const PlsagCommands = (function() {
         element.textContent = parameter ?? '';
     }
 
+    /**
+     * Executa comandos de acao de botao (BO, BC, BF)
+     * BO = Button OK/Confirm - clica programaticamente no botao Confirmar
+     * BC = Button Cancel - clica programaticamente no botao Cancelar
+     * BF = Button Finish - controla quais botoes mostrar
+     *
+     * Formato: BO-IDENTIFIER-CONDITION onde CONDITION=0 executa o botao
+     * BF: CONDITION=0 mostra so botao Fechar, CONDITION=1 mostra Confirmar+Cancelar
+     *
+     * @returns {string|null} 'STOP' se deve parar execucao
+     */
+    async function executeButtonActionCommand(prefix, identifier, parameter, context) {
+        // Avalia a condicao - se parameter eh SQL, executa; senao, usa valor direto
+        let condition = 0;
+
+        if (parameter) {
+            const paramStr = String(parameter).trim();
+
+            if (paramStr.toUpperCase().startsWith('SELECT')) {
+                // Executa query para obter condicao
+                try {
+                    const response = await fetch('/api/plsag/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sql: paramStr, singleRow: true })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            condition = parseFloat(result.data[Object.keys(result.data)[0]]) || 0;
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`[PLSAG] ${prefix}: Erro executando query condicao:`, error);
+                }
+            } else {
+                // Valor numerico direto
+                condition = parseFloat(paramStr) || 0;
+            }
+        }
+
+        console.log(`[PLSAG] ${prefix}: Condicao avaliada = ${condition}`);
+
+        // Executa acao baseado na condicao
+        // No Delphi, se condicao = 0, executa o botao
+        if (condition === 0) {
+            switch (prefix) {
+                case 'BO': // Button OK/Confirm
+                    return executeConfirmButton(context);
+
+                case 'BC': // Button Cancel
+                    return executeCancelButton(context);
+
+                case 'BF': // Button Finish - condicao 0 = so mostra Fechar
+                    setButtonVisibility('close-only', context);
+                    return null;
+            }
+        } else {
+            // Condicao != 0
+            if (prefix === 'BF') {
+                // BF com condicao != 0 = mostra Confirmar + Cancelar
+                setButtonVisibility('confirm-cancel', context);
+            }
+            // BO/BC com condicao != 0 = nao executa, apenas continua
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Simula click no botao Confirmar
+     * Busca BtnConf, BtnGrava, ou botao de salvar no formulario
+     */
+    function executeConfirmButton(context) {
+        const confirmSelectors = [
+            'button[data-sag-button="BtnConf"]',
+            'button[data-sag-button="BtnGrava"]',
+            '#btn_confirmar',
+            '#btn_gravar',
+            '#btn_salvar',
+            '.btn-confirm',
+            '.btn-save',
+            'button[type="submit"]'
+        ];
+
+        for (const selector of confirmSelectors) {
+            const btn = document.querySelector(selector);
+            if (btn && btn.offsetParent !== null) { // visivel
+                console.log(`[PLSAG] BO: Clicando em ${selector}`);
+                btn.click();
+                return 'STOP'; // Para execucao apos confirmar
+            }
+        }
+
+        console.warn('[PLSAG] BO: Botao Confirmar nao encontrado');
+        return null;
+    }
+
+    /**
+     * Simula click no botao Cancelar
+     * Busca BtnCanc, ou botao de cancelar no formulario
+     */
+    function executeCancelButton(context) {
+        const cancelSelectors = [
+            'button[data-sag-button="BtnCanc"]',
+            '#btn_cancelar',
+            '.btn-cancel',
+            '.btn-secondary[data-dismiss="modal"]',
+            'button[type="button"].btn-cancel'
+        ];
+
+        for (const selector of cancelSelectors) {
+            const btn = document.querySelector(selector);
+            if (btn && btn.offsetParent !== null) { // visivel
+                console.log(`[PLSAG] BC: Clicando em ${selector}`);
+                btn.click();
+                return 'STOP'; // Para execucao apos cancelar
+            }
+        }
+
+        console.warn('[PLSAG] BC: Botao Cancelar nao encontrado');
+        return null;
+    }
+
+    /**
+     * Controla visibilidade dos botoes do formulario
+     * @param {string} mode - 'close-only' ou 'confirm-cancel'
+     */
+    function setButtonVisibility(mode, context) {
+        const confirmBtn = document.querySelector('button[data-sag-button="BtnConf"], #btn_confirmar, .btn-confirm');
+        const cancelBtn = document.querySelector('button[data-sag-button="BtnCanc"], #btn_cancelar, .btn-cancel');
+        const closeBtn = document.querySelector('button[data-sag-button="BtnFech"], #btn_fechar, .btn-close-form');
+
+        if (mode === 'close-only') {
+            // Esconde Confirmar/Cancelar, mostra Fechar
+            if (confirmBtn) confirmBtn.style.display = 'none';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            if (closeBtn) closeBtn.style.display = '';
+            console.log('[PLSAG] BF: Modo close-only (so botao Fechar)');
+        } else if (mode === 'confirm-cancel') {
+            // Mostra Confirmar/Cancelar, esconde Fechar
+            if (confirmBtn) confirmBtn.style.display = '';
+            if (cancelBtn) cancelBtn.style.display = '';
+            if (closeBtn) closeBtn.style.display = 'none';
+            console.log('[PLSAG] BF: Modo confirm-cancel (Confirmar + Cancelar)');
+        }
+
+        // Salva estado no contexto para referencia futura
+        if (context && context.system) {
+            context.system.buttonMode = mode;
+        }
+    }
+
     // ============================================================
     // COMANDOS DE VARIAVEL
     // ============================================================
@@ -894,6 +1049,7 @@ const PlsagCommands = (function() {
     /**
      * Executa comando de mensagem
      * MA = Message Alert
+     * MB = Message Button (info modal, para execucao igual ME)
      * MC = Message Confirm (retorna S ou N)
      * ME = Message Error (para execucao) - pode ter query SQL
      * MI = Message Info
@@ -906,6 +1062,9 @@ const PlsagCommands = (function() {
             case 'MA': // Alert
                 await showModal('alert', message);
                 return null;
+
+            case 'MB': // Message Button - exibe info e para execucao (igual ME mas com icone info)
+                return await executeMbCommand(identifier, parameter, context);
 
             case 'MC': // Confirm
                 const confirmed = await showModal('confirm', message);
@@ -935,9 +1094,19 @@ const PlsagCommands = (function() {
      * @returns {string|null} 'STOP' se deve parar, null se deve continuar
      */
     async function executeMeCommand(identifier, parameter, context) {
+        // Garante que parameter é string (pode vir como número após avaliação IF)
+        const paramStr = parameter != null ? String(parameter) : '';
+
+        // ME-CT com resultado condicional (0 = erro, 1 = ok)
+        // Quando IF retorna 1, significa que a validação passou - não mostra nada
+        if (paramStr === '1' || paramStr === 'true') {
+            console.log(`[PLSAG] ME: Validação condicional OK (${paramStr}), continuando`);
+            return 'CONTINUE';
+        }
+
         // Verifica se tem query SQL com mensagem separada por |||
-        if (parameter && parameter.includes('|||')) {
-            const parts = parameter.split('|||');
+        if (paramStr && paramStr.includes('|||')) {
+            const parts = paramStr.split('|||');
             const query = parts[0].trim();
             const errorMessage = parts[1].trim();
 
@@ -989,9 +1158,100 @@ const PlsagCommands = (function() {
             }
         }
 
+        // ME-CT com resultado condicional 0 = erro (mas sem mensagem específica)
+        if (paramStr === '0' || paramStr === 'false') {
+            console.log(`[PLSAG] ME: Validação condicional FALHOU (${paramStr}), bloqueando`);
+            // Não mostra modal aqui - a mensagem pode estar em outra instrução
+            return 'STOP';
+        }
+
         // Fallback: ME simples sem query, mostra mensagem diretamente
-        const message = parameter || identifier;
+        const message = paramStr || identifier;
         await showModal('error', message);
+        return 'STOP';
+    }
+
+    /**
+     * Executa comando MB (Message Button) com suporte a validacao SQL.
+     * Similar a ME, mas exibe mensagem com icone de informacao (mtInformation).
+     * Formato: MB-CAMPO---SELECT...AS VALO|||Mensagem
+     *
+     * Se query retornar 0, mostra mensagem (info) e retorna 'STOP' para parar execucao.
+     * Se query retornar 1 (ou qualquer outro valor), continua sem mostrar mensagem.
+     *
+     * @returns {string|null} 'STOP' se deve parar, null se deve continuar
+     */
+    async function executeMbCommand(identifier, parameter, context) {
+        // Garante que parameter é string (pode vir como número após avaliação IF)
+        const paramStr = parameter != null ? String(parameter) : '';
+
+        // MB com resultado condicional (0 = info, 1 = ok)
+        if (paramStr === '1' || paramStr === 'true') {
+            console.log(`[PLSAG] MB: Validação condicional OK (${paramStr}), continuando`);
+            return 'CONTINUE';
+        }
+
+        // Verifica se tem query SQL com mensagem separada por |||
+        if (paramStr && paramStr.includes('|||')) {
+            const parts = paramStr.split('|||');
+            const query = parts[0].trim();
+            const infoMessage = parts[1].trim();
+
+            // Verifica se e uma query SELECT
+            if (query.toUpperCase().startsWith('SELECT')) {
+                try {
+                    // Converte sintaxe Oracle para SQL Server
+                    let sql = convertOracleToSqlServer(query);
+
+                    console.log(`[PLSAG] MB: Executando validacao: ${sql}`);
+
+                    const response = await fetch('/api/plsag/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sql: sql, singleRow: true })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            // Pega o valor VALO ou o primeiro campo
+                            const value = result.data.VALO ?? result.data.valo ??
+                                          result.data[Object.keys(result.data)[0]];
+
+                            console.log(`[PLSAG] MB: Resultado validacao = ${value}`);
+
+                            // Se valor = 0 (ou falsy diferente de string), mostra mensagem info
+                            if (value === 0 || value === '0' || value === false) {
+                                await showModal('info', infoMessage);
+                                return 'STOP'; // Sinaliza para parar execucao
+                            } else {
+                                // Validacao passou, continua sem mostrar mensagem
+                                console.log(`[PLSAG] MB: Validacao OK, continuando`);
+                                return 'CONTINUE';
+                            }
+                        }
+                    }
+
+                    // Se query falhou, NAO bloqueia - apenas loga e continua
+                    console.warn(`[PLSAG] MB: Query falhou (erro de SQL), continuando sem validacao`);
+                    return 'CONTINUE';
+
+                } catch (error) {
+                    console.warn(`[PLSAG] MB: Erro executando validacao, continuando:`, error);
+                    return 'CONTINUE';
+                }
+            }
+        }
+
+        // MB com resultado condicional 0 = info (mas sem mensagem específica)
+        if (paramStr === '0' || paramStr === 'false') {
+            console.log(`[PLSAG] MB: Validação condicional FALHOU (${paramStr}), bloqueando`);
+            return 'STOP';
+        }
+
+        // Fallback: MB simples sem query, mostra mensagem info diretamente
+        const message = paramStr || identifier;
+        await showModal('info', message);
         return 'STOP';
     }
 
@@ -1145,6 +1405,11 @@ const PlsagCommands = (function() {
      * - PROX = Next() - proximo registro
      * - ANTE = Prior() - registro anterior
      * - ULTI = FindLast() - ultimo registro
+     *
+     * Comandos de edicao (no parametro):
+     * - EDIT = Coloca query em modo edicao
+     * - INSE = Coloca query em modo insercao
+     * - POST = Posta alteracoes da query
      */
     async function executeQueryCommand(prefix, identifier, parameter, context) {
         const queryName = identifier.trim();
@@ -1154,6 +1419,13 @@ const PlsagCommands = (function() {
         const navCommands = ['ABRE', 'FECH', 'PRIM', 'PROX', 'ANTE', 'ULTI'];
         if (navCommands.includes(command)) {
             await executeQueryNavigation(queryName, command, context);
+            return;
+        }
+
+        // Comandos de edicao de dataset
+        const editCommands = ['EDIT', 'INSE', 'POST'];
+        if (editCommands.includes(command)) {
+            await executeQueryEditMode(queryName, command, context);
             return;
         }
 
@@ -1344,6 +1616,122 @@ const PlsagCommands = (function() {
         }
     }
 
+    /**
+     * Executa comandos de modo de edicao de query
+     * @param {string} queryName - Nome da query/dataset
+     * @param {string} command - Comando (EDIT, INSE, POST)
+     * @param {object} context - Contexto de execucao
+     */
+    async function executeQueryEditMode(queryName, command, context) {
+        console.log(`[PLSAG] QY-${queryName}: ${command}`);
+
+        // Inicializa estruturas se nao existirem
+        context.queryStates = context.queryStates || {};
+        context.queryPendingChanges = context.queryPendingChanges || {};
+
+        switch (command) {
+            case 'EDIT':
+                // Coloca query em modo edicao
+                // Em web, isso habilita a edicao do registro atual
+                context.queryStates[queryName] = 'edit';
+
+                // Ativa modo de edicao no formulario se for a query principal
+                if (typeof window.enableEditMode === 'function') {
+                    window.enableEditMode();
+                }
+
+                // Emite evento para permitir personalizacao
+                document.dispatchEvent(new CustomEvent('sag:query-edit', {
+                    detail: { queryName, context }
+                }));
+
+                console.log(`[PLSAG] QY-${queryName}-EDIT: Modo edicao ativado`);
+                break;
+
+            case 'INSE':
+                // Coloca query em modo insercao
+                // Em web, isso cria um novo registro vazio para edicao
+                context.queryStates[queryName] = 'insert';
+
+                // Limpa dados anteriores do registro
+                context.queryResults[queryName] = {};
+                context.queryPendingChanges[queryName] = {};
+
+                // Ativa modo de inclusao no formulario se for a query principal
+                if (typeof window.enableInsertMode === 'function') {
+                    window.enableInsertMode();
+                }
+
+                // Emite evento para permitir personalizacao
+                document.dispatchEvent(new CustomEvent('sag:query-insert', {
+                    detail: { queryName, context }
+                }));
+
+                console.log(`[PLSAG] QY-${queryName}-INSE: Modo insercao ativado`);
+                break;
+
+            case 'POST':
+                // Posta alteracoes da query
+                // Em web, envia as alteracoes para o servidor
+                const state = context.queryStates[queryName];
+                const pendingData = context.queryPendingChanges[queryName] || context.queryResults[queryName];
+
+                if (!pendingData || Object.keys(pendingData).length === 0) {
+                    console.warn(`[PLSAG] QY-${queryName}-POST: Nenhum dado para postar`);
+                    break;
+                }
+
+                try {
+                    const response = await fetch('/api/plsag/query-post', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            queryName: queryName,
+                            mode: state || 'edit',
+                            data: pendingData,
+                            codiTabe: context.tableId
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            console.log(`[PLSAG] QY-${queryName}-POST: Alteracoes postadas com sucesso`);
+
+                            // Limpa estado de edicao
+                            context.queryStates[queryName] = 'browse';
+                            context.queryPendingChanges[queryName] = {};
+
+                            // Se recebeu dados de volta (ex: ID gerado), atualiza contexto
+                            if (result.data) {
+                                context.queryResults[queryName] = {
+                                    ...context.queryResults[queryName],
+                                    ...result.data
+                                };
+                            }
+
+                            // Emite evento de sucesso
+                            document.dispatchEvent(new CustomEvent('sag:query-posted', {
+                                detail: { queryName, success: true, data: result.data }
+                            }));
+                        } else {
+                            console.error(`[PLSAG] QY-${queryName}-POST: Erro - ${result.message}`);
+
+                            // Emite evento de erro
+                            document.dispatchEvent(new CustomEvent('sag:query-post-error', {
+                                detail: { queryName, error: result.message }
+                            }));
+                        }
+                    } else {
+                        console.error(`[PLSAG] QY-${queryName}-POST: HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error(`[PLSAG] QY-${queryName}-POST: Erro`, error);
+                }
+                break;
+        }
+    }
+
     // ============================================================
     // COMANDOS DE GRAVACAO (Server-side)
     // ============================================================
@@ -1354,11 +1742,18 @@ const PlsagCommands = (function() {
      * DM = Data Movimento 1
      * D2 = Data Movimento 2
      * D3 = Data Movimento 3
+     * DD = Data Detail (sem modificador = mesmo que DG, vai para header)
+     *      No Delphi, DD em contexto de movimento vai para o form pai.
+     *      Na web, tratamos DD igual a DG pois o header é sempre acessível.
      *
      * Se o parametro for uma query SQL (SELECT...), executa a query
      * e usa o resultado como valor do campo.
      */
     async function executeDataCommand(prefix, identifier, parameter, context) {
+        // DD sem modificador é tratado como DG (header)
+        const effectivePrefix = prefix === 'DD' ? 'DG' : prefix;
+        // Label para logs: mostra DD->DG quando há conversão
+        const logPrefix = prefix === 'DD' ? 'DD->DG' : prefix;
         const fieldName = identifier.trim();
         // Valor original do formulario (fallback)
         const originalValue = context.formData[fieldName] || '';
@@ -1372,7 +1767,7 @@ const PlsagCommands = (function() {
                 // Converte sintaxe Oracle para SQL Server
                 let sql = convertOracleToSqlServer(parameter);
 
-                console.log(`[PLSAG] ${prefix}: Executando query para ${fieldName}: ${sql}`);
+                console.log(`[PLSAG] ${logPrefix}: Executando query para ${fieldName}: ${sql}`);
 
                 const response = await fetch('/api/plsag/query', {
                     method: 'POST',
@@ -1387,15 +1782,15 @@ const PlsagCommands = (function() {
                         const firstKey = Object.keys(result.data)[0];
                         value = result.data[firstKey];
                         queryExecuted = true;
-                        console.log(`[PLSAG] ${prefix}: ${fieldName} = ${value} (via query)`);
+                        console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (via query)`);
                     } else {
-                        console.warn(`[PLSAG] ${prefix}: Query sem resultado para ${fieldName}, mantendo valor original: ${originalValue}`);
+                        console.warn(`[PLSAG] ${logPrefix}: Query sem resultado para ${fieldName}, mantendo valor original: ${originalValue}`);
                     }
                 } else {
-                    console.warn(`[PLSAG] ${prefix}: Query falhou para ${fieldName}, mantendo valor original: ${originalValue}`);
+                    console.warn(`[PLSAG] ${logPrefix}: Query falhou para ${fieldName}, mantendo valor original: ${originalValue}`);
                 }
             } catch (error) {
-                console.error(`[PLSAG] ${prefix}: Erro executando query, mantendo valor original:`, error);
+                console.error(`[PLSAG] ${logPrefix}: Erro executando query, mantendo valor original:`, error);
             }
         } else if (parameter) {
             // Parametro nao-SQL: usa como valor direto (expressao ja avaliada)
@@ -1414,9 +1809,9 @@ const PlsagCommands = (function() {
 
         if (element && value !== undefined && value !== null) {
             element.value = value;
-            console.log(`[PLSAG] ${prefix}: ${fieldName} = ${value} (campo atualizado no DOM)`);
+            console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (campo atualizado no DOM)`);
         } else {
-            console.log(`[PLSAG] ${prefix}: ${fieldName} = ${value} (apenas contexto)`);
+            console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (apenas contexto)`);
         }
 
         // Nota: A gravacao efetiva e feita no submit do formulario
@@ -1910,6 +2305,240 @@ const PlsagCommands = (function() {
     }
 
     // ============================================================
+    // COMANDO EY - EXECUTE IMMEDIATELY
+    // ============================================================
+
+    /**
+     * Executa SQL imediatamente, mesmo durante OnShow
+     * Formato: EY-<sql>
+     * Diferente de EX-SQL que pode ser enfileirado em certas situacoes
+     */
+    async function executeEyCommand(identifier, parameter, context) {
+        // O SQL pode vir no identifier ou parameter
+        const sql = parameter ? `${identifier} ${parameter}`.trim() : identifier;
+
+        console.log('[PLSAG] EY (Execute Immediately):', sql.substring(0, 100) + (sql.length > 100 ? '...' : ''));
+
+        if (!sql) {
+            console.warn('[PLSAG] EY: SQL vazio');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/plsag/execute-direct-sql', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sql: sql,
+                    codiTabe: context.tableId,
+                    params: context.formData || {}
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[PLSAG] EY: Erro no servidor:', errorText);
+                return;
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                console.log('[PLSAG] EY: SQL executado com sucesso', result.affectedRows || 0, 'linhas afetadas');
+            } else {
+                console.error('[PLSAG] EY: Erro:', result.error || result.message);
+            }
+        } catch (error) {
+            console.error('[PLSAG] EY: Erro de rede:', error);
+        }
+    }
+
+    // ============================================================
+    // COMANDOS FO/FV/FM - NAVEGACAO DE FORMULARIOS
+    // ============================================================
+
+    /**
+     * Executa comandos de navegacao de formularios
+     * FO: Abre formulario - FO-XXXXXXXX-YYYYYYYY onde X=tabela, Y=filtro/instrucoes
+     * FV: Marca retorno do formulario (instrucoes executadas apos fechar)
+     * FM: Abre formulario via menu
+     */
+    async function executeFormNavigationCommand(prefix, identifier, parameter, context) {
+        console.log(`[PLSAG] ${prefix}-${identifier}`, parameter || '');
+
+        switch (prefix) {
+            case 'FO':
+                await openFormCommand(identifier, parameter, context);
+                break;
+
+            case 'FV':
+                // FV marca instrucoes pos-fechamento
+                // Na web, guardamos para execucao apos fechar modal/tab
+                context.postFormInstructions = context.postFormInstructions || [];
+                if (parameter) {
+                    context.postFormInstructions.push(parameter);
+                }
+                console.log('[PLSAG] FV: Instrucoes pos-fechamento registradas');
+                break;
+
+            case 'FM':
+                await openMenuFormCommand(identifier, parameter, context);
+                break;
+        }
+    }
+
+    /**
+     * Abre formulario em nova aba ou modal
+     * FO-XXXXXXXX-instrucoes
+     * XXXXXXXX = CodiTabe (8 digitos)
+     */
+    async function openFormCommand(identifier, parameter, context) {
+        // identifier = CodiTabe (8 digitos, pode ter zeros a esquerda)
+        const tableId = parseInt(identifier, 10);
+
+        if (!tableId || isNaN(tableId)) {
+            console.error('[PLSAG] FO: CodiTabe invalido:', identifier);
+            return;
+        }
+
+        console.log('[PLSAG] FO: Abrindo formulario', tableId);
+
+        // Guarda instrucoes pos-fechamento se houver
+        const postInstructions = parameter || '';
+
+        // Verifica se esta em modo embedded (iframe)
+        const isEmbedded = window.SAG_EMBEDDED || window.parent !== window;
+
+        if (isEmbedded) {
+            // Em modo embedded, usa postMessage para comunicar com parent
+            window.parent.postMessage({
+                type: 'sag:open-form',
+                tableId: tableId,
+                postInstructions: postInstructions,
+                sourceTableId: context.tableId
+            }, '*');
+        } else {
+            // Abre em nova aba
+            const formUrl = `/Form/Render/${tableId}`;
+
+            // Guarda instrucoes para executar quando voltar
+            if (postInstructions) {
+                sessionStorage.setItem(`sag_post_form_${context.tableId}_${tableId}`, postInstructions);
+            }
+
+            // Abre nova aba
+            const newWindow = window.open(formUrl, '_blank');
+
+            // Listener para quando a janela fechar (se possivel)
+            if (newWindow) {
+                const checkClosed = setInterval(() => {
+                    if (newWindow.closed) {
+                        clearInterval(checkClosed);
+                        executePostFormInstructions(context.tableId, tableId, context);
+                    }
+                }, 500);
+
+                // Timeout de seguranca (5 minutos)
+                setTimeout(() => clearInterval(checkClosed), 300000);
+            }
+        }
+    }
+
+    /**
+     * Abre formulario via menu
+     * FM-XXXXXXXX-instrucoes
+     */
+    async function openMenuFormCommand(identifier, parameter, context) {
+        // Similar ao FO, mas usa configuracao do menu
+        // identifier = CodiTabe
+        const tableId = parseInt(identifier, 10);
+
+        if (!tableId || isNaN(tableId)) {
+            console.error('[PLSAG] FM: CodiTabe invalido:', identifier);
+            return;
+        }
+
+        console.log('[PLSAG] FM: Abrindo formulario via menu', tableId);
+
+        // Por enquanto, trata igual ao FO
+        await openFormCommand(identifier, parameter, context);
+    }
+
+    /**
+     * Executa instrucoes pos-fechamento de formulario
+     */
+    async function executePostFormInstructions(parentTableId, childTableId, context) {
+        const key = `sag_post_form_${parentTableId}_${childTableId}`;
+        const instructions = sessionStorage.getItem(key);
+
+        if (instructions) {
+            sessionStorage.removeItem(key);
+            console.log('[PLSAG] Executando instrucoes pos-fechamento:', instructions);
+
+            // Executa via PlsagInterpreter se disponivel
+            if (window.PlsagInterpreter && window.PlsagInterpreter.execute) {
+                try {
+                    await window.PlsagInterpreter.execute(instructions, {
+                        tableId: parentTableId,
+                        eventType: 'PostFormClose',
+                        formData: context.formData || {}
+                    });
+                } catch (error) {
+                    console.error('[PLSAG] Erro executando instrucoes pos-fechamento:', error);
+                }
+            }
+        }
+    }
+
+    // Listener para mensagens de forms embedded retornando
+    if (typeof window !== 'undefined') {
+        window.addEventListener('message', async (event) => {
+            if (event.data && event.data.type === 'sag:form-closed') {
+                const { sourceTableId, targetTableId, result } = event.data;
+                console.log('[PLSAG] Form fechado:', targetTableId, 'resultado:', result);
+
+                // Busca contexto atual
+                const context = window.PlsagInterpreter?.getContext?.() || { tableId: sourceTableId };
+                await executePostFormInstructions(sourceTableId, targetTableId, context);
+            }
+        });
+    }
+
+    // ============================================================
+    // COMANDO TI - TIMER CONTROL
+    // ============================================================
+
+    /**
+     * Controla timer (ativa/desativa)
+     * Formato: TI-CAMPO-ATIV ou TI-CAMPO-DESA
+     */
+    async function executeTimerCommand(identifier, parameter, context) {
+        const timerName = identifier;
+        const action = (parameter || '').toUpperCase().substring(0, 4);
+
+        console.log(`[PLSAG] TI-${timerName}-${action}`);
+
+        if (!timerName) {
+            console.warn('[PLSAG] TI: Nome do timer não especificado');
+            return;
+        }
+
+        if (action === 'ATIV') {
+            // Ativar timer
+            if (window.SagEvents && window.SagEvents.setTimerEnabled) {
+                window.SagEvents.setTimerEnabled(timerName, true);
+            }
+        } else if (action === 'DESA') {
+            // Desativar timer
+            if (window.SagEvents && window.SagEvents.setTimerEnabled) {
+                window.SagEvents.setTimerEnabled(timerName, false);
+            }
+        } else {
+            console.warn(`[PLSAG] TI: Ação desconhecida '${action}' (use ATIV ou DESA)`);
+        }
+    }
+
+    // ============================================================
     // API PUBLICA
     // ============================================================
 
@@ -1924,6 +2553,10 @@ const PlsagCommands = (function() {
         executeExCommand,
         executeLabelCommand,
         executeButtonCommand,
+        executeButtonActionCommand,
+        executeEyCommand,
+        executeFormNavigationCommand,
+        executeTimerCommand,
 
         // Utilitarios
         findField,

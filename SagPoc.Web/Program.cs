@@ -36,10 +36,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("VisionWeb", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:5173",    // Vite dev server
+                "http://localhost:3000",    // Vision Web dev server
+                "http://localhost:3001",    // Vision Web alternate port
+                "http://localhost:5173",    // Vite default port
                 "http://localhost:8080",    // Alternate dev port
+                "http://127.0.0.1:3000",
                 "http://127.0.0.1:5173",
-                "http://vision.local"       // Production (ajustar conforme necessário)
+                "http://vision.local"       // Production
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
