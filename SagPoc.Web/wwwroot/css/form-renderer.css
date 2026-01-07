@@ -1506,3 +1506,29 @@ textarea.form-control {
         max-height: 300px;
     }
 }
+
+/* ===========================================
+   INLINE MOVEMENTS - Separação visual
+   =========================================== */
+
+/* Borda superior sutil para separar formulário de movimento */
+.inline-movements-container {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light, #e5e7eb);
+}
+
+/* ===========================================
+   SAG ACTION BUTTONS - Botões PLSAG
+   =========================================== */
+
+/* Botões de ação PLSAG (Promoções, Saldo Pedidos, etc.) */
+.sag-action-btn {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Ícone do botão */
+.sag-action-btn i {
+    font-size: 0.875em;
+}

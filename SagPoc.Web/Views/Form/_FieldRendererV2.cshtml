@@ -927,12 +927,14 @@
     case ComponentType.Button:
         // BTN - Botão
         // No Delphi, ExprCamp contém as instruções PLSAG a executar no OnClick
+        // O "&" no label era para shortcut no Delphi (ex: "&Promoções" = Alt+P), removemos na web
         var btnExprCamp = field.ExprCamp ?? "";
+        var btnLabel = (label ?? "").Replace("&", "");
         <div class="field-wrapper field-button d-flex align-items-end" style="@wrapperStyle">
             <button type="button"
-                    class="btn btn-secondary sag-btn"
+                    class="btn btn-primary sag-action-btn"
                     id="@fieldId"
-                    title="@hint"
+                    title="@(!string.IsNullOrEmpty(hint) ? hint : btnLabel)"
                     @(isDisabled ? "disabled" : "")
                     data-sag-codicamp="@sagCodicamp"
                     data-sag-nomecamp="@sagNomecamp"
@@ -941,7 +943,7 @@
                     @if (!string.IsNullOrEmpty(btnExprCamp)) {
                         <text>data-plsag-onclick="@btnExprCamp"</text>
                     }>
-                @label
+                <i class="bi bi-lightning-charge me-1"></i>@btnLabel
             </button>
         </div>
         break;

@@ -161,6 +161,19 @@
                     </div>
                     <div class="p-3">
                         @await Html.PartialAsync("_FormContent", Model.Form)
+
+                        @* Movimentos inline com borda superior *@
+                        @if (inlineMovements.Any())
+                        {
+                            <div class="inline-movements-container" id="inlineMovementsContainer">
+                                @foreach (var movement in inlineMovements)
+                                {
+                                    <div class="mb-3">
+                                        @await Html.PartialAsync("_MovementSection", movement)
+                                    </div>
+                                }
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -242,19 +255,6 @@
                     }
                 }
             </div>
-
-            @if (inlineMovements.Any())
-            {
-                <div class="inline-movements-container mt-4" id="inlineMovementsContainer">
-                    <hr class="my-3" />
-                    @foreach (var movement in inlineMovements)
-                    {
-                        <div class="mb-4">
-                            @await Html.PartialAsync("_MovementSection", movement)
-                        </div>
-                    }
-                </div>
-            }
         }
         else
         {
@@ -535,6 +535,23 @@
 
         window.startNewRecord = startNewRecord;
         window.cancelNewRecord = cancelNewRecord;
+
+        // ========================================
+        // Botão Cancelar
+        // ========================================
+        document.getElementById('btnCancelar')?.addEventListener('click', function() {
+            // Verifica se estamos em modo de inclusão com Saga Pattern
+            if (window.formState && window.formState.isNewRecord && window.formState.recordId) {
+                // Chama cancelNewRecord que deleta o registro e movimentos em cascata
+                if (typeof cancelNewRecord === 'function') {
+                    cancelNewRecord();
+                    return;
+                }
+            }
+
+            // Comportamento padrão: desabilita edição e volta para tab Consulta
+            disableEditMode();
+        });
 
         // Comunicação com Vue parent via postMessage
         function notifyParent(type, data) {

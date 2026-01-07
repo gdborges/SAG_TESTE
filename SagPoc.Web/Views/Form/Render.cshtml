@@ -126,7 +126,7 @@
                     @* Movimentos inline (SERITABE > 50) - DENTRO da aba Dados (como no Delphi: PgcMovi dentro de PnlDado) *@
                     @if (inlineMovements.Any())
                     {
-                        <div class="inline-movements-container mt-3" id="inlineMovementsContainer">
+                        <div class="inline-movements-container" id="inlineMovementsContainer">
                             @foreach (var movement in inlineMovements)
                             {
                                 <div class="mb-3">
@@ -722,6 +722,23 @@
         // Expor funções globalmente
         window.startNewRecord = startNewRecord;
         window.cancelNewRecord = cancelNewRecord;
+
+        // ========================================
+        // Botão Cancelar
+        // ========================================
+        document.getElementById('btnCancelar')?.addEventListener('click', function() {
+            // Verifica se estamos em modo de inclusão com Saga Pattern
+            if (window.formState && window.formState.isNewRecord && window.formState.recordId) {
+                // Chama cancelNewRecord que deleta o registro e movimentos em cascata
+                if (typeof cancelNewRecord === 'function') {
+                    cancelNewRecord();
+                    return;
+                }
+            }
+
+            // Comportamento padrão: desabilita edição e volta para tab Consulta
+            disableEditMode();
+        });
 
         // ========================================
         // Validação Bootstrap
