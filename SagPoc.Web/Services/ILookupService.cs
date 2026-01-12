@@ -32,4 +32,17 @@ public interface ILookupService
     /// <param name="code">Código digitado pelo usuário</param>
     /// <returns>LookupRecord com dados completos ou null se não encontrado</returns>
     Task<LookupRecord?> LookupByCodeAsync(string sql, string code);
+
+    /// <summary>
+    /// Executa lookup com injeção dinâmica de condição SQL na linha 4.
+    /// Usado pelo comando PLSAG QY-CAMPO-CONDIÇÃO.
+    /// </summary>
+    /// <param name="sqlLines">Array de linhas do SQL_CAMP</param>
+    /// <param name="condition">Condição a injetar na linha 4 (ex: "AND EXISTS(SELECT 1 FROM T)")</param>
+    /// <param name="parameters">Parâmetros para substituir placeholders (ex: {DG-CODITBPR} → 1682)</param>
+    /// <returns>Lista de LookupItem com Key (coluna 0) e Value (coluna 1)</returns>
+    Task<List<LookupItem>> ExecuteDynamicLookupAsync(
+        string[] sqlLines,
+        string condition,
+        Dictionary<string, object> parameters);
 }

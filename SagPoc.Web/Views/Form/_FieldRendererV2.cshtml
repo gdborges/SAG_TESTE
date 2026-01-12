@@ -270,8 +270,13 @@
                     data-sag-namecamp="@sagNamecamp"
                     data-sag-comptype="@sagComptype"
                     data-has-duplcliq="true"
+                    data-codi-camp="@field.CodiCamp"
+                    data-codi-tabe="@field.CodiTabe"
                     @if (hasLookupSqlCombo) {
                         <text>data-lookup-sql="@field.SqlCamp"</text>
+                    }
+                    @if (field.SqlLines != null && field.SqlLines.Length > 0) {
+                        <text>data-sql-lines='@System.Text.Json.JsonSerializer.Serialize(field.SqlLines)'</text>
                     }>
                 <option value="">Selecione...</option>
                 @if (field.LookupOptions != null && field.LookupOptions.Count > 0)
@@ -336,8 +341,13 @@
                            data-sag-comptype="@sagComptype"
                            data-lookup-desc-id="@lookupDescId"
                            data-has-duplcliq="true"
+                           data-codi-camp="@field.CodiCamp"
+                           data-codi-tabe="@field.CodiTabe"
                            @if (hasLookupSql) {
                                <text>data-lookup-sql="@field.SqlCamp"</text>
+                           }
+                           @if (field.SqlLines != null && field.SqlLines.Length > 0) {
+                               <text>data-sql-lines='@System.Text.Json.JsonSerializer.Serialize(field.SqlLines)'</text>
                            } />
                     <button type="button"
                             class="btn btn-outline-secondary btn-lookup"

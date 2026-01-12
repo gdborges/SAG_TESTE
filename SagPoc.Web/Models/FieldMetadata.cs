@@ -48,6 +48,13 @@ public class FieldMetadata
     public string? VareCamp { get; set; }  // Valores do combo (texto exibido, separado por |)
     public string? VaGrCamp { get; set; }  // Valores de gravação do combo (separado por |, usado como value)
 
+    /// <summary>
+    /// SQL_CAMP dividido em linhas para suportar injeção dinâmica via comando QY.
+    /// No Delphi, a linha 4 (índice 4) é reservada para injeção de filtros dinâmicos.
+    /// Populado automaticamente pelo MetadataService via split por '\n'.
+    /// </summary>
+    public string[]? SqlLines { get; set; }
+
     // Visual
     public string? CfonCamp { get; set; }  // Fonte do campo
     public int? CtamCamp { get; set; }     // Tamanho da fonte

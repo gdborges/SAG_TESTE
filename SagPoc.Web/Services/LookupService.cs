@@ -1,5 +1,6 @@
 using Dapper;
 using System.Data;
+using System.Security;
 using SagPoc.Web.Models;
 using SagPoc.Web.Services.Database;
 
@@ -30,6 +31,9 @@ public class LookupService : ILookupService
 
         try
         {
+            // Remove placeholders '= 0' que são usados pelo Delphi para filtros dinâmicos
+            sql = RemoveSqlPlaceholders(sql);
+
             using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
@@ -244,6 +248,179 @@ public class LookupService : ILookupService
                           WHERE UPPER(CAST(lookup_sub.[{GetFirstColumnAlias(sql)}] AS VARCHAR(MAX))) = UPPER('{safeCode}')";
             }
         }
+    }
+
+    /// <summary>
+    /// Remove placeholders '= 0' que o Delphi usa para filtros dinâmicos.
+    /// No Delphi, essas condições são substituídas em runtime, mas na Web precisamos removê-las
+    /// para carregar todas as opções do lookup.
+    /// </summary>
+    private string RemoveSqlPlaceholders(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+            return sql;
+
+        var original = sql;
+
+        // Remove AND seguido de condição = 0 (com ou sem parênteses, com ou sem prefixo de tabela)
+        // Exemplos: AND (CODIPROD = 0), AND POCAPROD.CODIPROD = 0, AND (POCAPROD.CODIPROD = 0)
+        sql = System.Text.RegularExpressions.Regex.Replace(
+            sql,
+            @"\s+AND\s+\(?\s*[\w\.]+\s*=\s*0\s*\)?(?=\s|\r|\n|$)",
+            "",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+
+        // Remove WHERE (campo = 0) sem outras condições antes de ORDER BY ou fim
+        // Exemplo: WHERE ATIVPROD = 1 AND CODIPROD = 0 ORDER BY -> WHERE ATIVPROD = 1 ORDER BY
+        // Já foi removido pelo padrão anterior
+
+        // Se sobrou apenas WHERE antes de ORDER BY ou quebra de linha, remove WHERE também
+        sql = System.Text.RegularExpressions.Regex.Replace(
+            sql,
+            @"\s+WHERE\s+(?=ORDER\s+BY|\r|\n|$)",
+            " ",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+
+        // Remove múltiplos espaços e quebras de linha em branco
+        sql = System.Text.RegularExpressions.Regex.Replace(sql, @"[\r\n]+\s*[\r\n]+", "\r\n");
+        sql = System.Text.RegularExpressions.Regex.Replace(sql, @"[ \t]+", " ");
+
+        if (sql.Trim() != original.Trim())
+        {
+            _logger.LogInformation("SQL Placeholders removidos:\nOriginal: {Original}\nResultado: {Result}",
+                original.Substring(0, Math.Min(200, original.Length)),
+                sql.Substring(0, Math.Min(200, sql.Length)));
+        }
+
+        return sql.Trim();
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<LookupItem>> ExecuteDynamicLookupAsync(
+        string[] sqlLines,
+        string condition,
+        Dictionary<string, object> parameters)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            // 1. Validar condição via SqlSecurityValidator
+            if (!SqlSecurityValidator.ValidateDynamicSqlCondition(condition))
+            {
+                var reason = SqlSecurityValidator.GetRejectionReason(condition);
+                _logger.LogWarning("Condição SQL rejeitada por validação de segurança: {Reason}. Condição: {Condition}",
+                    reason, condition);
+                throw new SecurityException($"Condição SQL rejeitada: {reason}");
+            }
+
+            // 2. Copiar array para não modificar original
+            var modifiedLines = (string[])sqlLines.Clone();
+
+            // 3. Substituir placeholders em TODAS as linhas
+            for (int i = 0; i < modifiedLines.Length; i++)
+            {
+                modifiedLines[i] = SubstituirPlaceholders(modifiedLines[i], parameters);
+            }
+
+            // 4. Injetar condição na linha 4 (índice 4) se não for ABRE
+            if (!condition.Trim().Equals("ABRE", StringComparison.OrdinalIgnoreCase))
+            {
+                // Substitui placeholders na condição também
+                var conditionSubstituida = SubstituirPlaceholders(condition, parameters);
+
+                // Garante que temos pelo menos 5 linhas
+                if (modifiedLines.Length > 4)
+                {
+                    modifiedLines[4] = conditionSubstituida;
+                }
+                else
+                {
+                    // Se SQL tem menos de 5 linhas, adiciona a condição ao final
+                    var linesList = modifiedLines.ToList();
+                    while (linesList.Count < 4) linesList.Add("");
+                    linesList.Add(conditionSubstituida);
+                    modifiedLines = linesList.ToArray();
+                }
+            }
+
+            // 5. Montar SQL final
+            var sqlFinal = string.Join("\n", modifiedLines);
+
+            // 6. Remover placeholders restantes (= 0) que desabilitam a query
+            sqlFinal = RemoveSqlPlaceholders(sqlFinal);
+
+            // 7. Logar para auditoria
+            _logger.LogWarning("Lookup dinâmico executado: SQL={Sql}, Parâmetros={Params}",
+                sqlFinal.Length > 200 ? sqlFinal.Substring(0, 200) + "..." : sqlFinal,
+                System.Text.Json.JsonSerializer.Serialize(parameters));
+
+            // 8. Executar query
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            var results = await connection.QueryAsync(sqlFinal);
+            var items = new List<LookupItem>();
+
+            foreach (var row in results)
+            {
+                var dict = (IDictionary<string, object>)row;
+                var values = dict.Values.ToList();
+
+                if (values.Count >= 2)
+                {
+                    items.Add(new LookupItem
+                    {
+                        Key = values[0]?.ToString() ?? string.Empty,
+                        Value = values[1]?.ToString() ?? string.Empty
+                    });
+                }
+                else if (values.Count == 1)
+                {
+                    var val = values[0]?.ToString() ?? string.Empty;
+                    items.Add(new LookupItem { Key = val, Value = val });
+                }
+            }
+
+            stopwatch.Stop();
+            _logger.LogInformation("Lookup dinâmico: {Count} itens em {Ms}ms", items.Count, stopwatch.ElapsedMilliseconds);
+
+            return items;
+        }
+        catch (SecurityException)
+        {
+            throw; // Re-throw security exceptions
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex, "Erro ao executar lookup dinâmico em {Ms}ms", stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Substitui placeholders {DG-CAMPO}, {IT-CAMPO}, etc. com valores dos parâmetros.
+    /// </summary>
+    private string SubstituirPlaceholders(string text, Dictionary<string, object> parameters)
+    {
+        if (string.IsNullOrEmpty(text) || parameters == null || parameters.Count == 0)
+            return text;
+
+        var result = text;
+
+        foreach (var param in parameters)
+        {
+            var placeholder = $"{{{param.Key}}}";
+            var value = param.Value?.ToString() ?? "NULL";
+
+            // Sanitizar valor para prevenir SQL injection
+            value = SqlSecurityValidator.SanitizeValue(value);
+
+            result = result.Replace(placeholder, value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return result;
     }
 
     /// <summary>

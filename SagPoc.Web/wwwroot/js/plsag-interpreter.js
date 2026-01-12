@@ -567,9 +567,10 @@ const PlsagInterpreter = (function() {
             if (element.type === 'checkbox') {
                 return element.checked ? '1' : '0';
             }
-            if (element.value !== undefined && element.value !== '') {
-                return element.value;
-            }
+            // Retorna o valor mesmo se vazio - importante para que templates
+            // como {IT-CAMPO} sejam substituídos por '' em vez de ficarem como {IT-CAMPO}
+            // Isso garante que IF-INIC funcione corretamente para campos vazios
+            return element.value || '';
         }
 
         // Fallback: Se o campo é a PK e está vazio, usa editingRecordId
@@ -769,6 +770,7 @@ const PlsagInterpreter = (function() {
     /**
      * Resolve template de query {QY-NOME-CAMPO}
      * Inclui suporte a {QY-DAD<CodiTabe>-<expression>} para agregações de grid
+     * Também busca dados do cache de lookup do SagEvents
      */
     function resolveQueryTemplate(fieldSpec) {
         const parts = fieldSpec.split('-');
@@ -783,9 +785,42 @@ const PlsagInterpreter = (function() {
                 return resolveQyDadTemplate(tableId, fieldName);
             }
 
+            // 1. Primeiro tenta em queryResults (resultados de comandos QY)
             const queryResult = context.queryResults[queryName];
             if (queryResult && queryResult[fieldName] !== undefined) {
                 return queryResult[fieldName];
+            }
+
+            // 2. Fallback: Busca no cache de lookup do SagEvents
+            // Isso permite que {QY-CAMPO-Coluna} acesse dados de campos lookup
+            // Exemplo: {QY-CODIINFO-Informação 1} busca coluna do lookup CODIINFO
+            if (window.SagEvents && typeof SagEvents.getLookupData === 'function') {
+                const lookupData = SagEvents.getLookupData(queryName);
+                if (lookupData) {
+                    // Tenta match exato primeiro
+                    if (lookupData[fieldName] !== undefined) {
+                        console.log(`[PLSAG] QY-${queryName}-${fieldName} resolvido via lookupCache (match exato)`);
+                        return lookupData[fieldName];
+                    }
+                    // Tenta case-insensitive
+                    const upperField = fieldName.toUpperCase();
+                    for (const [key, value] of Object.entries(lookupData)) {
+                        if (key.toUpperCase() === upperField) {
+                            console.log(`[PLSAG] QY-${queryName}-${fieldName} resolvido via lookupCache (case-insensitive: ${key})`);
+                            return value;
+                        }
+                    }
+                    // Tenta match parcial (campo pode ter nome diferente do header)
+                    // Ex: "Informação 1" pode ser armazenado como "INFO1"
+                    const normalizedField = fieldName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                    for (const [key, value] of Object.entries(lookupData)) {
+                        const normalizedKey = key.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                        if (normalizedKey === normalizedField || normalizedKey.includes(normalizedField) || normalizedField.includes(normalizedKey)) {
+                            console.log(`[PLSAG] QY-${queryName}-${fieldName} resolvido via lookupCache (match parcial: ${key})`);
+                            return value;
+                        }
+                    }
+                }
             }
         }
         return undefined;

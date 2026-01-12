@@ -482,8 +482,52 @@ const PlsagCommands = (function() {
             // EDITORES (campos volateis, sem banco)
             // ============================================================
 
-            case 'EE': // Editor Text
-                setFieldValue(element, parameter);
+            case 'EE': // Editor Text (CalcTextInput no Delphi)
+                // Se parameter for um SELECT, executa a query e usa o resultado
+                // Exemplo: EE-MOTIPEOU-SELECT {QY-CODIINFO-Info1}||' '||{QY-CODIINFO-Info2} AS VALO FROM DUAL
+                const paramStr = parameter !== null && parameter !== undefined ? String(parameter) : '';
+                if (paramStr.trim().toUpperCase().startsWith('SELECT')) {
+                    try {
+                        // Detecta se é sintaxe Oracle (FROM DUAL) - se sim, não converte
+                        // O backend usa o provider configurado (Oracle ou SQL Server)
+                        let sql = paramStr;
+                        const isOracleSyntax = /\bFROM\s+DUAL\b/i.test(sql);
+                        if (!isOracleSyntax) {
+                            // Só converte se não for sintaxe Oracle explícita
+                            sql = convertOracleToSqlServer(sql);
+                        }
+                        console.log(`[PLSAG] EE: Executando query para ${fieldName} (Oracle=${isOracleSyntax}): ${sql}`);
+
+                        const response = await fetch('/api/plsag/query', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ sql: sql, singleRow: true })
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.success && result.data) {
+                                // Pega o primeiro campo do resultado (VALO)
+                                const keys = Object.keys(result.data);
+                                const value = keys.length > 0 ? result.data[keys[0]] : '';
+                                console.log(`[PLSAG] EE: Query retornou valor: ${value}`);
+                                setFieldValue(element, value || '');
+                            } else {
+                                console.warn(`[PLSAG] EE: Query sem resultado para ${fieldName}`);
+                                setFieldValue(element, '');
+                            }
+                        } else {
+                            console.error(`[PLSAG] EE: Erro HTTP ${response.status} na query`);
+                            setFieldValue(element, '');
+                        }
+                    } catch (error) {
+                        console.error(`[PLSAG] EE: Erro ao executar query para ${fieldName}:`, error);
+                        setFieldValue(element, '');
+                    }
+                } else {
+                    // Valor direto (não é SELECT)
+                    setFieldValue(element, paramStr);
+                }
                 break;
 
             case 'ES': // Editor Sim/Nao
@@ -1415,6 +1459,26 @@ const PlsagCommands = (function() {
         const queryName = identifier.trim();
         const command = (parameter || '').trim().toUpperCase();
 
+        // ===============================================================
+        // LOOKUP DINAMICO: QY-CAMPO-CONDIÇÃO
+        // Detecta quando o comando QY é para injeção dinâmica em lookup
+        // Condição começa com AND, OR, EXISTS, IN ou é ABRE
+        // Exemplo: QY-CODIPROD-AND EXISTS(SELECT 1 FROM VDCAMVTP WHERE...)
+        // ===============================================================
+        const isDynamicLookupCondition = (
+            command.startsWith('AND ') ||
+            command.startsWith('OR ') ||
+            command.startsWith('EXISTS') ||
+            command.startsWith('IN(') ||
+            command.startsWith('IN (') ||
+            command === 'ABRE'
+        );
+
+        if (prefix === 'QY' && isDynamicLookupCondition) {
+            await executeDynamicLookupCommand(queryName, parameter, context);
+            return;
+        }
+
         // Comandos de navegacao
         const navCommands = ['ABRE', 'FECH', 'PRIM', 'PROX', 'ANTE', 'ULTI'];
         if (navCommands.includes(command)) {
@@ -1730,6 +1794,171 @@ const PlsagCommands = (function() {
                 }
                 break;
         }
+    }
+
+    // ============================================================
+    // LOOKUP DINAMICO - Comando QY-CAMPO-CONDIÇÃO
+    // ============================================================
+
+    /**
+     * Executa comando QY para injeção dinâmica em lookup.
+     * Usado para filtrar lookups em runtime baseado no contexto da tela.
+     *
+     * Comportamento Delphi (PlusUni.pas:4585-4616):
+     * - SQL_CAMP é array de linhas (TStringList)
+     * - Linha 4 (índice 4) é reservada para injeção de filtro
+     * - Comando QY-CAMPO-CONDIÇÃO injeta filtro e recarrega lookup
+     *
+     * Exemplos:
+     * - QY-CODIPROD-AND EXISTS(SELECT 1 FROM VDCAMVTP WHERE CODITBPR={DG-CODITBPR})
+     * - QY-CODITPRO-ABRE
+     *
+     * @param {string} fieldName - Nome do campo lookup (ex: CODIPROD)
+     * @param {string} condition - Condição SQL a injetar (ex: AND EXISTS(...))
+     * @param {object} context - Contexto de execução PLSAG
+     */
+    async function executeDynamicLookupCommand(fieldName, condition, context) {
+        console.log(`[PLSAG] QY-${fieldName}: Lookup dinâmico, condição: ${condition?.substring(0, 50)}...`);
+
+        // Verifica se LookupManager está disponível
+        if (typeof window.LookupManager === 'undefined') {
+            console.error('[PLSAG] LookupManager não carregado. Inclua lookup-manager.js antes de plsag-commands.js');
+            return;
+        }
+
+        // Busca elemento do campo para obter CodiCamp e CodiTabe
+        const element = findField(fieldName);
+        if (!element) {
+            console.warn(`[PLSAG] QY-${fieldName}: Campo não encontrado no DOM`);
+            return;
+        }
+
+        // Obtém CodiCamp e CodiTabe do elemento ou contexto
+        let codiCamp = parseInt(element.dataset.codiCamp) || 0;
+        let codiTabe = parseInt(element.dataset.codiTabe) || context.tableId || 0;
+
+        // Fallback: tenta obter CodiCamp via data-sag-codicamp
+        if (!codiCamp && element.dataset.sagCodicamp) {
+            codiCamp = parseInt(element.dataset.sagCodicamp);
+        }
+
+        // Fallback: se está no modal de movimento, usa CodiTabe do movimento
+        if (!codiTabe && context.movementTableId) {
+            codiTabe = context.movementTableId;
+        }
+
+        if (!codiCamp || !codiTabe) {
+            console.warn(`[PLSAG] QY-${fieldName}: CodiCamp=${codiCamp} ou CodiTabe=${codiTabe} não definidos`);
+            // Tenta recarregar mesmo assim se o elemento tem data-sql-lines
+            if (!element.dataset.sqlLines) {
+                return;
+            }
+        }
+
+        // Atualiza atributos do elemento se necessário
+        if (codiCamp) element.dataset.codiCamp = codiCamp;
+        if (codiTabe) element.dataset.codiTabe = codiTabe;
+
+        // Monta parâmetros para substituição de placeholders
+        const parameters = buildLookupParameters(context);
+
+        // Executa recarga via LookupManager
+        try {
+            const success = await window.LookupManager.reloadLookup(fieldName, condition, parameters);
+
+            if (success) {
+                console.log(`[PLSAG] QY-${fieldName}: Lookup recarregado com sucesso`);
+
+                // Emite evento customizado
+                document.dispatchEvent(new CustomEvent('sag:lookup-reloaded', {
+                    detail: {
+                        fieldName,
+                        condition,
+                        codiCamp,
+                        codiTabe
+                    }
+                }));
+            } else {
+                console.warn(`[PLSAG] QY-${fieldName}: Falha ao recarregar lookup`);
+            }
+        } catch (error) {
+            console.error(`[PLSAG] QY-${fieldName}: Erro ao recarregar lookup`, error);
+        }
+    }
+
+    /**
+     * Monta parâmetros para substituição de placeholders em lookups dinâmicos.
+     * Extrai valores de DG (header), DM (movimento), IT (variáveis), etc.
+     *
+     * @param {object} context - Contexto de execução PLSAG
+     * @returns {Object} Mapa de placeholders para valores
+     */
+    function buildLookupParameters(context) {
+        const params = {};
+
+        // DG-* : Dados do formulário header
+        if (context.formData) {
+            for (const [key, value] of Object.entries(context.formData)) {
+                params[`DG-${key.toUpperCase()}`] = value;
+            }
+        }
+
+        // DM-* : Dados do movimento atual
+        if (context.movementData) {
+            for (const [key, value] of Object.entries(context.movementData)) {
+                params[`DM-${key.toUpperCase()}`] = value;
+            }
+        }
+
+        // D2-* : Dados do sub-movimento
+        if (context.subMovementData) {
+            for (const [key, value] of Object.entries(context.subMovementData)) {
+                params[`D2-${key.toUpperCase()}`] = value;
+            }
+        }
+
+        // IT-* / VA-* : Variáveis PLSAG
+        if (context.variables) {
+            // Variáveis customizadas
+            if (context.variables.custom) {
+                for (const [key, value] of Object.entries(context.variables.custom)) {
+                    params[`IT-${key.toUpperCase()}`] = value;
+                    params[`VA-${key.toUpperCase()}`] = value;
+                }
+            }
+            // Variáveis tipadas
+            ['integers', 'floats', 'strings', 'dates', 'values', 'results'].forEach(type => {
+                if (context.variables[type]) {
+                    for (const [key, value] of Object.entries(context.variables[type])) {
+                        params[`VA-${key.toUpperCase()}`] = value;
+                    }
+                }
+            });
+        }
+
+        // CT-* : Variáveis de contexto/sistema
+        if (context.system) {
+            for (const [key, value] of Object.entries(context.system)) {
+                if (value !== null && value !== undefined) {
+                    params[`CT-${key.toUpperCase()}`] = value;
+                }
+            }
+        }
+
+        // Também adiciona campos do formulário sem prefixo (para compatibilidade)
+        const form = document.getElementById('dynamicForm');
+        if (form) {
+            const formData = new FormData(form);
+            for (const [key, value] of formData.entries()) {
+                // Adiciona com prefixo DG se ainda não existe
+                const dgKey = `DG-${key.toUpperCase()}`;
+                if (!params[dgKey] && value) {
+                    params[dgKey] = value;
+                }
+            }
+        }
+
+        return params;
     }
 
     // ============================================================

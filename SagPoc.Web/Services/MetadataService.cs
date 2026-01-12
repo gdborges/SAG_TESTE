@@ -102,6 +102,15 @@ public class MetadataService : IMetadataService
             connection.Open();
             var fields = await connection.QueryAsync<FieldMetadata>(sql, new { CodiTabe = codiTabe });
 
+            // Popular SqlLines para cada campo com SQL_CAMP (split por \n)
+            foreach (var field in fields)
+            {
+                if (!string.IsNullOrEmpty(field.SqlCamp))
+                {
+                    field.SqlLines = field.SqlCamp.Split('\n');
+                }
+            }
+
             _logger.LogInformation("Carregados {Count} campos para tabela {TableId}",
                 fields.Count(), codiTabe);
 

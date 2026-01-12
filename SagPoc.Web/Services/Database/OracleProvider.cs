@@ -13,14 +13,16 @@ public class OracleProvider : IDbProvider
     private readonly ILogger<OracleProvider> _logger;
     private readonly string? _empresa;
     private readonly string? _usuario;
+    private readonly string? _sistema;
 
     public OracleProvider(string connectionString, ILogger<OracleProvider> logger,
-        string? empresa = null, string? usuario = null)
+        string? empresa = null, string? usuario = null, string? sistema = null)
     {
         _connectionString = connectionString;
         _logger = logger;
         _empresa = empresa;
         _usuario = usuario;
+        _sistema = sistema;
     }
 
     public string ProviderName => "Oracle";
@@ -32,7 +34,7 @@ public class OracleProvider : IDbProvider
         var connection = new OracleConnection(_connectionString);
 
         // Inicializa contexto SAG ao abrir a conexão
-        if (!string.IsNullOrEmpty(_empresa) || !string.IsNullOrEmpty(_usuario))
+        if (!string.IsNullOrEmpty(_empresa) || !string.IsNullOrEmpty(_usuario) || !string.IsNullOrEmpty(_sistema))
         {
             connection.StateChange += (sender, e) =>
             {
@@ -48,6 +50,7 @@ public class OracleProvider : IDbProvider
 
     /// <summary>
     /// Inicializa o contexto SAG_USUARIO no Oracle (equivalente ao login do Delphi)
+    /// Usa a procedure SAG_PRO_USUARIO que tem permissão para definir o contexto
     /// </summary>
     private void InitializeSagContext(OracleConnection connection)
     {
@@ -56,20 +59,24 @@ public class OracleProvider : IDbProvider
             using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
 
-            // Cria contexto SAG_USUARIO se não existir e define valores
-            // PEMP = Empresa, PUSU = Usuário
+            // Usa a procedure SAG_PRO_USUARIO que é o método oficial do SAG
+            // PEMP = Empresa (E01, E02, etc.)
+            // PUSU = Usuário (U99, etc.)
+            // PSIS = Sistema/Módulo (S83, S08, etc.)
             var sql = @"BEGIN
-                DBMS_SESSION.SET_CONTEXT('SAG_USUARIO', 'PEMP', :empresa);
-                DBMS_SESSION.SET_CONTEXT('SAG_USUARIO', 'PUSU', :usuario);
+                SAG_PRO_USUARIO('PEMP', :empresa);
+                SAG_PRO_USUARIO('PUSU', :usuario);
+                SAG_PRO_USUARIO('PSIS', :sistema);
             END;";
 
             cmd.CommandText = sql;
             cmd.Parameters.Add(new OracleParameter("empresa", _empresa ?? ""));
             cmd.Parameters.Add(new OracleParameter("usuario", _usuario ?? ""));
+            cmd.Parameters.Add(new OracleParameter("sistema", _sistema ?? ""));
             cmd.ExecuteNonQuery();
 
-            _logger.LogDebug("Contexto SAG inicializado: Empresa={Empresa}, Usuario={Usuario}",
-                _empresa, _usuario);
+            _logger.LogDebug("Contexto SAG inicializado: Empresa={Empresa}, Usuario={Usuario}, Sistema={Sistema}",
+                _empresa, _usuario, _sistema);
         }
         catch (OracleException ex)
         {

@@ -14,17 +14,20 @@ public class MovementController : ControllerBase
     private readonly IMovementService _movementService;
     private readonly IMetadataService _metadataService;
     private readonly IEventService _eventService;
+    private readonly ILookupService _lookupService;
     private readonly ILogger<MovementController> _logger;
 
     public MovementController(
         IMovementService movementService,
         IMetadataService metadataService,
         IEventService eventService,
+        ILookupService lookupService,
         ILogger<MovementController> logger)
     {
         _movementService = movementService;
         _metadataService = metadataService;
         _eventService = eventService;
+        _lookupService = lookupService;
         _logger = logger;
     }
 
@@ -88,16 +91,22 @@ public class MovementController : ControllerBase
             var fields = await _metadataService.GetMovementFieldsAsync(tableId);
             var metadata = await _movementService.GetMovementMetadataAsync(tableId);
 
+            // Popula lookups (igual FormController)
+            var fieldsList = fields.ToList();
+            await PopulateLookupOptionsAsync(fieldsList);
+
             return Ok(new
             {
                 TableId = tableId,
                 TableName = metadata?.GravTabe ?? string.Empty,
                 PkColumnName = metadata?.PkColumnName ?? "ID",
-                Fields = fields.Where(f => !f.IsHidden).Select(f => new
+                Fields = fieldsList.Where(f => !f.IsHidden).Select(f => new
                 {
                     f.NomeCamp,
                     f.LabeCamp,
                     f.CompCamp,
+                    f.SqlCamp,
+                    f.LookupOptions,
                     f.TamaCamp,
                     f.AltuCamp,
                     f.ObriCamp,
@@ -299,6 +308,32 @@ public class MovementController : ControllerBase
         {
             _logger.LogError(ex, "Erro ao obter metadados do movimento {TableId}", tableId);
             return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Popula as opções de lookup para campos com SQL_CAMP definido.
+    /// </summary>
+    private async Task PopulateLookupOptionsAsync(List<FieldMetadata> fields)
+    {
+        var lookupTypes = new[] { "L", "T", "IT", "IL" };
+        var lookupFields = fields.Where(f =>
+            lookupTypes.Contains(f.CompCamp?.ToUpper()) &&
+            !string.IsNullOrEmpty(f.SqlCamp));
+
+        foreach (var field in lookupFields)
+        {
+            try
+            {
+                field.LookupOptions = await _lookupService.ExecuteLookupQueryAsync(field.SqlCamp!);
+                _logger.LogDebug("Campo {FieldName}: {Count} opções carregadas",
+                    field.NomeCamp, field.LookupOptions?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao carregar lookup para campo {FieldName}", field.NomeCamp);
+                field.LookupOptions = new List<LookupItem>();
+            }
         }
     }
 }

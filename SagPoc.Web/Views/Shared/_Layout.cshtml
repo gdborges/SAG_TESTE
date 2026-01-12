@@ -68,6 +68,7 @@
         }
     </script>
     <!-- PLSAG Interpreter (Fase 2) - ordem importante: commands antes de interpreter -->
+    <script src="~/js/lookup-manager.js" asp-append-version="true"></script>
     <script src="~/js/plsag-commands.js" asp-append-version="true"></script>
     <script src="~/js/plsag-interpreter.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Dapper;
 using System.Data;
+using System.Security;
 using System.Text.RegularExpressions;
+using SagPoc.Web.Services;
 using SagPoc.Web.Services.Database;
 
 namespace SagPoc.Web.Controllers;
@@ -21,6 +23,8 @@ public class PlsagController : ControllerBase
 {
     private readonly IDbProvider _dbProvider;
     private readonly ILogger<PlsagController> _logger;
+    private readonly IMetadataService _metadataService;
+    private readonly ILookupService _lookupService;
 
     // Lista de tabelas permitidas para operacoes de gravacao
     private static readonly HashSet<string> AllowedTables = new(StringComparer.OrdinalIgnoreCase)
@@ -36,10 +40,16 @@ public class PlsagController : ControllerBase
         "xp_", "sp_", "EXEC ", "EXECUTE ", "--", "/*", "*/"
     };
 
-    public PlsagController(IDbProvider dbProvider, ILogger<PlsagController> logger)
+    public PlsagController(
+        IDbProvider dbProvider,
+        ILogger<PlsagController> logger,
+        IMetadataService metadataService,
+        ILookupService lookupService)
     {
         _dbProvider = dbProvider;
         _logger = logger;
+        _metadataService = metadataService;
+        _lookupService = lookupService;
     }
 
     private IDbConnection CreateConnection()
@@ -136,6 +146,81 @@ public class PlsagController : ControllerBase
         // Se o queryName segue um padrao conhecido, podemos construir SQL seguro
         // Exemplo: "PRODUTO" -> SELECT * FROM CADAPROD WHERE ...
         return string.Empty;
+    }
+
+    #endregion
+
+    #region Dynamic Lookup Endpoint
+
+    /// <summary>
+    /// Executa lookup com injeção dinâmica de condição SQL.
+    /// Usado pelo comando PLSAG QY-CAMPO-CONDIÇÃO para filtrar lookups em runtime.
+    /// </summary>
+    [HttpPost("execute-dynamic-lookup")]
+    public async Task<IActionResult> ExecuteDynamicLookup([FromBody] DynamicLookupRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("Dynamic Lookup: CodiCamp={CodiCamp} Condition={Condition}",
+                request.CodiCamp, request.Condition?.Substring(0, Math.Min(50, request.Condition?.Length ?? 0)));
+
+            // 1. Validar request
+            if (request.CodiCamp <= 0)
+            {
+                return BadRequest(new { success = false, error = "CodiCamp é obrigatório" });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Condition))
+            {
+                return BadRequest(new { success = false, error = "Condition não pode ser vazia" });
+            }
+
+            // 2. Buscar metadata do campo
+            var fields = await _metadataService.GetFieldsByTableAsync(request.CodiTabe);
+            var field = fields.FirstOrDefault(f => f.CodiCamp == request.CodiCamp);
+
+            if (field == null)
+            {
+                _logger.LogWarning("Campo não encontrado: CodiCamp={CodiCamp}, CodiTabe={CodiTabe}",
+                    request.CodiCamp, request.CodiTabe);
+                return BadRequest(new { success = false, error = $"Campo {request.CodiCamp} não encontrado" });
+            }
+
+            if (field.SqlLines == null || field.SqlLines.Length == 0)
+            {
+                // Se SqlLines não foi populado mas SqlCamp existe, faz split agora
+                if (!string.IsNullOrEmpty(field.SqlCamp))
+                {
+                    field.SqlLines = field.SqlCamp.Split('\n');
+                }
+                else
+                {
+                    _logger.LogWarning("Campo não suporta SQL dinâmico: CodiCamp={CodiCamp}", request.CodiCamp);
+                    return BadRequest(new { success = false, error = "Campo não suporta SQL dinâmico (SQL_CAMP vazio)" });
+                }
+            }
+
+            // 3. Executar lookup dinâmico
+            var items = await _lookupService.ExecuteDynamicLookupAsync(
+                field.SqlLines,
+                request.Condition,
+                request.Parameters ?? new Dictionary<string, object>());
+
+            _logger.LogInformation("Dynamic Lookup executado: CodiCamp={CodiCamp}, {Count} itens retornados",
+                request.CodiCamp, items.Count);
+
+            return Ok(new { success = true, data = items });
+        }
+        catch (SecurityException ex)
+        {
+            _logger.LogWarning("Tentativa de SQL injection bloqueada: {Message}", ex.Message);
+            return BadRequest(new { success = false, error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao executar dynamic lookup: CodiCamp={CodiCamp}", request.CodiCamp);
+            return StatusCode(500, new { success = false, error = $"Erro interno ao executar lookup: {ex.Message}" });
+        }
     }
 
     #endregion
@@ -649,6 +734,35 @@ public class DirectSqlRequest
     public string? SqlType { get; set; }  // DELETE, UPDATE, INSERT (auto-detectado se nulo)
     public int CodiTabe { get; set; }
     public Dictionary<string, object>? Params { get; set; }
+}
+
+/// <summary>
+/// Request para execução de lookup dinâmico via comando QY.
+/// </summary>
+public class DynamicLookupRequest
+{
+    /// <summary>
+    /// ID do campo (CODICAMP) que contém o SQL_CAMP a ser modificado.
+    /// </summary>
+    public int CodiCamp { get; set; }
+
+    /// <summary>
+    /// ID da tabela (CODITABE) onde o campo está definido.
+    /// </summary>
+    public int CodiTabe { get; set; }
+
+    /// <summary>
+    /// Condição SQL a ser injetada na linha 4 do SQL_CAMP.
+    /// Exemplo: "AND EXISTS(SELECT 1 FROM VDCAMVTP WHERE CODITBPR = {DG-CODITBPR})"
+    /// </summary>
+    public string Condition { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Parâmetros para substituição de placeholders na condição e SQL.
+    /// Chaves no formato: "DG-CAMPO", "IT-CAMPO", etc.
+    /// Valores serão sanitizados antes da substituição.
+    /// </summary>
+    public Dictionary<string, object>? Parameters { get; set; }
 }
 
 #endregion

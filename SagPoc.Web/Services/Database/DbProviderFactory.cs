@@ -43,12 +43,13 @@ public static class DbProviderFactory
             ?? throw new InvalidOperationException(
                 "Connection string 'Oracle' não encontrada em appsettings.json");
 
-        // Lê configuração de contexto SAG (empresa/filial)
+        // Lê configuração de contexto SAG (empresa, usuário, sistema/módulo)
         var empresa = configuration["SagContext:Empresa"];
         var usuario = configuration["SagContext:Usuario"];
+        var sistema = configuration["SagContext:Sistema"];
 
         var logger = loggerFactory.CreateLogger<OracleProvider>();
-        return new OracleProvider(connectionString, logger, empresa, usuario);
+        return new OracleProvider(connectionString, logger, empresa, usuario, sistema);
     }
 }
 
