@@ -1,3 +1,5 @@
+using SagPoc.Web.Services.Context;
+
 namespace SagPoc.Web.Services.Database;
 
 /// <summary>
@@ -10,14 +12,15 @@ public static class DbProviderFactory
     /// </summary>
     public static IDbProvider CreateProvider(
         IConfiguration configuration,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        ISagContextAccessor? contextAccessor = null)
     {
         var providerName = configuration["DatabaseProvider"] ?? "SqlServer";
 
         return providerName.ToLower() switch
         {
             "sqlserver" => CreateSqlServerProvider(configuration, loggerFactory),
-            "oracle" => CreateOracleProvider(configuration, loggerFactory),
+            "oracle" => CreateOracleProvider(configuration, loggerFactory, contextAccessor),
             _ => throw new ArgumentException($"Provider desconhecido: {providerName}. Use 'SqlServer' ou 'Oracle'.")
         };
     }
@@ -37,19 +40,21 @@ public static class DbProviderFactory
 
     private static OracleProvider CreateOracleProvider(
         IConfiguration configuration,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        ISagContextAccessor? contextAccessor)
     {
         var connectionString = configuration.GetConnectionString("Oracle")
             ?? throw new InvalidOperationException(
                 "Connection string 'Oracle' não encontrada em appsettings.json");
 
-        // Lê configuração de contexto SAG (empresa, usuário, sistema/módulo)
-        var empresa = configuration["SagContext:Empresa"];
-        var usuario = configuration["SagContext:Usuario"];
-        var sistema = configuration["SagContext:Sistema"];
+        if (contextAccessor == null)
+        {
+            throw new InvalidOperationException(
+                "ISagContextAccessor é obrigatório para OracleProvider (necessário para inicializar contexto SAG)");
+        }
 
         var logger = loggerFactory.CreateLogger<OracleProvider>();
-        return new OracleProvider(connectionString, logger, empresa, usuario, sistema);
+        return new OracleProvider(connectionString, logger, contextAccessor);
     }
 }
 
@@ -59,15 +64,32 @@ public static class DbProviderFactory
 public static class DbProviderExtensions
 {
     /// <summary>
-    /// Adiciona o IDbProvider ao container de DI baseado na configuração
+    /// Adiciona o IDbProvider ao container de DI baseado na configuração.
+    /// IMPORTANTE: Registrado como Scoped para Oracle (cada requisição tem seu próprio contexto).
     /// </summary>
     public static IServiceCollection AddDbProvider(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<IDbProvider>(sp =>
+        var providerName = configuration["DatabaseProvider"] ?? "SqlServer";
+
+        if (providerName.Equals("Oracle", StringComparison.OrdinalIgnoreCase))
         {
-            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-            return DbProviderFactory.CreateProvider(configuration, loggerFactory);
-        });
+            // Oracle: Scoped - cada requisição tem seu próprio provider com contexto
+            services.AddScoped<IDbProvider>(sp =>
+            {
+                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                var contextAccessor = sp.GetRequiredService<ISagContextAccessor>();
+                return DbProviderFactory.CreateProvider(configuration, loggerFactory, contextAccessor);
+            });
+        }
+        else
+        {
+            // SQL Server: Singleton - não precisa de contexto SAG
+            services.AddSingleton<IDbProvider>(sp =>
+            {
+                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                return DbProviderFactory.CreateProvider(configuration, loggerFactory);
+            });
+        }
 
         return services;
     }

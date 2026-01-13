@@ -1,28 +1,31 @@
 using System.Data;
 using Dapper;
 using Oracle.ManagedDataAccess.Client;
+using SagPoc.Web.Services.Context;
 
 namespace SagPoc.Web.Services.Database;
 
 /// <summary>
-/// Provider para Oracle Database
+/// Provider para Oracle Database.
+/// Automaticamente inicializa o contexto SAG_USUARIO via MERGE em POCACONF.
 /// </summary>
 public class OracleProvider : IDbProvider
 {
     private readonly string _connectionString;
     private readonly ILogger<OracleProvider> _logger;
-    private readonly string? _empresa;
-    private readonly string? _usuario;
-    private readonly string? _sistema;
+    private readonly ISagContextAccessor _contextAccessor;
 
-    public OracleProvider(string connectionString, ILogger<OracleProvider> logger,
-        string? empresa = null, string? usuario = null, string? sistema = null)
+    // Cache do PCODEMPR por EmpresaId (evita query repetida na mesma requisição)
+    private readonly Dictionary<int, string> _pcodEmprCache = new();
+
+    public OracleProvider(
+        string connectionString,
+        ILogger<OracleProvider> logger,
+        ISagContextAccessor contextAccessor)
     {
         _connectionString = connectionString;
         _logger = logger;
-        _empresa = empresa;
-        _usuario = usuario;
-        _sistema = sistema;
+        _contextAccessor = contextAccessor;
     }
 
     public string ProviderName => "Oracle";
@@ -33,56 +36,98 @@ public class OracleProvider : IDbProvider
     {
         var connection = new OracleConnection(_connectionString);
 
-        // Inicializa contexto SAG ao abrir a conexão
-        if (!string.IsNullOrEmpty(_empresa) || !string.IsNullOrEmpty(_usuario) || !string.IsNullOrEmpty(_sistema))
+        // Inicializa contexto SAG automaticamente ao abrir a conexão
+        connection.StateChange += (sender, e) =>
         {
-            connection.StateChange += (sender, e) =>
+            if (e.CurrentState == ConnectionState.Open && sender is OracleConnection conn)
             {
-                if (e.CurrentState == ConnectionState.Open)
-                {
-                    InitializeSagContext(connection);
-                }
-            };
-        }
+                InitializeSagContext(conn);
+            }
+        };
 
         return connection;
     }
 
     /// <summary>
-    /// Inicializa o contexto SAG_USUARIO no Oracle (equivalente ao login do Delphi)
-    /// Usa a procedure SAG_PRO_USUARIO que tem permissão para definir o contexto
+    /// Inicializa o contexto SAG_USUARIO no Oracle.
+    /// Faz MERGE em POCACONF que dispara o trigger TRG_POCACONF_AU_VAR_USUA,
+    /// o qual chama SYSTEM.SAG_PRO_USUARIO para configurar sys_context('SAG_USUARIO', ...).
     /// </summary>
     private void InitializeSagContext(OracleConnection connection)
     {
         try
         {
+            var ctx = _contextAccessor.Context;
+
+            // 1. Buscar PCODEMPR de POCAEMPR (com cache)
+            var pcodEmpr = GetPcodEmpr(connection, ctx.EmpresaId);
+
+            // 2. Montar CONFCONF no formato SAG (ex: U99E01S83)
+            var confConf = ctx.ToConfConf(pcodEmpr);
+            var userConf = ctx.UsuarioNome ?? "WEB";
+
+            // 3. MERGE em POCACONF - dispara o trigger que configura o contexto Oracle
             using var cmd = connection.CreateCommand();
-            cmd.CommandType = CommandType.Text;
+            cmd.CommandText = @"
+                MERGE INTO POCACONF p
+                USING (SELECT :userConf AS USERCONF FROM DUAL) s
+                ON (p.USERCONF = s.USERCONF)
+                WHEN MATCHED THEN
+                    UPDATE SET CONFCONF = :confConf
+                WHEN NOT MATCHED THEN
+                    INSERT (USERCONF, CONFCONF) VALUES (:userConf, :confConf)";
 
-            // Usa a procedure SAG_PRO_USUARIO que é o método oficial do SAG
-            // PEMP = Empresa (E01, E02, etc.)
-            // PUSU = Usuário (U99, etc.)
-            // PSIS = Sistema/Módulo (S83, S08, etc.)
-            var sql = @"BEGIN
-                SAG_PRO_USUARIO('PEMP', :empresa);
-                SAG_PRO_USUARIO('PUSU', :usuario);
-                SAG_PRO_USUARIO('PSIS', :sistema);
-            END;";
-
-            cmd.CommandText = sql;
-            cmd.Parameters.Add(new OracleParameter("empresa", _empresa ?? ""));
-            cmd.Parameters.Add(new OracleParameter("usuario", _usuario ?? ""));
-            cmd.Parameters.Add(new OracleParameter("sistema", _sistema ?? ""));
+            cmd.Parameters.Add(new OracleParameter("userConf", userConf));
+            cmd.Parameters.Add(new OracleParameter("confConf", confConf));
             cmd.ExecuteNonQuery();
 
-            _logger.LogDebug("Contexto SAG inicializado: Empresa={Empresa}, Usuario={Usuario}, Sistema={Sistema}",
-                _empresa, _usuario, _sistema);
+            _logger.LogInformation(
+                "Contexto SAG inicializado: USERCONF={UserConf}, CONFCONF={ConfConf} (Usuario={UsuarioId}, Empresa={EmpresaId}, Modulo={ModuloId})",
+                userConf, confConf, ctx.UsuarioId, ctx.EmpresaId, ctx.ModuloId);
         }
         catch (OracleException ex)
         {
-            // Log mas não falha - algumas views podem funcionar sem contexto
+            // Log mas não falha - algumas operações podem funcionar sem contexto
             _logger.LogWarning(ex, "Não foi possível inicializar contexto SAG: {Message}", ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Obtém o código da empresa no formato E?? (PCODEMPR) a partir do CodiEmpr.
+    /// Usa cache para evitar queries repetidas na mesma requisição.
+    /// </summary>
+    private string GetPcodEmpr(OracleConnection connection, int codiEmpr)
+    {
+        // Verifica cache primeiro
+        if (_pcodEmprCache.TryGetValue(codiEmpr, out var cached))
+        {
+            return cached;
+        }
+
+        try
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT PCODEMPR FROM POCAEMPR WHERE CODIEMPR = :codiEmpr";
+            cmd.Parameters.Add(new OracleParameter("codiEmpr", codiEmpr));
+
+            var result = cmd.ExecuteScalar() as string;
+
+            if (!string.IsNullOrEmpty(result))
+            {
+                _pcodEmprCache[codiEmpr] = result;
+                return result;
+            }
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogWarning(ex, "Erro ao buscar PCODEMPR para CodiEmpr={CodiEmpr}", codiEmpr);
+        }
+
+        // Fallback: usar E01 como padrão
+        _logger.LogWarning("PCODEMPR não encontrado para CodiEmpr={CodiEmpr}, usando fallback 'E01'", codiEmpr);
+        var fallback = "E01";
+        _pcodEmprCache[codiEmpr] = fallback;
+        return fallback;
     }
 
     public string NullFunction(string column, string defaultValue)

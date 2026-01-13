@@ -7,8 +7,8 @@ namespace SagPoc.Web.Services;
 
 /// <summary>
 /// Serviço de módulos e janelas do SAG.
-/// Consulta CLCaProd para módulos e POCaTabe/POCaMenu para janelas.
-/// Para POC usa hardcoded U99E01.
+/// Consulta POViAcPr (view de acesso) + CLCaProd para módulos filtrados por permissão.
+/// A view POViAcPr usa sys_context('SAG_USUARIO') para filtrar por usuário/empresa.
 /// </summary>
 public class ModuleService : IModuleService
 {
@@ -47,20 +47,22 @@ public class ModuleService : IModuleService
     /// <inheritdoc/>
     public async Task<List<ModuleDto>> GetModulesAsync()
     {
-        // Query para buscar módulos ativos
-        // Para POC, não usa Oracle Context - busca todos os módulos ativos
+        // Query para buscar módulos com acesso do usuário
+        // POViAcPr é uma view que filtra por sys_context('SAG_USUARIO')
+        // usando RETOPUSU() e RETOPEMP() internamente
         var sql = @"
             SELECT
-                CodiProd,
-                NomeProd,
-                SiglProd,
-                DescProd,
-                OrdeProd,
-                AtivProd
-            FROM CLCaProd
-            WHERE AtivProd = 1
-              AND CodiProd > 0
-            ORDER BY OrdeProd, CodiProd";
+                CLCaProd.CodiProd,
+                CLCaProd.NomeProd,
+                CLCaProd.SiglProd,
+                CLCaProd.DescProd,
+                CLCaProd.OrdeProd,
+                CLCaProd.AtivProd
+            FROM POViAcPr
+            INNER JOIN CLCaProd ON POViAcPr.CodiProd = CLCaProd.CodiProd
+            WHERE CLCaProd.AtivProd = 1
+              AND CLCaProd.CodiProd > 0
+            ORDER BY CLCaProd.CodiProd";
 
         try
         {
@@ -115,10 +117,10 @@ public class ModuleService : IModuleService
                     MenuId = menuId,
                     Caption = orderItem?.Caption ?? g.First().MenuGroup ?? "Outros",
                     Order = orderItem?.Order ?? 999,
-                    Windows = g.OrderBy(w => w.Order).ToList()
+                    Windows = g.OrderByDescending(w => w.Order).ToList()
                 };
             })
-            .OrderBy(g => g.Order)
+            .OrderByDescending(g => g.Order)
             .ThenBy(g => g.Caption)
             .ToList();
 
@@ -153,7 +155,7 @@ public class ModuleService : IModuleService
               AND t.CaptTabe <> '-'
               AND t.NomeTabe <> 'SUB'
               AND UPPER(m.MenuMenu) NOT IN ('MNUSIST', 'MNUUTIL')
-            ORDER BY m.OrdeMenu, t.OrdeTabe";
+            ORDER BY m.OrdeMenu DESC, t.OrdeTabe DESC";
 
         try
         {

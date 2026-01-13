@@ -59,9 +59,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Log do provider selecionado
-var dbProvider = app.Services.GetRequiredService<IDbProvider>();
-app.Logger.LogInformation("Banco de dados configurado: {Provider}", dbProvider.ProviderName);
+// Log do provider selecionado (usa scope para resolver serviços Scoped)
+using (var scope = app.Services.CreateScope())
+{
+    var dbProvider = scope.ServiceProvider.GetRequiredService<IDbProvider>();
+    app.Logger.LogInformation("Banco de dados configurado: {Provider}", dbProvider.ProviderName);
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
