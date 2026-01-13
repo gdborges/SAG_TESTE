@@ -1,3 +1,5 @@
+using SagPoc.Web.Services.Context;
+
 namespace SagPoc.Web.Models;
 
 /// <summary>
@@ -5,6 +7,11 @@ namespace SagPoc.Web.Models;
 /// </summary>
 public class FormRenderViewModel
 {
+    /// <summary>
+    /// Contexto de sessão SAG (usuário, empresa, módulo)
+    /// </summary>
+    public SagContext? SagContext { get; set; }
+
     /// <summary>
     /// Metadados do formulário (campos)
     /// </summary>

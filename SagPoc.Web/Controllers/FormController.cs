@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SagPoc.Web.Models;
 using SagPoc.Web.Services;
+using SagPoc.Web.Services.Context;
 
 namespace SagPoc.Web.Controllers;
 
@@ -14,6 +15,7 @@ public class FormController : Controller
     private readonly IConsultaService _consultaService;
     private readonly IEventService _eventService;
     private readonly IValidationService _validationService;
+    private readonly ISagContextAccessor _sagContext;
     private readonly ILogger<FormController> _logger;
 
     public FormController(
@@ -22,6 +24,7 @@ public class FormController : Controller
         IConsultaService consultaService,
         IEventService eventService,
         IValidationService validationService,
+        ISagContextAccessor sagContext,
         ILogger<FormController> logger)
     {
         _metadataService = metadataService;
@@ -29,6 +32,7 @@ public class FormController : Controller
         _consultaService = consultaService;
         _eventService = eventService;
         _validationService = validationService;
+        _sagContext = sagContext;
         _logger = logger;
     }
 
@@ -88,7 +92,8 @@ public class FormController : Controller
                 Table = tableMetadata,
                 Consultas = consultas,
                 FormEvents = formEvents,
-                FieldEvents = fieldEvents
+                FieldEvents = fieldEvents,
+                SagContext = _sagContext.Context
             };
 
             return View(viewModel);
@@ -141,8 +146,11 @@ public class FormController : Controller
                 Table = tableMetadata,
                 Consultas = consultas,
                 FormEvents = formEvents,
-                FieldEvents = fieldEvents
+                FieldEvents = fieldEvents,
+                SagContext = _sagContext.Context
             };
+
+            _logger.LogInformation("RenderEmbedded com contexto: {Context}", _sagContext.Context);
 
             // View sem layout master
             return View("RenderEmbedded", viewModel);
@@ -585,6 +593,41 @@ public class FormController : Controller
             _logger.LogError(ex, "Erro ao validar modificações da tabela {TableId}", request.TableId);
             return StatusCode(500, new { success = false, error = ex.Message });
         }
+    }
+
+    #endregion
+
+    #region Context API
+
+    /// <summary>
+    /// Retorna o contexto de sessão SAG atual.
+    /// GET /Form/GetContext
+    ///
+    /// O contexto pode ser passado via:
+    /// - Query parameters: ?usuarioId=1&amp;empresaId=2&amp;moduloId=3
+    /// - Headers HTTP: X-Sag-Usuario-Id, X-Sag-Empresa-Id, X-Sag-Modulo-Id
+    ///
+    /// Se não informado, usa valores default (usuarioId=1, empresaId=1, moduloId=1).
+    /// </summary>
+    [HttpGet]
+    public IActionResult GetContext()
+    {
+        var context = _sagContext.Context;
+        return Json(new
+        {
+            success = true,
+            context = new
+            {
+                usuarioId = context.UsuarioId,
+                usuarioNome = context.UsuarioNome,
+                empresaId = context.EmpresaId,
+                empresaNome = context.EmpresaNome,
+                moduloId = context.ModuloId,
+                moduloNome = context.ModuloNome,
+                isInitialized = context.IsInitialized,
+                createdAt = context.CreatedAt
+            }
+        });
     }
 
     #endregion

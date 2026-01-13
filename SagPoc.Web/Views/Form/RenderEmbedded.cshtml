@@ -350,6 +350,9 @@
         // Indica que estamos em modo embedded (para comunicação com Vue parent)
         window.SAG_EMBEDDED = true;
 
+        // Contexto de sessão SAG (usuário, empresa, módulo)
+        window.SAG_CONTEXT = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SagContext, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
         // Inicializa sistema de eventos PLSAG
         (function() {
             var formEvents = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FormEvents, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));

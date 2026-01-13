@@ -141,6 +141,82 @@ SagPoc.Web/
 - `GET /Form/Index/{tableId}` - Render form for table
 - `GET /Form/GetConsultas?tableId={id}` - Get consulta configurations
 - `POST /Form/Save` - Save header record
+- `GET /Form/GetContext` - Get current session context
+
+## Session Context (SagContext)
+
+The API supports session context for user, company, and module identification. This is essential for systems embedding the SAG POC Web (like Vision).
+
+### How to Pass Context
+
+Context can be passed via:
+
+1. **Query Parameters** (for iframe embedding):
+   ```
+   /Form/RenderEmbedded/120?usuarioId=1&empresaId=2&moduloId=3
+   ```
+
+2. **HTTP Headers** (for API calls):
+   ```
+   X-Sag-Usuario-Id: 1
+   X-Sag-Empresa-Id: 2
+   X-Sag-Modulo-Id: 3
+   X-Sag-Usuario-Nome: ADMIN
+   X-Sag-Empresa-Nome: Empresa XYZ
+   X-Sag-Modulo-Nome: Comercial
+   ```
+
+### Default Values
+
+If no context is provided, the API uses these defaults (aligned with `appsettings.json` - U99E01S83):
+
+| Parameter | Default Value | Delphi Code |
+|-----------|---------------|-------------|
+| `usuarioId` | 99 | U99 |
+| `usuarioNome` | SAGADM | - |
+| `empresaId` | 226 | E01 |
+| `empresaNome` | E01 | - |
+| `moduloId` | 83 | S83 |
+| `moduloNome` | Vendas - Distribuição | - |
+
+### Context in JavaScript (Embedded Mode)
+
+When using `RenderEmbedded`, the context is available via:
+```javascript
+window.SAG_CONTEXT = {
+    usuarioId: 99,
+    usuarioNome: "SAGADM",
+    empresaId: 226,
+    empresaNome: "E01",
+    moduloId: 83,
+    moduloNome: "Vendas - Distribuição",
+    isInitialized: true,
+    createdAt: "2024-..."
+};
+```
+
+### Context API Endpoint
+
+```
+GET /Form/GetContext
+```
+
+Returns the current session context (useful for debugging):
+```json
+{
+    "success": true,
+    "context": {
+        "usuarioId": 99,
+        "usuarioNome": "SAGADM",
+        "empresaId": 226,
+        "empresaNome": "E01",
+        "moduloId": 83,
+        "moduloNome": "Vendas - Distribuição",
+        "isInitialized": true,
+        "createdAt": "2024-01-13T..."
+    }
+}
+```
 
 ## Database Configuration
 

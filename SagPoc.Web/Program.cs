@@ -1,3 +1,4 @@
+using SagPoc.Web.Middleware;
 using SagPoc.Web.Services;
 using SagPoc.Web.Services.Database;
 
@@ -5,6 +6,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Register SagContext for session context (usuario, empresa, modulo)
+builder.Services.AddSagContext();
 
 // Register DbProvider (SQL Server ou Oracle baseado em appsettings.json)
 builder.Services.AddDbProvider(builder.Configuration);
@@ -72,6 +76,9 @@ app.UseRouting();
 
 // Enable CORS for Vision Web integration
 app.UseCors("VisionWeb");
+
+// Enable SagContext middleware (captures usuario, empresa, modulo from request)
+app.UseSagContext();
 
 app.UseAuthorization();
 
