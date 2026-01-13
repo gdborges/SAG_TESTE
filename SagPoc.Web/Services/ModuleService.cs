@@ -17,23 +17,86 @@ public class ModuleService : IModuleService
     private readonly IWebHostEnvironment _environment;
     private MenuOrderConfig? _menuOrderConfig;
 
-    // Mapeamento de siglas para ícones Lucide
+    // Mapeamento de siglas para ícones Lucide (https://lucide.dev/icons/)
     private static readonly Dictionary<string, string> IconMapping = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "GE", "Settings" },
-        { "CO", "ShoppingCart" },
-        { "FI", "DollarSign" },
-        { "ES", "Package" },
-        { "CR", "Users" },
-        { "CE", "Wheat" },
-        { "LA", "FlaskConical" },
-        { "FP", "UserCheck" },
-        { "1V", "TrendingUp" },
-        { "WV", "Globe" },
-        { "WP", "Headphones" },
-        { "AV", "Bird" },
-        { "PV", "Smartphone" },
-        { "IS", "Leaf" },
+        // Módulos principais
+        { "GE", "Settings" },           // Gerencial
+        { "CO", "ShoppingCart" },       // Compras
+        { "FI", "DollarSign" },         // Financeiro
+        { "ES", "Package" },            // Estoques
+        { "CR", "Users" },              // CRM
+        { "CE", "Wheat" },              // Cerealista
+        { "LA", "FlaskConical" },       // Laboratório
+        { "FP", "UserCheck" },          // Folha de Pagamento
+        { "IS", "Leaf" },               // ISS
+
+        // Avicultura
+        { "MP", "Egg" },                // Matrizes Pesadas
+        { "IN", "Thermometer" },        // Incubatório
+        { "FC", "Bird" },               // Frango de Corte
+        { "AB", "Factory" },            // Abatedouro Aves
+        { "AV", "Bird" },               // Avicultura
+        { "PO", "Egg" },                // Postura Comercial
+        { "GP", "Dna" },                // Genética Pesada e Incubatório
+
+        // Abatedouros
+        { "BO", "Beef" },               // Abatedouro Bovinos
+        { "AS", "Ham" },                // Abatedouro Suínos
+
+        // Produção e Indústria
+        { "RA", "Factory" },            // Fábrica de Ração
+        { "IT", "Factory" },            // Indústria
+        { "MN", "Wrench" },             // Manutenção Industrial
+        { "PE", "Tractor" },            // Pecuária
+        { "EX", "PackageCheck" },       // Expedição
+
+        // Transporte
+        { "FR", "Truck" },              // Frotas
+
+        // Fiscal e Contábil
+        { "NF", "FileText" },           // NFe/MDFe
+        { "EN", "Receipt" },            // ECF/NFCe
+        { "CT", "Calculator" },         // Contábil
+        { "FS", "FileSpreadsheet" },    // Fiscal
+        { "PA", "Building2" },          // Patrimonial
+
+        // Financeiro e Cobrança
+        { "CB", "CreditCard" },         // Cobrança
+
+        // RH
+        { "CA", "Clock" },              // Cartão Ponto
+
+        // Vendas
+        { "VD", "Store" },              // Vendas - Distribuição
+        { "RE", "ClipboardList" },      // Requisição/Pedido
+
+        // Planejamento (Plan)
+        { "1V", "TrendingUp" },         // Plan - Vendas
+        { "1M", "BarChart3" },          // Plan - Matrizes Pesadas
+        { "1I", "BarChart3" },          // Plan - Incubatório
+        { "1F", "BarChart3" },          // Plan - Frango de Corte
+        { "1A", "BarChart3" },          // Plan - Abatedouro
+
+        // SAGMob (Mobile)
+        { "PV", "Smartphone" },         // SAGMob - Vendas
+        { "PM", "Smartphone" },         // SAGMob - Matrizes Pesadas
+        { "PI", "Smartphone" },         // SAGMob - Incubatório
+        { "PB", "Smartphone" },         // SAGMob - Abatedouro
+        { "PG", "Smartphone" },         // SAGMob - Pecuária
+        { "PC", "Smartphone" },         // SAGMob - Frango de Corte
+        { "PP", "Smartphone" },         // SAGMob - Postura Comercial
+
+        // Web e Integração
+        { "SW", "Globe" },              // SAG Web
+        { "WV", "Globe" },              // Web Vision
+        { "WP", "Headphones" },         // Web Portal
+        { "SC", "ScanLine" },           // SAGColetor
+
+        // Outros
+        { "CW", "Briefcase" },          // Prática - CW
+        { "BE", "Lightbulb" },          // Projeto B.E.N.
+        { "SS", "Cloud" },              // Postura SaSS
     };
 
     public ModuleService(IDbProvider dbProvider, ILogger<ModuleService> logger, IWebHostEnvironment environment)
