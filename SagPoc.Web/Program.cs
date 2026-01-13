@@ -30,6 +30,9 @@ builder.Services.AddScoped<ISequenceService, SequenceService>();
 // Register ValidationService for protected field modification validation
 builder.Services.AddScoped<IValidationService, ValidationService>();
 
+// Register ModuleService for SAG modules and windows API
+builder.Services.AddScoped<IModuleService, ModuleService>();
+
 // Configure CORS for Vision Web integration
 builder.Services.AddCors(options =>
 {

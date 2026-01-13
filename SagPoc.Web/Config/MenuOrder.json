@@ -1,0 +1,26 @@
+{
+  "menuOrder": [
+    { "menuId": "MNUCADA", "caption": "Cadastro", "order": 1, "global": false },
+    { "menuId": "MNULOTE", "caption": "Lote", "order": 2, "global": false },
+    { "menuId": "MNUCOMPCOMP", "caption": "Compras", "order": 3, "global": false },
+    { "menuId": "MNUFINA", "caption": "Financeiro", "order": 4, "global": false },
+    { "menuId": "MNUNOTA", "caption": "Nota Fiscal", "order": 5, "global": false },
+    { "menuId": "MNUPREV", "caption": "Pré-Venda", "order": 6, "global": false },
+    { "menuId": "MNUVEND", "caption": "Venda Direta", "order": 7, "global": false },
+    { "menuId": "MNUABAT", "caption": "Abatedouro", "order": 8, "global": false },
+    { "menuId": "MNUABATESTO", "caption": "Abatedouro Estoque", "order": 9, "global": false },
+    { "menuId": "MNUABATEXPE", "caption": "Abatedouro Expedição", "order": 10, "global": false },
+    { "menuId": "MNUESTO", "caption": "Estoque", "order": 11, "global": false },
+    { "menuId": "MNUEXPE", "caption": "Expedição", "order": 12, "global": false },
+    { "menuId": "MNUSAG_COLE", "caption": "SAG Coletor", "order": 13, "global": false },
+    { "menuId": "MNUSTAN", "caption": "Standard", "order": 14, "global": false },
+    { "menuId": "MNUCONT", "caption": "Contabiliza", "order": 15, "global": false },
+    { "menuId": "MNUQUAL", "caption": "Qualidade", "order": 16, "global": false },
+    { "menuId": "MNUINCU", "caption": "Incubatório", "order": 17, "global": false },
+    { "menuId": "MNUPEDI", "caption": "Pedidos", "order": 18, "global": false },
+    { "menuId": "MNUPERS", "caption": "Personalizado", "order": 50, "global": false },
+    { "menuId": "MNUGERE", "caption": "Gerência", "order": 60, "global": false },
+    { "menuId": "MNUSIST", "caption": "Sistema", "order": 90, "global": true },
+    { "menuId": "MNUUTIL", "caption": "Utilitários", "order": 95, "global": true }
+  ]
+}
