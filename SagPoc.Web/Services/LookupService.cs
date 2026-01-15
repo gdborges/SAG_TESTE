@@ -147,15 +147,46 @@ public class LookupService : ILookupService
 
         try
         {
-            // Modifica a SQL para filtrar pelo código
-            // A primeira coluna é sempre o código (Key)
-            var filteredSql = WrapSqlWithCodeFilter(sql, code);
-
             using var connection = _dbProvider.CreateConnection();
             connection.Open();
 
-            var queryResults = await connection.QueryAsync(filteredSql);
-            var firstRow = queryResults.FirstOrDefault();
+            dynamic? firstRow = null;
+
+            // Tenta primeiro com subquery + WHERE (mais eficiente)
+            try
+            {
+                var filteredSql = WrapSqlWithCodeFilter(sql, code);
+                var queryResults = await connection.QueryAsync(filteredSql);
+                firstRow = queryResults.FirstOrDefault();
+            }
+            catch (Exception subEx)
+            {
+                // Se falhar (ex: ORA-00918 coluna ambígua), tenta método alternativo
+                _logger.LogDebug("LookupByCode: subquery falhou ({Error}), usando fallback", subEx.Message);
+
+                // Fallback: executa query completa e filtra em memória pela primeira coluna
+                var cleanSql = RemoveSqlPlaceholders(sql);
+                var allResults = await connection.QueryAsync(cleanSql);
+
+                foreach (var row in allResults)
+                {
+                    var rowDict = (IDictionary<string, object>)row;
+                    var rowValues = rowDict.Values.ToList();
+                    if (rowValues.Count > 0)
+                    {
+                        var firstColValue = rowValues[0]?.ToString() ?? string.Empty;
+                        // Compara o valor da primeira coluna com o código buscado
+                        if (firstColValue.Equals(code, StringComparison.OrdinalIgnoreCase) ||
+                            (decimal.TryParse(code, out var numCode) &&
+                             decimal.TryParse(firstColValue, out var numVal) &&
+                             numCode == numVal))
+                        {
+                            firstRow = row;
+                            break;
+                        }
+                    }
+                }
+            }
 
             if (firstRow == null)
             {
@@ -187,13 +218,102 @@ public class LookupService : ILookupService
                 record.Data[kvp.Key.ToUpper()] = kvp.Value?.ToString() ?? string.Empty;
             }
 
-            _logger.LogDebug("LookupByCode: código '{Code}' encontrado, descrição: '{Value}'", code, record.Value);
+            // Tenta buscar colunas extras da tabela base
+            // Isso é necessário porque a SQL_CAMP pode não incluir todas as colunas usadas em {QY-CAMPO-COLUNA}
+            await TryEnrichWithBaseTableColumns(connection, sql, code, record);
+
+            _logger.LogDebug("LookupByCode: código '{Code}' encontrado, descrição: '{Value}', {ColCount} colunas",
+                code, record.Value, record.Data.Count);
             return record;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Erro ao executar LookupByCode: {Code}", code);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Tenta enriquecer o record de lookup com colunas extras da tabela base.
+    /// Isso permite que templates {QY-CAMPO-COLUNA} acessem colunas que não estão na SQL_CAMP.
+    /// </summary>
+    private async Task TryEnrichWithBaseTableColumns(IDbConnection connection, string sql, string code, LookupRecord record)
+    {
+        try
+        {
+            // Extrai tabela base da SQL (após FROM, antes de WHERE/ORDER/JOIN)
+            var tableMatch = System.Text.RegularExpressions.Regex.Match(
+                sql,
+                @"FROM\s+(\w+)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (!tableMatch.Success)
+            {
+                return;
+            }
+
+            var tableName = tableMatch.Groups[1].Value;
+            var pkColumn = GetFirstColumnAlias(sql);
+            var isNumeric = decimal.TryParse(code, out var numericCode);
+
+            // Constrói query para buscar todas as colunas da tabela base
+            string enrichSql;
+            if (_dbProvider.ProviderName == "Oracle")
+            {
+                if (isNumeric)
+                {
+                    enrichSql = $"SELECT * FROM {tableName} WHERE {pkColumn} = {numericCode} AND ROWNUM = 1";
+                }
+                else
+                {
+                    var safeCode = code.Replace("'", "''");
+                    enrichSql = $"SELECT * FROM {tableName} WHERE UPPER({pkColumn}) = UPPER('{safeCode}') AND ROWNUM = 1";
+                }
+            }
+            else
+            {
+                // SQL Server
+                if (isNumeric)
+                {
+                    enrichSql = $"SELECT TOP 1 * FROM [{tableName}] WHERE [{pkColumn}] = {numericCode}";
+                }
+                else
+                {
+                    var safeCode = code.Replace("'", "''");
+                    enrichSql = $"SELECT TOP 1 * FROM [{tableName}] WHERE UPPER(CAST([{pkColumn}] AS VARCHAR(MAX))) = UPPER('{safeCode}')";
+                }
+            }
+
+            var enrichResult = await connection.QueryFirstOrDefaultAsync<dynamic>(enrichSql);
+            if (enrichResult == null)
+            {
+                return;
+            }
+
+            var enrichDict = (IDictionary<string, object>)enrichResult;
+
+            // Adiciona colunas que não estão no record original
+            int addedCount = 0;
+            foreach (var kvp in enrichDict)
+            {
+                var upperKey = kvp.Key.ToUpper();
+                if (!record.Data.ContainsKey(upperKey))
+                {
+                    record.Data[upperKey] = kvp.Value?.ToString() ?? string.Empty;
+                    addedCount++;
+                }
+            }
+
+            if (addedCount > 0)
+            {
+                _logger.LogDebug("LookupByCode: enriquecido com {Count} colunas extras da tabela {Table}",
+                    addedCount, tableName);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Falha silenciosa - enriquecimento é opcional
+            _logger.LogDebug("TryEnrichWithBaseTableColumns falhou: {Error}", ex.Message);
         }
     }
 
@@ -452,6 +572,145 @@ public class LookupService : ILookupService
 
         // Fallback: assume primeira coluna padrão
         return "CODICAMPO";
+    }
+
+    /// <inheritdoc/>
+    public async Task<object?> GetFirstLookupValueAsync(string? sqlCamp)
+    {
+        if (string.IsNullOrWhiteSpace(sqlCamp))
+            return null;
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            // Remove placeholders "= 0" que desabilitam a query no Delphi
+            var cleanSql = RemoveSqlPlaceholders(sqlCamp);
+
+            // Executa e pega primeiro registro
+            var result = await connection.QueryFirstOrDefaultAsync<dynamic>(cleanSql);
+            if (result == null)
+                return null;
+
+            // Pega o primeiro campo (como no Delphi: Fields[0].Value)
+            var dict = (IDictionary<string, object>)result;
+            var firstValue = dict.Values.FirstOrDefault();
+
+            _logger.LogDebug("GetFirstLookupValue: {Value} (SQL: {Sql})",
+                firstValue, cleanSql.Length > 80 ? cleanSql.Substring(0, 80) + "..." : cleanSql);
+
+            return firstValue;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao buscar primeiro valor de lookup SQL: {Sql}",
+                sqlCamp.Length > 100 ? sqlCamp.Substring(0, 100) + "..." : sqlCamp);
+            return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<object?> GetLookupColumnAsync(int codiCamp, string code, string columnName)
+    {
+        if (codiCamp == 0 || string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(columnName))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var connection = _dbProvider.CreateConnection();
+            connection.Open();
+
+            // 1. Buscar SQL_CAMP do campo
+            var sqlCamp = await connection.QueryFirstOrDefaultAsync<string>(
+                "SELECT SQL_CAMP FROM SISTCAMP WHERE CODICAMP = :codiCamp",
+                new { codiCamp });
+
+            if (string.IsNullOrWhiteSpace(sqlCamp))
+            {
+                _logger.LogWarning("GetLookupColumn: Campo {CodiCamp} não encontrado ou sem SQL_CAMP", codiCamp);
+                return null;
+            }
+
+            // 2. Extrair tabela base da SQL (após FROM, antes de WHERE/ORDER/JOIN)
+            var tableMatch = System.Text.RegularExpressions.Regex.Match(
+                sqlCamp,
+                @"FROM\s+(\w+)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (!tableMatch.Success)
+            {
+                _logger.LogWarning("GetLookupColumn: Não foi possível extrair tabela da SQL: {Sql}",
+                    sqlCamp.Substring(0, Math.Min(100, sqlCamp.Length)));
+                return null;
+            }
+
+            var tableName = tableMatch.Groups[1].Value;
+
+            // 3. Extrair nome da coluna PK (primeira coluna do SELECT)
+            var pkColumn = GetFirstColumnAlias(sqlCamp);
+
+            // 4. Sanitizar nome da coluna para prevenir SQL injection
+            // Nome de coluna deve conter apenas letras, números e underscore
+            if (!System.Text.RegularExpressions.Regex.IsMatch(columnName, @"^\w+$"))
+            {
+                _logger.LogWarning("GetLookupColumn: Nome de coluna inválido: {Column}", columnName);
+                return null;
+            }
+
+            // 5. Construir e executar query
+            var isNumeric = decimal.TryParse(code, out var numericCode);
+            string sql;
+
+            if (_dbProvider.ProviderName == "Oracle")
+            {
+                if (isNumeric)
+                {
+                    sql = $"SELECT {columnName.ToUpper()} FROM {tableName} WHERE {pkColumn} = {numericCode} AND ROWNUM = 1";
+                }
+                else
+                {
+                    var safeCode = code.Replace("'", "''");
+                    sql = $"SELECT {columnName.ToUpper()} FROM {tableName} WHERE UPPER({pkColumn}) = UPPER('{safeCode}') AND ROWNUM = 1";
+                }
+            }
+            else
+            {
+                // SQL Server
+                if (isNumeric)
+                {
+                    sql = $"SELECT TOP 1 [{columnName}] FROM [{tableName}] WHERE [{pkColumn}] = {numericCode}";
+                }
+                else
+                {
+                    var safeCode = code.Replace("'", "''");
+                    sql = $"SELECT TOP 1 [{columnName}] FROM [{tableName}] WHERE UPPER(CAST([{pkColumn}] AS VARCHAR(MAX))) = UPPER('{safeCode}')";
+                }
+            }
+
+            _logger.LogDebug("GetLookupColumn: Executando {Sql}", sql);
+
+            var result = await connection.QueryFirstOrDefaultAsync<dynamic>(sql);
+            if (result == null)
+            {
+                _logger.LogDebug("GetLookupColumn: Coluna {Column} não encontrada para código {Code}", columnName, code);
+                return null;
+            }
+
+            var dict = (IDictionary<string, object>)result;
+            var value = dict.Values.FirstOrDefault();
+
+            _logger.LogDebug("GetLookupColumn: {Column}={Value} para {Code}", columnName, value, code);
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao buscar coluna {Column} de lookup {CodiCamp} código {Code}",
+                columnName, codiCamp, code);
+            return null;
+        }
     }
 }
 

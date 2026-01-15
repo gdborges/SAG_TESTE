@@ -305,8 +305,30 @@ public class EventService : IEventService
                     result.ShowPaiFilhInstructions = instructions;
             }
 
-            _logger.LogInformation("Eventos do movimento {MovementCodiTabe} (pai {ParentCodiTabe}) carregados. HasEvents: {HasEvents}",
-                movementCodiTabe, parentCodiTabe, result.HasEvents);
+            // Carrega DEPOSHOW da tabela de movimento (não do pai)
+            // O DEPOSHOW contém comandos QY para injeção dinâmica de filtros em lookups
+            var depoShowSql = $@"
+                SELECT
+                    {_dbProvider.NullFunction("EXPRCAMP", "''")} as ExprCamp,
+                    {_dbProvider.NullFunction("EPERCAMP", "''")} as EPerCamp
+                FROM SISTCAMP
+                WHERE CODITABE = {_dbProvider.FormatParameter("MovementCodiTabe")}
+                  AND UPPER(NOMECAMP) = 'DEPOSHOW'";
+
+            var depoShowParams = new DynamicParameters();
+            depoShowParams.Add("MovementCodiTabe", movementCodiTabe);
+
+            var depoShowResult = await connection.QueryFirstOrDefaultAsync<dynamic>(depoShowSql, depoShowParams);
+            if (depoShowResult != null)
+            {
+                var dsDict = (IDictionary<string, object>)depoShowResult;
+                var dsExprCamp = (string)(dsDict.ContainsKey("ExprCamp") ? dsDict["ExprCamp"] : dsDict["EXPRCAMP"]) ?? "";
+                var dsEPerCamp = (string)(dsDict.ContainsKey("EPerCamp") ? dsDict["EPerCamp"] : dsDict["EPERCAMP"]) ?? "";
+                result.DepoShowInstructions = MergeInstructions(dsExprCamp, dsEPerCamp);
+            }
+
+            _logger.LogInformation("Eventos do movimento {MovementCodiTabe} (pai {ParentCodiTabe}) carregados. HasEvents: {HasEvents}, HasDepoShow: {HasDepoShow}",
+                movementCodiTabe, parentCodiTabe, result.HasEvents, !string.IsNullOrWhiteSpace(result.DepoShowInstructions));
 
             return result;
         }

@@ -1117,9 +1117,8 @@ const PlsagCommands = (function() {
             case 'ME': // Error (para execucao) - pode ter query SQL
                 return await executeMeCommand(identifier, parameter, context);
 
-            case 'MI': // Info
-                await showModal('info', message);
-                return null;
+            case 'MI': // Info - pode ter query SQL de validacao (mostra mas NAO bloqueia)
+                return await executeMiCommand(identifier, parameter, context);
 
             case 'MP': // Prompt
                 const input = await showModal('prompt', message);
@@ -1300,6 +1299,136 @@ const PlsagCommands = (function() {
     }
 
     /**
+     * Executa comando MI (Message Info) com suporte a validacao SQL.
+     * Similar a ME/MB, mas NAO bloqueia a execucao - apenas exibe mensagem informativa.
+     * Formato: MI-CAMPO---SELECT...AS VALO|||Mensagem informativa
+     *
+     * Se query retornar 0, mostra mensagem info e CONTINUA execucao.
+     * Se query retornar 1 (ou qualquer outro valor), continua sem mostrar mensagem.
+     *
+     * @returns {string|null} Sempre retorna null ou 'CONTINUE' (nunca bloqueia)
+     */
+    async function executeMiCommand(identifier, parameter, context) {
+        // Garante que parameter é string (pode vir como número após avaliação IF)
+        const paramStr = parameter != null ? String(parameter) : '';
+
+        // MI com resultado condicional (0 = mostrar info, 1 = ok)
+        if (paramStr === '1' || paramStr === 'true') {
+            console.log(`[PLSAG] MI: Validação condicional OK (${paramStr}), continuando`);
+            return null;
+        }
+
+        // Detecta formato: CODIGO-SELECT... onde CODIGO é numérico (código de mensagem)
+        // Exemplo: 12345678-SELECT CASE WHEN... AS VALO FROM DUAL
+        const codeSelectMatch = paramStr.match(/^(\d+)-SELECT\s/i);
+        if (codeSelectMatch) {
+            const messageCode = codeSelectMatch[1];
+            const query = paramStr.substring(messageCode.length + 1).trim(); // Remove "CODIGO-"
+
+            console.log(`[PLSAG] MI: Detectado formato CODIGO-SELECT: code=${messageCode}, query=${query.substring(0, 50)}...`);
+
+            try {
+                let sql = convertOracleToSqlServer(query);
+                console.log(`[PLSAG] MI: Executando validacao SQL: ${sql}`);
+
+                const response = await fetch('/api/plsag/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sql: sql, singleRow: true })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        const value = result.data.VALO ?? result.data.valo ??
+                                      result.data[Object.keys(result.data)[0]];
+
+                        console.log(`[PLSAG] MI: Resultado validacao = ${value}`);
+
+                        // Se valor = 0, mostra mensagem com código (não bloqueia)
+                        if (value === 0 || value === '0' || value === false) {
+                            // Tenta buscar mensagem pelo código, ou usa código como fallback
+                            const infoMessage = `Aviso: Código ${messageCode}`;
+                            await showModal('info', infoMessage);
+                        }
+                    }
+                }
+                return null;
+            } catch (error) {
+                console.warn(`[PLSAG] MI: Erro executando validacao:`, error);
+                return null;
+            }
+        }
+
+        // Verifica se tem query SQL com mensagem separada por |||
+        if (paramStr && paramStr.includes('|||')) {
+            const parts = paramStr.split('|||');
+            const query = parts[0].trim();
+            const infoMessage = parts[1].trim();
+
+            // Verifica se e uma query SELECT
+            if (query.toUpperCase().startsWith('SELECT')) {
+                try {
+                    // Converte sintaxe Oracle para SQL Server
+                    let sql = convertOracleToSqlServer(query);
+
+                    console.log(`[PLSAG] MI: Executando validacao: ${sql}`);
+
+                    const response = await fetch('/api/plsag/query', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sql: sql, singleRow: true })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            // Pega o valor VALO ou o primeiro campo
+                            const value = result.data.VALO ?? result.data.valo ??
+                                          result.data[Object.keys(result.data)[0]];
+
+                            console.log(`[PLSAG] MI: Resultado validacao = ${value}`);
+
+                            // Se valor = 0 (ou falsy diferente de string), mostra info (mas continua)
+                            if (value === 0 || value === '0' || value === false) {
+                                await showModal('info', infoMessage);
+                                // MI NAO bloqueia - apenas informa
+                                return null;
+                            } else {
+                                // Validacao passou, continua sem mostrar mensagem
+                                console.log(`[PLSAG] MI: Validacao OK, continuando sem mensagem`);
+                                return null;
+                            }
+                        }
+                    }
+
+                    // Se query falhou, continua sem mostrar
+                    console.warn(`[PLSAG] MI: Query falhou (erro de SQL), continuando sem validacao`);
+                    return null;
+
+                } catch (error) {
+                    console.warn(`[PLSAG] MI: Erro executando validacao, continuando:`, error);
+                    return null;
+                }
+            }
+        }
+
+        // MI com resultado condicional 0 = mostrar info
+        if (paramStr === '0' || paramStr === 'false') {
+            console.log(`[PLSAG] MI: Validação condicional = 0, mostrando info`);
+            // Nao tem mensagem especifica, nao mostra nada
+            return null;
+        }
+
+        // Fallback: MI simples sem query, mostra mensagem info diretamente
+        const message = paramStr || identifier;
+        if (message) {
+            await showModal('info', message);
+        }
+        return null;
+    }
+
+    /**
      * Exibe modal de mensagem
      * @param {string} type - Tipo: alert, confirm, error, info, prompt
      * @param {string} message - Mensagem a exibir
@@ -1462,20 +1591,33 @@ const PlsagCommands = (function() {
         // ===============================================================
         // LOOKUP DINAMICO: QY-CAMPO-CONDIÇÃO
         // Detecta quando o comando QY é para injeção dinâmica em lookup
-        // Condição começa com AND, OR, EXISTS, IN ou é ABRE
+        // Condição contém AND, OR, EXISTS, IN ou é ABRE
         // Exemplo: QY-CODIPROD-AND EXISTS(SELECT 1 FROM VDCAMVTP WHERE...)
+        // Nota: O comando pode ter placeholders vazios no início como {VA-VALO001}
+        // que são resolvidos para string vazia, então verificamos se CONTÉM as keywords
         // ===============================================================
+
+        // Remove placeholders não resolvidos vazios como "{VA-VALO001} {VA-VALO002} "
+        // e limpa espaços extras
+        const cleanedCommand = command
+            .replace(/\{VA-\w+\}\s*/gi, '')  // Remove {VA-XXX}
+            .replace(/\s+/g, ' ')             // Normaliza espaços
+            .trim();
+
         const isDynamicLookupCondition = (
-            command.startsWith('AND ') ||
-            command.startsWith('OR ') ||
-            command.startsWith('EXISTS') ||
-            command.startsWith('IN(') ||
-            command.startsWith('IN (') ||
+            cleanedCommand.startsWith('AND ') ||
+            cleanedCommand.startsWith('OR ') ||
+            cleanedCommand.startsWith('EXISTS') ||
+            cleanedCommand.startsWith('IN(') ||
+            cleanedCommand.startsWith('IN (') ||
+            // Também detecta se contém EXISTS em qualquer posição (com AND/OR antes)
+            /\b(AND|OR)\s+EXISTS\s*\(/i.test(command) ||
             command === 'ABRE'
         );
 
         if (prefix === 'QY' && isDynamicLookupCondition) {
-            await executeDynamicLookupCommand(queryName, parameter, context);
+            // Passa a condição limpa para o executor
+            await executeDynamicLookupCommand(queryName, cleanedCommand || parameter, context);
             return;
         }
 
@@ -1820,9 +1962,11 @@ const PlsagCommands = (function() {
     async function executeDynamicLookupCommand(fieldName, condition, context) {
         console.log(`[PLSAG] QY-${fieldName}: Lookup dinâmico, condição: ${condition?.substring(0, 50)}...`);
 
-        // Verifica se LookupManager está disponível
-        if (typeof window.LookupManager === 'undefined') {
-            console.error('[PLSAG] LookupManager não carregado. Inclua lookup-manager.js antes de plsag-commands.js');
+        // Verifica se LookupManager está disponível com métodos necessários
+        if (typeof window.LookupManager === 'undefined' ||
+            typeof window.LookupManager.setPendingCondition !== 'function' ||
+            typeof window.LookupManager.reloadLookup !== 'function') {
+            console.error('[PLSAG] LookupManager não carregado ou incompleto. Inclua lookup-manager.js antes de plsag-commands.js');
             return;
         }
 
@@ -1832,6 +1976,12 @@ const PlsagCommands = (function() {
             console.warn(`[PLSAG] QY-${fieldName}: Campo não encontrado no DOM`);
             return;
         }
+
+        // Detecta o tipo do campo: L/IL (modal) vs T/IT (dropdown)
+        // Tipo L: input.lookup-code-input ou data-sag-comptype=L/IL
+        const compType = (element.dataset.sagComptype || '').toUpperCase();
+        const isModalLookup = compType === 'L' || compType === 'IL' ||
+                              element.classList.contains('lookup-code-input');
 
         // Obtém CodiCamp e CodiTabe do elemento ou contexto
         let codiCamp = parseInt(element.dataset.codiCamp) || 0;
@@ -1850,7 +2000,7 @@ const PlsagCommands = (function() {
         if (!codiCamp || !codiTabe) {
             console.warn(`[PLSAG] QY-${fieldName}: CodiCamp=${codiCamp} ou CodiTabe=${codiTabe} não definidos`);
             // Tenta recarregar mesmo assim se o elemento tem data-sql-lines
-            if (!element.dataset.sqlLines) {
+            if (!element.dataset.sqlLines && !isModalLookup) {
                 return;
             }
         }
@@ -1862,7 +2012,26 @@ const PlsagCommands = (function() {
         // Monta parâmetros para substituição de placeholders
         const parameters = buildLookupParameters(context);
 
-        // Executa recarga via LookupManager
+        // Para campos tipo L/IL (modal lookup), armazena a condição pendente
+        // A condição será aplicada quando o usuário clicar no botão de pesquisa
+        if (isModalLookup) {
+            window.LookupManager.setPendingCondition(fieldName, condition, parameters);
+            console.log(`[PLSAG] QY-${fieldName}: Condição armazenada para lookup modal (tipo ${compType || 'L'})`);
+
+            // Emite evento customizado
+            document.dispatchEvent(new CustomEvent('sag:lookup-condition-set', {
+                detail: {
+                    fieldName,
+                    condition,
+                    codiCamp,
+                    codiTabe,
+                    isModal: true
+                }
+            }));
+            return;
+        }
+
+        // Para campos tipo T/IT (dropdown), executa recarga imediata
         try {
             const success = await window.LookupManager.reloadLookup(fieldName, condition, parameters);
 
@@ -2026,19 +2195,57 @@ const PlsagCommands = (function() {
             value = parameter;
         }
 
-        // Atualiza no contexto
-        context.formData[fieldName] = value;
+        // Atualiza no contexto apropriado baseado no prefix
+        // DG/DD -> formData (header)
+        // DM -> movementData (movimento nivel 1)
+        // D2 -> subMovementData (movimento nivel 2)
+        // D3 -> formData (legado, trata como header)
+        if (effectivePrefix === 'DM') {
+            // Inicializa movementData se não existir
+            if (!context.movementData) {
+                context.movementData = {};
+            }
+            context.movementData[fieldName] = value;
+            console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (contexto movementData)`);
+        } else if (effectivePrefix === 'D2') {
+            // Inicializa subMovementData se não existir
+            if (!context.subMovementData) {
+                context.subMovementData = {};
+            }
+            context.subMovementData[fieldName] = value;
+            console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (contexto subMovementData)`);
+        } else {
+            // DG, DD, D3 -> formData
+            context.formData[fieldName] = value;
+        }
 
-        // Atualiza o campo no DOM (ou cria hidden field se não existe)
-        let element = findField(fieldName);
+        // Atualiza o campo no DOM
+        // Para DM, busca no modal de movimento primeiro
+        let element = null;
+        if (effectivePrefix === 'DM') {
+            // Busca no modal de movimento
+            element = document.querySelector(`#movementFormContent [data-sag-nomecamp="${fieldName}"]`) ||
+                     document.querySelector(`#movementFormContent [data-sag-nomecamp="${fieldName.toUpperCase()}"]`) ||
+                     document.querySelector(`#movementFormContent [name="${fieldName}"]`) ||
+                     document.querySelector(`#movementFormContent [name="${fieldName.toUpperCase()}"]`);
+        }
+
+        // Fallback para busca geral
         if (!element) {
+            element = findField(fieldName);
+        }
+
+        if (!element && effectivePrefix !== 'DM' && effectivePrefix !== 'D2') {
             // Campo não existe no DOM - cria hidden field para enviar no POST
+            // Apenas para header (DG/DD/D3), não cria hidden para movimentos
             element = getOrCreateHiddenField(fieldName);
         }
 
         if (element && value !== undefined && value !== null) {
             element.value = value;
             console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (campo atualizado no DOM)`);
+        } else if (effectivePrefix === 'DM' || effectivePrefix === 'D2') {
+            console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (apenas contexto ${effectivePrefix === 'DM' ? 'movement' : 'subMovement'})`);
         } else {
             console.log(`[PLSAG] ${logPrefix}: ${fieldName} = ${value} (apenas contexto)`);
         }

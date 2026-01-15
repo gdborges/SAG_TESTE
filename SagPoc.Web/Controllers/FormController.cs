@@ -408,7 +408,15 @@ public class FormController : Controller
             if (string.IsNullOrWhiteSpace(request.Sql))
                 return BadRequest(new { error = "SQL não informado" });
 
-            var result = await _lookupService.ExecuteLookupQueryFullAsync(request.Sql);
+            // Aplica condição dinâmica QY se presente
+            var sql = request.Sql;
+            if (!string.IsNullOrWhiteSpace(request.DynamicCondition))
+            {
+                sql = InjectDynamicCondition(sql, request.DynamicCondition);
+                _logger.LogInformation("SQL com condição dinâmica: {Sql}", sql.Substring(0, Math.Min(200, sql.Length)));
+            }
+
+            var result = await _lookupService.ExecuteLookupQueryFullAsync(sql);
 
             // Aplica filtro se informado
             if (!string.IsNullOrWhiteSpace(request.Filter))
@@ -687,6 +695,61 @@ public class FormController : Controller
         {
             _logger.LogError(ex, "Erro ao renderizar formulário de movimento {TableId}", tableId);
             return Content($"<div class=\"alert alert-danger\">Erro ao carregar formulário: {ex.Message}</div>");
+        }
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Injeta condição dinâmica no SQL de lookup (comportamento QY do Delphi).
+    ///
+    /// Estratégia:
+    /// 1. Remove condição "= 0" que desabilita a query (ex: AND CODIPROD = 0)
+    /// 2. Injeta a nova condição antes do ORDER BY (se existir) ou no final
+    ///
+    /// Exemplo de transformação:
+    /// SQL Original: SELECT CODIPROD, NOMEPROD FROM POCAPROD WHERE ATIVPROD = 1 AND CODIPROD = 0 ORDER BY NOMEPROD
+    /// Condição QY: AND EXISTS(SELECT 1 FROM VDCAMVTP WHERE CODITBPR = 1682 AND CODIPROD = POCAPROD.CODIPROD)
+    /// SQL Final: SELECT CODIPROD, NOMEPROD FROM POCAPROD WHERE ATIVPROD = 1 AND EXISTS(...) ORDER BY NOMEPROD
+    /// </summary>
+    private string InjectDynamicCondition(string sql, string condition)
+    {
+        if (string.IsNullOrWhiteSpace(condition))
+            return sql;
+
+        // Remove condições de desabilitação "= 0" no padrão Delphi
+        // Ex: AND CAMPO = 0, AND TABELA.CAMPO = 0, AND CAMPO=0
+        var cleanedSql = System.Text.RegularExpressions.Regex.Replace(
+            sql,
+            @"\s+AND\s+\w+(\.\w+)?\s*=\s*0\b",
+            "",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        // Encontra a posição do ORDER BY (se existir)
+        var orderByIndex = cleanedSql.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+
+        // Limpa a condição (remove espaços extras no início)
+        var cleanCondition = condition.Trim();
+
+        // Se a condição não começa com AND ou OR, adiciona AND
+        if (!cleanCondition.StartsWith("AND ", StringComparison.OrdinalIgnoreCase) &&
+            !cleanCondition.StartsWith("OR ", StringComparison.OrdinalIgnoreCase))
+        {
+            cleanCondition = "AND " + cleanCondition;
+        }
+
+        // Injeta a condição
+        if (orderByIndex > 0)
+        {
+            // Injeta antes do ORDER BY
+            return cleanedSql.Insert(orderByIndex, cleanCondition + " ");
+        }
+        else
+        {
+            // Injeta no final
+            return cleanedSql + " " + cleanCondition;
         }
     }
 

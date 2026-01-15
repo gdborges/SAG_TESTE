@@ -550,7 +550,11 @@
                 console.log('[Saga] Carregando dados do registro:', record);
 
                 for (const [key, value] of Object.entries(record)) {
-                    const input = form.querySelector(`[name="${key}"], [name="${key.toUpperCase()}"], [name="${key.toLowerCase()}"]`);
+                    // Busca case-insensitive usando data-sag-nomecamp (sempre UPPERCASE)
+                    const keyUpper = key.toUpperCase();
+                    const input = form.querySelector(
+                        `[data-sag-nomecamp="${keyUpper}"], [name="${key}"], [name="${keyUpper}"], [name="${key.toLowerCase()}"]`
+                    );
                     if (input) {
                         if (input.type === 'checkbox') {
                             input.checked = value === 1 || value === true || value === 'S';

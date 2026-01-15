@@ -14,6 +14,10 @@ const LookupManager = {
     // Cache de elementos lookup para acesso rápido
     _cache: new Map(),
 
+    // Cache de condições pendentes para lookups modais (tipo L/IL)
+    // Chave: fieldName.toUpperCase(), Valor: { condition, parameters }
+    _pendingConditions: new Map(),
+
     /**
      * Inicializa um lookup com SqlLines para suporte a injeção dinâmica.
      * Chamado durante renderização do formulário.
@@ -241,11 +245,83 @@ const LookupManager = {
      */
     clearCache() {
         this._cache.clear();
+    },
+
+    /**
+     * Armazena condição pendente para lookup modal (tipo L/IL).
+     * Chamado pelo comando QY quando o campo é tipo L (modal).
+     * A condição será aplicada quando openLookup for chamado.
+     *
+     * @param {string} fieldName - Nome do campo (ex: "CODIPROD")
+     * @param {string} condition - Condição SQL (ex: "AND EXISTS(...)")
+     * @param {Object} parameters - Parâmetros para substituição
+     */
+    setPendingCondition(fieldName, condition, parameters = {}) {
+        const key = fieldName.toUpperCase();
+        this._pendingConditions.set(key, { condition, parameters });
+        console.log(`[LookupManager] Condição pendente armazenada para ${fieldName}:`,
+            condition?.substring(0, 80) + (condition?.length > 80 ? '...' : ''));
+    },
+
+    /**
+     * Obtém e remove condição pendente para um lookup modal.
+     * Chamado por openLookup ao abrir o modal.
+     *
+     * @param {string} fieldName - Nome do campo
+     * @returns {Object|null} - { condition, parameters } ou null se não houver
+     */
+    getPendingCondition(fieldName) {
+        const key = fieldName.toUpperCase();
+        const pending = this._pendingConditions.get(key);
+        if (pending) {
+            this._pendingConditions.delete(key);
+            console.log(`[LookupManager] Condição pendente recuperada para ${fieldName}`);
+        }
+        return pending || null;
+    },
+
+    /**
+     * Verifica se há condição pendente para um campo.
+     *
+     * @param {string} fieldName - Nome do campo
+     * @returns {boolean}
+     */
+    hasPendingCondition(fieldName) {
+        return this._pendingConditions.has(fieldName.toUpperCase());
+    },
+
+    /**
+     * Limpa todas as condições pendentes.
+     * Útil ao fechar modal de movimento.
+     */
+    clearPendingConditions() {
+        this._pendingConditions.clear();
+        console.log('[LookupManager] Condições pendentes limpas');
     }
 };
 
 // Exporta globalmente
 window.LookupManager = LookupManager;
+
+// Validação de integridade - garante que todos os métodos foram definidos
+(function validateLookupManager() {
+    const requiredMethods = [
+        'initializeLookup',
+        'reloadLookup',
+        'getLookupState',
+        'isLoaded',
+        'clearCache',
+        'setPendingCondition',
+        'getPendingCondition',
+        'hasPendingCondition',
+        'clearPendingConditions'
+    ];
+
+    const missing = requiredMethods.filter(m => typeof window.LookupManager[m] !== 'function');
+    if (missing.length > 0) {
+        console.error('[LookupManager] ERRO: Métodos não definidos:', missing.join(', '));
+    }
+})();
 
 // Log de inicialização
 console.log('[LookupManager] Módulo carregado');

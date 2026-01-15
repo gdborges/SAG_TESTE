@@ -17,8 +17,8 @@ public class ModuleService : IModuleService
     private readonly IWebHostEnvironment _environment;
     private MenuOrderConfig? _menuOrderConfig;
 
-    // Mapeamento de siglas para ícones Lucide (https://lucide.dev/icons/)
-    private static readonly Dictionary<string, string> IconMapping = new(StringComparer.OrdinalIgnoreCase)
+    // Mapeamento de siglas de módulos para ícones Lucide (https://lucide.dev/icons/)
+    private static readonly Dictionary<string, string> ModuleIconMapping = new(StringComparer.OrdinalIgnoreCase)
     {
         // Módulos principais
         { "GE", "Settings" },           // Gerencial
@@ -97,6 +97,182 @@ public class ModuleService : IModuleService
         { "CW", "Briefcase" },          // Prática - CW
         { "BE", "Lightbulb" },          // Projeto B.E.N.
         { "SS", "Cloud" },              // Postura SaSS
+    };
+
+    // Mapeamento de MenuId para ícones Lucide (fallback para janelas)
+    private static readonly Dictionary<string, string> MenuIconMapping = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "MNUCADA", "FolderOpen" },       // Cadastro
+        { "MNULOTE", "Layers" },           // Lote
+        { "MNUCOMPCOMP", "ShoppingCart" }, // Compras
+        { "MNUFINA", "DollarSign" },       // Financeiro
+        { "MNUNOTA", "FileText" },         // Nota Fiscal
+        { "MNUPREV", "ClipboardList" },    // Pré-Venda
+        { "MNUVEND", "Store" },            // Venda Direta
+        { "MNUABAT", "Factory" },          // Abatedouro
+        { "MNUABATESTO", "Package" },      // Abatedouro Estoque
+        { "MNUABATEXPE", "Truck" },        // Abatedouro Expedição
+        { "MNUESTO", "Package" },          // Estoque
+        { "MNUEXPE", "PackageCheck" },     // Expedição
+        { "MNUSAG_COLE", "ScanLine" },     // SAG Coletor
+        { "MNUSTAN", "LayoutGrid" },       // Standard
+        { "MNUCONT", "Calculator" },       // Contabiliza
+        { "MNUQUAL", "CheckCircle" },      // Qualidade
+        { "MNUINCU", "Thermometer" },      // Incubatório
+        { "MNUPEDI", "ClipboardList" },    // Pedidos
+        { "MNUPERS", "Sparkles" },         // Personalizado
+        { "MNUGERE", "BarChart3" },        // Gerência
+        { "MNUSIST", "Settings" },         // Sistema
+        { "MNUUTIL", "Wrench" },           // Utilitários
+        { "MNUARQU", "FileArchive" },      // Arquivos
+        { "MNURELA", "FileSpreadsheet" },  // Relatórios
+        { "MNUCONS", "Search" },           // Consultas
+        { "MNUPROC", "Play" },             // Processos
+        { "MNUPROD", "Factory" },          // Produção
+        { "MNUMATR", "Egg" },              // Matrizes
+        { "MNUFRAN", "Bird" },             // Frango
+    };
+
+    // Mapeamento de palavras-chave no nome da janela para ícones (prioridade sobre menu)
+    private static readonly (string Keyword, string Icon)[] WindowKeywordIcons = new[]
+    {
+        // Cadastros específicos
+        ("Cliente", "User"),
+        ("Fornecedor", "Building"),
+        ("Produto", "Package"),
+        ("Funcionário", "UserCog"),
+        ("Funcionario", "UserCog"),
+        ("Usuário", "User"),
+        ("Usuario", "User"),
+        ("Empresa", "Building2"),
+        ("Filial", "Building2"),
+        ("Vendedor", "BadgeDollarSign"),
+        ("Transportador", "Truck"),
+        ("Motorista", "Car"),
+        ("Veículo", "Car"),
+        ("Veiculo", "Car"),
+
+        // Financeiro
+        ("Conta", "Wallet"),
+        ("Banco", "Landmark"),
+        ("Pagamento", "CreditCard"),
+        ("Recebimento", "HandCoins"),
+        ("Cobrança", "Receipt"),
+        ("Cobranca", "Receipt"),
+        ("Boleto", "FileText"),
+        ("Título", "FileText"),
+        ("Titulo", "FileText"),
+        ("Caixa", "DollarSign"),
+        ("Cheque", "CreditCard"),
+
+        // Documentos
+        ("Nota", "FileText"),
+        ("NF-e", "FileText"),
+        ("NFe", "FileText"),
+        ("NFC-e", "Receipt"),
+        ("NFCe", "Receipt"),
+        ("CT-e", "Truck"),
+        ("CTe", "Truck"),
+        ("MDF-e", "Truck"),
+        ("MDFe", "Truck"),
+        ("Fatura", "FileText"),
+        ("Romaneio", "ClipboardList"),
+        ("Pedido", "ClipboardList"),
+        ("Requisição", "ClipboardList"),
+        ("Requisicao", "ClipboardList"),
+        ("Ordem", "ClipboardList"),
+        ("Cotação", "FileSearch"),
+        ("Cotacao", "FileSearch"),
+
+        // Estoque
+        ("Estoque", "Package"),
+        ("Entrada", "PackagePlus"),
+        ("Saída", "PackageMinus"),
+        ("Saida", "PackageMinus"),
+        ("Transferência", "ArrowLeftRight"),
+        ("Transferencia", "ArrowLeftRight"),
+        ("Inventário", "ClipboardCheck"),
+        ("Inventario", "ClipboardCheck"),
+        ("Saldo", "Scale"),
+        ("Lote", "Layers"),
+
+        // Relatórios e Consultas
+        ("Relatório", "FileSpreadsheet"),
+        ("Relatorio", "FileSpreadsheet"),
+        ("Consulta", "Search"),
+        ("Dashboard", "LayoutDashboard"),
+        ("Gráfico", "BarChart3"),
+        ("Grafico", "BarChart3"),
+        ("Análise", "PieChart"),
+        ("Analise", "PieChart"),
+
+        // Produção
+        ("Produção", "Factory"),
+        ("Producao", "Factory"),
+        ("Fabricação", "Factory"),
+        ("Fabricacao", "Factory"),
+        ("Receita", "Book"),
+        ("Fórmula", "FlaskConical"),
+        ("Formula", "FlaskConical"),
+
+        // Avicultura
+        ("Ave", "Bird"),
+        ("Ovo", "Egg"),
+        ("Incubação", "Thermometer"),
+        ("Incubacao", "Thermometer"),
+        ("Matriz", "Egg"),
+        ("Pintinho", "Bird"),
+        ("Frango", "Bird"),
+        ("Abate", "Factory"),
+
+        // Agro
+        ("Fazenda", "Tractor"),
+        ("Granja", "Warehouse"),
+        ("Silo", "Warehouse"),
+        ("Balança", "Scale"),
+        ("Balanca", "Scale"),
+        ("Pesagem", "Scale"),
+        ("Romaneio", "ClipboardList"),
+
+        // Configurações
+        ("Configuração", "Settings"),
+        ("Configuracao", "Settings"),
+        ("Parâmetro", "SlidersHorizontal"),
+        ("Parametro", "SlidersHorizontal"),
+        ("Tabela", "Table"),
+        ("Grupo", "FolderTree"),
+        ("Tipo", "Tag"),
+        ("Classe", "Tag"),
+        ("Categoria", "Tag"),
+
+        // Processos
+        ("Processo", "Play"),
+        ("Importação", "Upload"),
+        ("Importacao", "Upload"),
+        ("Exportação", "Download"),
+        ("Exportacao", "Download"),
+        ("Geração", "Sparkles"),
+        ("Geracao", "Sparkles"),
+        ("Cálculo", "Calculator"),
+        ("Calculo", "Calculator"),
+        ("Fechamento", "Lock"),
+        ("Abertura", "Unlock"),
+
+        // Qualidade
+        ("Qualidade", "CheckCircle"),
+        ("Inspeção", "Search"),
+        ("Inspecao", "Search"),
+        ("Laudo", "FileCheck"),
+        ("Amostra", "FlaskConical"),
+
+        // Genéricos (última prioridade)
+        ("Cadastro", "FilePlus"),
+        ("Lista", "List"),
+        ("Manutenção", "Wrench"),
+        ("Manutencao", "Wrench"),
+        ("Log", "ScrollText"),
+        ("Histórico", "History"),
+        ("Historico", "History"),
     };
 
     public ModuleService(IDbProvider dbProvider, ILogger<ModuleService> logger, IWebHostEnvironment environment)
@@ -180,6 +356,7 @@ public class ModuleService : IModuleService
                     MenuId = menuId,
                     Caption = orderItem?.Caption ?? g.First().MenuGroup ?? "Outros",
                     Order = orderItem?.Order ?? 999,
+                    Icon = GetIconForMenu(menuId),
                     Windows = g.OrderByDescending(w => w.Order).ToList()
                 };
             })
@@ -232,16 +409,18 @@ public class ModuleService : IModuleService
             {
                 var codiTabe = Convert.ToInt32(row.CODITABE);
                 var menuMenu = row.MENUMENU?.ToString()?.Trim() ?? "";
+                var captTabe = row.CAPTTABE?.ToString()?.Trim() ?? "";
 
                 var window = new WindowDto
                 {
                     WindowId = $"SAG{codiTabe}",
                     Tag = $"SAG{codiTabe}",
-                    Name = row.CAPTTABE?.ToString()?.Trim() ?? "",
+                    Name = captTabe,
                     TableId = codiTabe,
                     MenuId = menuMenu.ToUpperInvariant(),
                     MenuGroup = row.NOMEMENU?.ToString()?.Trim() ?? "",
-                    Order = Convert.ToInt32(row.ORDETABE ?? 0)
+                    Order = Convert.ToInt32(row.ORDETABE ?? 0),
+                    Icon = GetIconForWindow(captTabe, menuMenu)
                 };
                 windows.Add(window);
             }
@@ -299,6 +478,48 @@ public class ModuleService : IModuleService
         if (string.IsNullOrEmpty(sigla))
             return null;
 
-        return IconMapping.TryGetValue(sigla, out var icon) ? icon : null;
+        return ModuleIconMapping.TryGetValue(sigla, out var icon) ? icon : null;
+    }
+
+    /// <summary>
+    /// Retorna o ícone Lucide para um grupo de menu
+    /// </summary>
+    private static string GetIconForMenu(string? menuId)
+    {
+        if (!string.IsNullOrEmpty(menuId) && MenuIconMapping.TryGetValue(menuId, out var icon))
+        {
+            return icon;
+        }
+        return "Folder"; // Ícone padrão para grupos
+    }
+
+    /// <summary>
+    /// Retorna o ícone Lucide para uma janela baseado em:
+    /// 1. Palavras-chave no nome da janela (prioridade)
+    /// 2. MenuId da janela (fallback)
+    /// 3. Ícone genérico (último recurso)
+    /// </summary>
+    private static string GetIconForWindow(string? windowName, string? menuId)
+    {
+        // 1. Tenta encontrar por palavra-chave no nome
+        if (!string.IsNullOrEmpty(windowName))
+        {
+            foreach (var (keyword, icon) in WindowKeywordIcons)
+            {
+                if (windowName.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                {
+                    return icon;
+                }
+            }
+        }
+
+        // 2. Tenta encontrar pelo MenuId
+        if (!string.IsNullOrEmpty(menuId) && MenuIconMapping.TryGetValue(menuId, out var menuIcon))
+        {
+            return menuIcon;
+        }
+
+        // 3. Ícone genérico
+        return "FileText";
     }
 }

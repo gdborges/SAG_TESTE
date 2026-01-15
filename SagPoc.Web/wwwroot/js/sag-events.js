@@ -926,9 +926,15 @@ const SagEvents = (function () {
         // 4. Preenche campos IE que referenciam este lookup
         fillLinkedIEFields(fieldElement, record.data);
 
-        // 5. Dispara eventos change e blur para processar OnExit
+        // 5. Marca que a seleção veio do modal (evita re-fetch pelo auto-fetch listener)
+        fieldElement.dataset.sagLookupSelected = 'true';
+
+        // 6. Dispara eventos change e blur para processar OnExit
         fieldElement.dispatchEvent(new Event('change', { bubbles: true }));
         fieldElement.dispatchEvent(new Event('blur', { bubbles: true }));
+
+        // 7. Remove a marcação após os eventos serem processados
+        setTimeout(() => { delete fieldElement.dataset.sagLookupSelected; }, 100);
 
         console.log('[SagEvents] Campo', fieldName, 'preenchido com:', record.key);
     }
@@ -1575,6 +1581,14 @@ const SagEvents = (function () {
                 instructions = events.showPaiFilhInstructions || '';
                 eventName = 'ShowPai_Filh';
                 break;
+            case 'depoShow':
+            case 'onFormShow':
+                // DEPOSHOW: Executado após abrir modal e carregar dados.
+                // Contém comandos QY para injeção de filtros em lookups (ex: QY-CODIPROD).
+                // Similar ao evento OnShow/FormShow no Delphi.
+                instructions = events.depoShowInstructions || '';
+                eventName = 'DepoShow';
+                break;
             default:
                 console.warn(`[SagEvents] Tipo de evento movimento desconhecido: ${eventType}`);
                 return { success: true, blocked: false };
@@ -1823,6 +1837,7 @@ const SagEvents = (function () {
      * Abre o modal de lookup para um campo.
      * Busca o SQL do campo e executa para mostrar opções.
      * Retorna TODOS os dados do registro para preencher campos IE.
+     * Aplica condições dinâmicas QY se disponíveis via LookupManager.
      * @param {string|number} codiCamp - ID do campo (CodiCamp)
      */
     async function openLookup(codiCamp) {
@@ -1834,6 +1849,11 @@ const SagEvents = (function () {
             console.warn('[SagEvents] Campo não encontrado:', codiCamp);
             return;
         }
+
+        // Obtém nome do campo para buscar condição pendente
+        const fieldName = fieldElement.dataset.sagNomecamp ||
+                         fieldElement.dataset.sagNamecamp ||
+                         fieldElement.name || '';
 
         try {
             // Busca o SQL do campo
@@ -1849,11 +1869,33 @@ const SagEvents = (function () {
                 return;
             }
 
+            // Verifica se há condição dinâmica pendente (via comando QY)
+            let dynamicCondition = null;
+            if (window.LookupManager &&
+                typeof window.LookupManager.getPendingCondition === 'function' &&
+                fieldName) {
+                const pending = window.LookupManager.getPendingCondition(fieldName);
+                if (pending && pending.condition) {
+                    dynamicCondition = pending.condition;
+                    console.log('[SagEvents] Aplicando condição QY para', fieldName, ':', dynamicCondition.substring(0, 80));
+                }
+            }
+
             // Executa o SQL para obter as opções (agora retorna dados completos)
+            const requestBody = {
+                sql: sqlData.sql,
+                filter: ''
+            };
+
+            // Adiciona condição dinâmica se disponível
+            if (dynamicCondition) {
+                requestBody.dynamicCondition = dynamicCondition;
+            }
+
             const lookupResponse = await fetch('/Form/ExecuteLookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sql: sqlData.sql, filter: '' })
+                body: JSON.stringify(requestBody)
             });
 
             if (!lookupResponse.ok) {
@@ -1970,11 +2012,17 @@ const SagEvents = (function () {
             const lookupFieldName = fieldElement.dataset.sagNomecamp || fieldElement.name;
             setLookupData(lookupFieldName, record.data);
 
-            // 4. Dispara eventos change e blur para processar OnExit
+            // 4. Marca que a seleção veio do modal (evita re-fetch pelo auto-fetch listener)
+            fieldElement.dataset.sagLookupSelected = 'true';
+
+            // 5. Dispara eventos change e blur para processar OnExit
             fieldElement.dispatchEvent(new Event('change', { bubbles: true }));
             fieldElement.dispatchEvent(new Event('blur', { bubbles: true }));
 
-            // 5. Fecha o modal
+            // 6. Remove a marcação após os eventos serem processados
+            setTimeout(() => { delete fieldElement.dataset.sagLookupSelected; }, 100);
+
+            // 7. Fecha o modal
             bsModal.hide();
         }
 
@@ -2332,6 +2380,13 @@ const SagEvents = (function () {
             input.addEventListener('blur', async function(e) {
                 const currentValue = this.value?.trim() || '';
 
+                // Se a seleção veio do modal de lookup, não faz nova busca
+                // O modal já preencheu o cache e não precisamos re-buscar
+                if (this.dataset.sagLookupSelected === 'true') {
+                    previousValue = currentValue;
+                    return;
+                }
+
                 // Só busca se valor mudou e não está vazio
                 if (currentValue === previousValue) {
                     return;
@@ -2381,6 +2436,39 @@ const SagEvents = (function () {
         if (!sql) {
             console.warn('[SagEvents] Campo lookup sem data-lookup-sql');
             return;
+        }
+
+        // IMPORTANTE: Verifica se já existe cache válido para este campo
+        // Isso evita que lookups com condição dinâmica (QY) sejam sobrescritos
+        // por uma segunda requisição SEM a condição (que não encontraria o registro)
+        const existingCache = getLookupData(fieldName);
+        if (existingCache && Object.keys(existingCache).length > 0) {
+            // Verifica se o código no cache corresponde ao código sendo buscado
+            // O primeiro campo do cache geralmente é a PK (ex: CODIPROD)
+            const cacheKeys = Object.keys(existingCache);
+            const pkField = cacheKeys.find(k => k.toUpperCase().startsWith('CODI')) || cacheKeys[0];
+            const cachedCode = existingCache[pkField];
+
+            if (cachedCode !== undefined &&
+                (String(cachedCode) === String(code) || cachedCode == code)) {
+                console.log(`[SagEvents] Cache válido encontrado para ${fieldName}, código: ${code} - pulando requisição`);
+
+                // Atualiza a descrição a partir do cache (se ainda não estiver preenchida)
+                if (descId) {
+                    const descField = document.getElementById(descId);
+                    if (descField && !descField.value) {
+                        // Tenta encontrar campo de descrição no cache (NOME*, DESC*, etc)
+                        const descKey = cacheKeys.find(k =>
+                            k.toUpperCase().startsWith('NOME') ||
+                            k.toUpperCase().startsWith('DESC') ||
+                            k.toUpperCase().includes('NOME'));
+                        if (descKey) {
+                            descField.value = existingCache[descKey] || '';
+                        }
+                    }
+                }
+                return; // Não faz nova requisição
+            }
         }
 
         console.log(`[SagEvents] Buscando lookup para ${fieldName}, código: ${code}`);

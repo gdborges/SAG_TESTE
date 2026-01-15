@@ -78,6 +78,13 @@ public class MovementEventData
     public string ShowPaiFilhInstructions { get; set; } = string.Empty;
 
     /// <summary>
+    /// Instruções executadas após abrir modal (depois de carregar dados).
+    /// Carregado do campo virtual DEPOSHOW da tabela de movimento.
+    /// Usado para injeção dinâmica de filtros em lookups (ex: QY-CODIPROD).
+    /// </summary>
+    public string DepoShowInstructions { get; set; } = string.Empty;
+
+    /// <summary>
     /// Indica se existem eventos de movimento configurados.
     /// </summary>
     public bool HasEvents =>
@@ -90,5 +97,6 @@ public class MovementEventData
         !string.IsNullOrWhiteSpace(DepoAlteInstructions) ||
         !string.IsNullOrWhiteSpace(DepoExclInstructions) ||
         !string.IsNullOrWhiteSpace(AtuaGridInstructions) ||
-        !string.IsNullOrWhiteSpace(ShowPaiFilhInstructions);
+        !string.IsNullOrWhiteSpace(ShowPaiFilhInstructions) ||
+        !string.IsNullOrWhiteSpace(DepoShowInstructions);
 }

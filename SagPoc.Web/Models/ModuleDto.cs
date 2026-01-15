@@ -73,6 +73,9 @@ namespace SagPoc.Web.Models
         /// <summary>Ordem de exibição (do arquivo auxiliar ou OrdeMenu)</summary>
         public int Order { get; set; }
 
+        /// <summary>Nome do ícone Lucide para o grupo</summary>
+        public string? Icon { get; set; }
+
         /// <summary>Lista de janelas dentro deste menu</summary>
         public List<WindowDto> Windows { get; set; } = new();
     }

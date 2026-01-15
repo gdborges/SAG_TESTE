@@ -37,6 +37,9 @@ builder.Services.AddScoped<IValidationService, ValidationService>();
 // Register ModuleService for SAG modules and windows API
 builder.Services.AddScoped<IModuleService, ModuleService>();
 
+// Register DashboardService for dashboard API (Vision integration)
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+
 // Configure CORS for Vision Web integration
 builder.Services.AddCors(options =>
 {

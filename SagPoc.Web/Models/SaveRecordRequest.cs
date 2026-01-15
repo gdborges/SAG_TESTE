@@ -66,6 +66,13 @@ public class LookupQueryRequest
     /// Filtro opcional para busca
     /// </summary>
     public string? Filter { get; set; }
+
+    /// <summary>
+    /// Condição dinâmica a injetar no SQL (via comando QY).
+    /// Exemplo: "AND EXISTS(SELECT 1 FROM VDCAMVTP WHERE CODITBPR = 1682 AND CODIPROD = POCAPROD.CODIPROD)"
+    /// A condição é injetada na linha 4 do SQL conforme padrão Delphi.
+    /// </summary>
+    public string? DynamicCondition { get; set; }
 }
 
 /// <summary>

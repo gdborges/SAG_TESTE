@@ -690,6 +690,63 @@ public class PlsagController : ControllerBase
     }
 
     #endregion
+
+    #region Lookup Column Endpoint
+
+    /// <summary>
+    /// Busca uma coluna específica de um registro de lookup.
+    /// Usado quando {QY-CAMPO-COLUNA} precisa de uma coluna que não está na SQL_CAMP.
+    /// Exemplo: {QY-CODIPROD-PESOPROD} onde PESOPROD não está no SELECT do lookup.
+    /// </summary>
+    [HttpPost("lookup-column")]
+    public async Task<IActionResult> GetLookupColumn([FromBody] LookupColumnRequest request)
+    {
+        try
+        {
+            if (request.CodiCamp == 0)
+            {
+                return BadRequest(new { success = false, error = "CodiCamp é obrigatório" });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Code))
+            {
+                return BadRequest(new { success = false, error = "Code é obrigatório" });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ColumnName))
+            {
+                return BadRequest(new { success = false, error = "ColumnName é obrigatório" });
+            }
+
+            // Sanitização básica do nome da coluna
+            if (!Regex.IsMatch(request.ColumnName, @"^\w+$"))
+            {
+                _logger.LogWarning("Nome de coluna inválido: {Column}", request.ColumnName);
+                return BadRequest(new { success = false, error = "Nome de coluna inválido" });
+            }
+
+            var value = await _lookupService.GetLookupColumnAsync(
+                request.CodiCamp,
+                request.Code,
+                request.ColumnName);
+
+            return Ok(new
+            {
+                success = true,
+                value = value?.ToString() ?? "",
+                column = request.ColumnName,
+                code = request.Code
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar coluna de lookup: CodiCamp={CodiCamp}, Column={Column}, Code={Code}",
+                request.CodiCamp, request.ColumnName, request.Code);
+            return StatusCode(500, new { success = false, error = $"Erro ao buscar coluna: {ex.Message}" });
+        }
+    }
+
+    #endregion
 }
 
 #region Request DTOs
@@ -763,6 +820,27 @@ public class DynamicLookupRequest
     /// Valores serão sanitizados antes da substituição.
     /// </summary>
     public Dictionary<string, object>? Parameters { get; set; }
+}
+
+/// <summary>
+/// Request para buscar uma coluna específica de um registro de lookup.
+/// </summary>
+public class LookupColumnRequest
+{
+    /// <summary>
+    /// ID do campo de lookup (CODICAMP) que contém a SQL_CAMP.
+    /// </summary>
+    public int CodiCamp { get; set; }
+
+    /// <summary>
+    /// Código do registro selecionado no lookup.
+    /// </summary>
+    public string Code { get; set; } = "";
+
+    /// <summary>
+    /// Nome da coluna a buscar na tabela base.
+    /// </summary>
+    public string ColumnName { get; set; } = "";
 }
 
 #endregion

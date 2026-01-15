@@ -182,9 +182,15 @@ const PlsagInterpreter = (function() {
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
+            const upperLine = line.toUpperCase();
 
-            // Detecta ME-...-SELECT
-            if (line.toUpperCase().startsWith('ME-') && line.toUpperCase().includes('SELECT')) {
+            // Detecta ME/MB/MI-...-SELECT (comandos de mensagem com validacao SQL)
+            const isMsgWithSelect = (upperLine.startsWith('ME-') ||
+                                     upperLine.startsWith('MB-') ||
+                                     upperLine.startsWith('MI-')) &&
+                                    upperLine.includes('SELECT');
+
+            if (isMsgWithSelect) {
                 // Proxima linha nao vazia e um comando PLSAG (2+ chars seguido de -)
                 const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
 
@@ -226,6 +232,20 @@ const PlsagInterpreter = (function() {
 
         // Ignora comentarios (linhas que comecam com --)
         if (raw.startsWith('--')) {
+            return null;
+        }
+
+        // Ignora linhas que comecam com { - sao templates nao resolvidos ou expressoes
+        // Exemplos: {C-N-VLUNMV, {CN-VALOMVPO}-{CN-DCTOMVPO}
+        if (raw.startsWith('{')) {
+            console.warn(`[PLSAG] Ignorando linha (template/expressao): "${raw.substring(0, 50)}..."`);
+            return null;
+        }
+
+        // Ignora linhas que sao apenas numeros ou expressoes aritmeticas brutas
+        // Exemplos: -+, 100-50+20, etc (resultados de templates vazios)
+        if (/^[\d\.\+\-\*\/\(\)\s]+$/.test(raw) || /^[\-\+]+$/.test(raw)) {
+            console.warn(`[PLSAG] Ignorando linha (expressao aritmetica): "${raw}"`);
             return null;
         }
 
@@ -1813,12 +1833,12 @@ const PlsagInterpreter = (function() {
             }
 
             // Comandos de mensagem (MA, MB, MC, ME, MI, MP)
-            // ME/MB com SQL (validacao) precisa de substituicao SQL-aware
+            // ME/MB/MI com SQL (validacao) precisa de substituicao SQL-aware
             if (prefix === 'MA' || prefix === 'MB' || prefix === 'MC' || prefix === 'ME' || prefix === 'MI' || prefix === 'MP') {
                 let msgParam = parameter;
-                if (prefix === 'ME' || prefix === 'MB') {
+                if (prefix === 'ME' || prefix === 'MB' || prefix === 'MI') {
                     const rawParam = token.parameter || '';
-                    // ME com SQL: "SELECT ... |||mensagem" - substitui SQL com quotes
+                    // ME/MB/MI com SQL: "SELECT ... |||mensagem" - substitui SQL com quotes
                     if (rawParam.trim().toUpperCase().startsWith('SELECT')) {
                         const pipeIndex = rawParam.indexOf('|||');
                         if (pipeIndex > 0) {

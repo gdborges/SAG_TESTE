@@ -45,4 +45,24 @@ public interface ILookupService
         string[] sqlLines,
         string condition,
         Dictionary<string, object> parameters);
+
+    /// <summary>
+    /// Executa a SQL de lookup e retorna o valor da primeira coluna do primeiro registro.
+    /// Replica o comportamento Delphi: TsgQuery(...).Fields[0].Value
+    /// Usado para inicializar campos T/L/IT/IL com InicCamp=1.
+    /// </summary>
+    /// <param name="sqlCamp">Query SQL do campo (SQL_CAMP)</param>
+    /// <returns>Valor da primeira coluna do primeiro registro, ou null se vazio</returns>
+    Task<object?> GetFirstLookupValueAsync(string? sqlCamp);
+
+    /// <summary>
+    /// Busca uma coluna específica de um registro da tabela de lookup.
+    /// Usado quando {QY-CAMPO-COLUNA} precisa de uma coluna que não está na SQL_CAMP.
+    /// Extrai a tabela base da SQL_CAMP e busca a coluna diretamente.
+    /// </summary>
+    /// <param name="codiCamp">Código do campo de lookup (CODICAMP)</param>
+    /// <param name="code">Código do registro selecionado</param>
+    /// <param name="columnName">Nome da coluna a buscar</param>
+    /// <returns>Valor da coluna ou null se não encontrado</returns>
+    Task<object?> GetLookupColumnAsync(int codiCamp, string code, string columnName);
 }

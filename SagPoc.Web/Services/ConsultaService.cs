@@ -17,12 +17,18 @@ public class ConsultaService : IConsultaService
 {
     private readonly IDbProvider _dbProvider;
     private readonly ISequenceService _sequenceService;
+    private readonly ILookupService _lookupService;
     private readonly ILogger<ConsultaService> _logger;
 
-    public ConsultaService(IDbProvider dbProvider, ISequenceService sequenceService, ILogger<ConsultaService> logger)
+    public ConsultaService(
+        IDbProvider dbProvider,
+        ISequenceService sequenceService,
+        ILookupService lookupService,
+        ILogger<ConsultaService> logger)
     {
         _dbProvider = dbProvider;
         _sequenceService = sequenceService;
+        _lookupService = lookupService;
         _logger = logger;
         _logger.LogInformation("ConsultaService inicializado com provider {Provider}", _dbProvider.ProviderName);
     }
@@ -30,9 +36,9 @@ public class ConsultaService : IConsultaService
     /// <summary>
     /// Busca campos com InicCamp=1 (campos que devem ter defaults aplicados).
     /// Replica o comportamento do Delphi InicValoCampPers.
-    /// Retorna NomeCamp, CompCamp, PadrCamp (object para suportar texto e número) e VaGrCamp.
+    /// Retorna NomeCamp, CompCamp, PadrCamp (object para suportar texto e número), VaGrCamp e SqlCamp.
     /// </summary>
-    private async Task<List<(string NomeCamp, string CompCamp, object? PadrCamp, string? VaGrCamp)>> GetFieldsWithDefaultsAsync(
+    private async Task<List<(string NomeCamp, string CompCamp, object? PadrCamp, string? VaGrCamp, string? SqlCamp)>> GetFieldsWithDefaultsAsync(
         IDbConnection connection, int codiTabe)
     {
         var sql = $@"
@@ -40,7 +46,8 @@ public class ConsultaService : IConsultaService
                 NOMECAMP as NomeCamp,
                 {_dbProvider.NullFunction("COMPCAMP", "'E'")} as CompCamp,
                 PADRCAMP as PadrCamp,
-                VAGRCAMP as VaGrCamp
+                VAGRCAMP as VaGrCamp,
+                {_dbProvider.CastTextToString("SQL_CAMP")} as SqlCamp
             FROM SISTCAMP
             WHERE CODITABE = {_dbProvider.FormatParameter("CodiTabe")}
               AND {_dbProvider.NullFunction("INICCAMP", "0")} = 1";
@@ -55,6 +62,7 @@ public class ConsultaService : IConsultaService
             var compCamp = dict.ContainsKey("COMPCAMP") ? dict["COMPCAMP"]?.ToString() : dict["CompCamp"]?.ToString();
             var padrCampObj = dict.ContainsKey("PADRCAMP") ? dict["PADRCAMP"] : dict["PadrCamp"];
             var vaGrCampObj = dict.ContainsKey("VAGRCAMP") ? dict["VAGRCAMP"] : dict["VaGrCamp"];
+            var sqlCampObj = dict.ContainsKey("SQLCAMP") ? dict["SQLCAMP"] : dict["SqlCamp"];
 
             // Preserva PadrCamp como object - pode ser número ou texto dependendo do CompCamp
             object? padrCamp = null;
@@ -69,11 +77,18 @@ public class ConsultaService : IConsultaService
                 vaGrCamp = vaGrCampObj.ToString();
             }
 
+            string? sqlCamp = null;
+            if (sqlCampObj != null && sqlCampObj != DBNull.Value)
+            {
+                sqlCamp = sqlCampObj.ToString();
+            }
+
             return (
                 NomeCamp: nomeCamp ?? "",
                 CompCamp: compCamp?.Trim() ?? "E",
                 PadrCamp: padrCamp,
-                VaGrCamp: vaGrCamp
+                VaGrCamp: vaGrCamp,
+                SqlCamp: sqlCamp
             );
         }).ToList();
     }
@@ -99,7 +114,7 @@ public class ConsultaService : IConsultaService
     {
         var fieldsWithDefaults = await GetFieldsWithDefaultsAsync(connection, tableId);
 
-        foreach (var (nomeCamp, compCamp, padrCamp, vaGrCamp) in fieldsWithDefaults)
+        foreach (var (nomeCamp, compCamp, padrCamp, vaGrCamp, sqlCamp) in fieldsWithDefaults)
         {
             // Verifica se campo é válido na tabela
             if (!validColumns.Contains(nomeCamp.ToUpperInvariant()))
@@ -193,6 +208,39 @@ public class ConsultaService : IConsultaService
             {
                 // Campos memo: não aplica default numérico
                 continue;
+            }
+            // Campos tipo T/IT (Lookup Combo com SQL) - PlusUni.pas:3544-3555
+            // No Delphi: Look.KeyValue := TsgQuery(FindComponent('Qry'+NameCamp)).Fields[0].Value
+            else if ((compCamp == "T" || compCamp == "IT") && !string.IsNullOrEmpty(sqlCamp))
+            {
+                var firstValue = await _lookupService.GetFirstLookupValueAsync(sqlCamp);
+                if (firstValue != null)
+                {
+                    // Converte para tipo apropriado (geralmente int para FK)
+                    if (int.TryParse(firstValue.ToString(), out var intValue))
+                        defaultValue = intValue;
+                    else
+                        defaultValue = firstValue;
+
+                    _logger.LogInformation(
+                        "Aplicando default lookup T/IT: {Field} = {Value} (primeiro da SQL)",
+                        nomeCamp, defaultValue);
+                }
+            }
+            // Campos tipo L/IL (Lookup Modal Numérico) - PlusUni.pas:3558-3564
+            else if ((compCamp == "L" || compCamp == "IL") && !string.IsNullOrEmpty(sqlCamp))
+            {
+                var firstValue = await _lookupService.GetFirstLookupValueAsync(sqlCamp);
+                if (firstValue != null)
+                {
+                    if (decimal.TryParse(firstValue.ToString(), out var numValue))
+                    {
+                        defaultValue = numValue;
+                        _logger.LogInformation(
+                            "Aplicando default lookup L/IL: {Field} = {Value}",
+                            nomeCamp, defaultValue);
+                    }
+                }
             }
             else
             {
@@ -1341,7 +1389,7 @@ public class ConsultaService : IConsultaService
 
             var fieldsWithDefaults = await GetFieldsWithDefaultsAsync(connection, tableId);
 
-            foreach (var (nomeCamp, compCamp, padrCamp, vaGrCamp) in fieldsWithDefaults)
+            foreach (var (nomeCamp, compCamp, padrCamp, vaGrCamp, sqlCamp) in fieldsWithDefaults)
             {
                 object? defaultValue = null;
 
@@ -1387,6 +1435,28 @@ public class ConsultaService : IConsultaService
                         {
                             defaultValue = padrNum.Value;
                         }
+                    }
+                }
+                // Campos tipo T/IT (Lookup Combo com SQL) - PlusUni.pas:3544-3555
+                else if ((compCamp == "T" || compCamp == "IT") && !string.IsNullOrEmpty(sqlCamp))
+                {
+                    var firstValue = await _lookupService.GetFirstLookupValueAsync(sqlCamp);
+                    if (firstValue != null)
+                    {
+                        if (int.TryParse(firstValue.ToString(), out var intValue))
+                            defaultValue = intValue;
+                        else
+                            defaultValue = firstValue;
+                    }
+                }
+                // Campos tipo L/IL (Lookup Modal Numérico) - PlusUni.pas:3558-3564
+                else if ((compCamp == "L" || compCamp == "IL") && !string.IsNullOrEmpty(sqlCamp))
+                {
+                    var firstValue = await _lookupService.GetFirstLookupValueAsync(sqlCamp);
+                    if (firstValue != null)
+                    {
+                        if (decimal.TryParse(firstValue.ToString(), out var numValue))
+                            defaultValue = numValue;
                     }
                 }
                 else

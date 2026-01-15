@@ -697,6 +697,17 @@ var MovementManager = (function() {
                     if (recordId && window.SagEvents && typeof SagEvents.populateLookupDescriptions === 'function') {
                         await SagEvents.populateLookupDescriptions(formContent);
                     }
+
+                    // Executa evento DepoShow do movimento após carregar formulário.
+                    // Este evento contém comandos QY para injeção de filtros em lookups.
+                    // Ex: QY-CODIPROD-AND EXISTS(...) para filtrar produtos por tabela de preço.
+                    if (window.SagEvents && typeof SagEvents.triggerMovementEvent === 'function') {
+                        console.log('[MovementManager] Executando DepoShow para movimento', movementId);
+                        await SagEvents.triggerMovementEvent('depoShow', movementId, recordId, {
+                            formData: {},
+                            isNewRecord: !recordId
+                        });
+                    }
                 }
             })
             .catch(function(error) {
