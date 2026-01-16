@@ -25,6 +25,19 @@ public class SagContextAccessor : ISagContextAccessor
         /// <summary>S83 = Sistema Vendas - Distribuição</summary>
         public const int ModuloId = 83;
         public const string ModuloNome = "Vendas - Distribuição";
+
+        /// <summary>
+        /// Sigla da empresa para variável PLSAG {VA-EMPRESA}.
+        /// Default "SAG" para compatibilidade com condições PLSAG.
+        /// Outras siglas possíveis: FRE, SPI, AGD, ADO, AMZ, VIT, etc.
+        /// </summary>
+        public const string EmpresaSigla = "SAG";
+
+        /// <summary>
+        /// Código de prática para variável PLSAG {VA-PRATICA}.
+        /// 0 = não usa práticas, 1 = usa práticas.
+        /// </summary>
+        public const int EmpresaPratica = 0;
     }
 
     public SagContext Context
@@ -65,7 +78,9 @@ public class SagContextAccessor : ISagContextAccessor
             EmpresaId = Defaults.EmpresaId,
             EmpresaNome = Defaults.EmpresaNome,
             ModuloId = Defaults.ModuloId,
-            ModuloNome = Defaults.ModuloNome
+            ModuloNome = Defaults.ModuloNome,
+            EmpresaSigla = Defaults.EmpresaSigla,
+            EmpresaPratica = Defaults.EmpresaPratica
         };
     }
 

@@ -172,9 +172,11 @@ const PlsagInterpreter = (function() {
     }
 
     /**
-     * Pre-processa instrucoes ME com SELECT para juntar a mensagem da proxima linha.
+     * Pre-processa instrucoes ME com SELECT ou IF para juntar a mensagem da proxima linha.
      * Formato: ME-CAMPO---SELECT...VALO FROM DUAL\nMensagem de erro
+     *          ME-CAMPO-IF(...)\nMensagem de erro
      * Resultado: ME-CAMPO---SELECT...VALO FROM DUAL|||Mensagem de erro
+     *            ME-CAMPO-IF(...)|||Mensagem de erro
      */
     function preprocessMeInstructions(instructions) {
         const lines = instructions.replace(/\r\n/g, '\n').split('\n');
@@ -184,13 +186,21 @@ const PlsagInterpreter = (function() {
             const line = lines[i].trim();
             const upperLine = line.toUpperCase();
 
-            // Detecta ME/MB/MI-...-SELECT (comandos de mensagem com validacao SQL)
-            const isMsgWithSelect = (upperLine.startsWith('ME-') ||
-                                     upperLine.startsWith('MB-') ||
-                                     upperLine.startsWith('MI-')) &&
-                                    upperLine.includes('SELECT');
+            // Detecta ME/MB/MI que podem precisar de mensagem na proxima linha:
+            // - ME-...-SELECT (query SQL)
+            // - ME-...-IF( (condicao inline)
+            // - ME-CT-...-IF( (variante com CT)
+            const isMsgCommand = upperLine.startsWith('ME-') ||
+                                 upperLine.startsWith('MB-') ||
+                                 upperLine.startsWith('MI-');
 
-            if (isMsgWithSelect) {
+            const needsNextLine = isMsgCommand && (
+                upperLine.includes('SELECT') ||
+                upperLine.includes('-IF(') ||
+                upperLine.includes('-NVL(')
+            );
+
+            if (needsNextLine) {
                 // Proxima linha nao vazia e um comando PLSAG (2+ chars seguido de -)
                 const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
 
@@ -1068,8 +1078,11 @@ const PlsagInterpreter = (function() {
             }
         }
 
-        // Sem operador - verifica se e truthy
-        return isTruthy(evaluated);
+        // Sem operador - avalia como aritmetica antes de verificar truthy
+        // Isso permite que expressoes como {VA-INTE0008}-1 sejam avaliadas:
+        // Se VA-INTE0008=1, entao 1-1=0, que e falsy
+        const arithmeticResult = evaluateArithmetic(evaluated);
+        return isTruthy(arithmeticResult);
     }
 
     /**
@@ -2016,6 +2029,53 @@ const PlsagInterpreter = (function() {
 
         // ID do registro
         context.system.REGISTRO = eventContext.recordId || null;
+
+        // Variaveis de sessao PLSAG (VA-EMPRESA, VA-PRATICA)
+        // Inicializa a partir do contexto SAG (window.SAG_CONTEXT)
+        initSessionVariables();
+    }
+
+    /**
+     * Inicializa variaveis de sessao PLSAG a partir do contexto SAG
+     * Estas variaveis sao usadas por eventos PLSAG para logica condicional
+     * baseada na empresa/filial atual.
+     */
+    function initSessionVariables() {
+        const sagContext = window.SAG_CONTEXT || {};
+
+        // VA-EMPRESA: Sigla da empresa (SAG, FRE, SPI, AGD, etc)
+        // Usado em condicoes como: IF({VA-EMPRESA}='FRE',1,...)
+        if (sagContext.empresaSigla) {
+            context.variables.custom['EMPRESA'] = sagContext.empresaSigla;
+        } else {
+            context.variables.custom['EMPRESA'] = 'SAG'; // default
+        }
+
+        // VA-PRATICA: Codigo de pratica da empresa (0 ou 1)
+        // 0 = nao usa praticas, 1 = usa praticas
+        // Usado em condicoes como: IF({VA-PRATICA}=1,...)
+        if (sagContext.empresaPratica !== undefined && sagContext.empresaPratica !== null) {
+            context.variables.custom['PRATICA'] = sagContext.empresaPratica;
+        } else {
+            context.variables.custom['PRATICA'] = 0; // default
+        }
+
+        // Outras variaveis de sessao comuns
+        if (sagContext.usuarioId) {
+            context.system.CODIUSUA = sagContext.usuarioId;
+            context.variables.custom['CODIUSUA'] = sagContext.usuarioId;
+        }
+        if (sagContext.empresaId) {
+            context.system.CODIEMPR = sagContext.empresaId;
+            context.variables.custom['CODIEMPR'] = sagContext.empresaId;
+        }
+
+        console.log('[PLSAG] Session variables initialized:', {
+            'VA-EMPRESA': context.variables.custom['EMPRESA'],
+            'VA-PRATICA': context.variables.custom['PRATICA'],
+            'CODIUSUA': context.system.CODIUSUA,
+            'CODIEMPR': context.system.CODIEMPR
+        });
     }
 
     /**

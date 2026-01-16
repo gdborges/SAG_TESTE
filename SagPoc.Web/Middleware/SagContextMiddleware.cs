@@ -27,6 +27,8 @@ public class SagContextMiddleware
         public const string UsuarioNome = "usuarioNome";
         public const string EmpresaNome = "empresaNome";
         public const string ModuloNome = "moduloNome";
+        public const string EmpresaSigla = "empresaSigla";
+        public const string EmpresaPratica = "empresaPratica";
 
         // Headers HTTP
         public const string HeaderUsuarioId = "X-Sag-Usuario-Id";
@@ -35,6 +37,8 @@ public class SagContextMiddleware
         public const string HeaderUsuarioNome = "X-Sag-Usuario-Nome";
         public const string HeaderEmpresaNome = "X-Sag-Empresa-Nome";
         public const string HeaderModuloNome = "X-Sag-Modulo-Nome";
+        public const string HeaderEmpresaSigla = "X-Sag-Empresa-Sigla";
+        public const string HeaderEmpresaPratica = "X-Sag-Empresa-Pratica";
     }
 
     public SagContextMiddleware(RequestDelegate next, ILogger<SagContextMiddleware> logger)
@@ -77,6 +81,11 @@ public class SagContextMiddleware
         context.UsuarioNome = httpContext.Request.Headers[ParamNames.HeaderUsuarioNome].FirstOrDefault();
         context.EmpresaNome = httpContext.Request.Headers[ParamNames.HeaderEmpresaNome].FirstOrDefault();
         context.ModuloNome = httpContext.Request.Headers[ParamNames.HeaderModuloNome].FirstOrDefault();
+        context.EmpresaSigla = httpContext.Request.Headers[ParamNames.HeaderEmpresaSigla].FirstOrDefault();
+
+        var empresaPraticaHeader = httpContext.Request.Headers[ParamNames.HeaderEmpresaPratica].FirstOrDefault();
+        if (!string.IsNullOrEmpty(empresaPraticaHeader) && int.TryParse(empresaPraticaHeader, out var praticaH))
+            context.EmpresaPratica = praticaH;
 
         // 2. Query parameters (sobrescreve se não veio por header)
         var query = httpContext.Request.Query;
@@ -99,6 +108,12 @@ public class SagContextMiddleware
         if (string.IsNullOrEmpty(context.ModuloNome) && query.TryGetValue(ParamNames.ModuloNome, out var moduloNome))
             context.ModuloNome = moduloNome;
 
+        if (string.IsNullOrEmpty(context.EmpresaSigla) && query.TryGetValue(ParamNames.EmpresaSigla, out var empresaSigla))
+            context.EmpresaSigla = empresaSigla;
+
+        if (context.EmpresaPratica == 0 && query.TryGetValue(ParamNames.EmpresaPratica, out var empresaPraticaQ) && int.TryParse(empresaPraticaQ, out var praticaQ))
+            context.EmpresaPratica = praticaQ;
+
         // 3. Aplica defaults se não foi informado
         if (context.UsuarioId == 0)
         {
@@ -116,6 +131,13 @@ public class SagContextMiddleware
         {
             context.ModuloId = SagContextAccessor.Defaults.ModuloId;
             context.ModuloNome ??= SagContextAccessor.Defaults.ModuloNome;
+        }
+
+        // Defaults para variáveis de sessão PLSAG
+        context.EmpresaSigla ??= SagContextAccessor.Defaults.EmpresaSigla;
+        if (context.EmpresaPratica == 0)
+        {
+            context.EmpresaPratica = SagContextAccessor.Defaults.EmpresaPratica;
         }
 
         return context;
