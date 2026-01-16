@@ -28,6 +28,20 @@ public class SagContext
     public string? EmpresaNome { get; set; }
 
     /// <summary>
+    /// Sigla da empresa (SGBUEMPR de POGEEMPR).
+    /// Usado para variável PLSAG {VA-EMPRESA}.
+    /// Valores típicos: FRE, SPI, SAG, TIJ, etc.
+    /// </summary>
+    public string? EmpresaSigla { get; set; }
+
+    /// <summary>
+    /// Código de prática da empresa (CODIPRAT de POGEEMPR).
+    /// Usado para variável PLSAG {VA-PRATICA}.
+    /// 0 = não usa práticas, 1 = usa práticas
+    /// </summary>
+    public int EmpresaPratica { get; set; }
+
+    /// <summary>
     /// ID do módulo ativo (CODIMODU).
     /// </summary>
     public int ModuloId { get; set; }
