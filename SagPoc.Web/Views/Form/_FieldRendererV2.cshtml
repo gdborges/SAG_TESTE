@@ -66,6 +66,12 @@
 
     // Classe adicional para campos readonly
     var readonlyClass = field.IsReadonly ? "field-readonly" : "";
+
+    // Atributos data-sag-* para sistema de eventos PLSAG
+    var sagCodicamp = field.CodiCamp.ToString();
+    var sagNomecamp = field.NomeCamp;  // Nome do campo no banco (para name attribute e persistência)
+    var sagNamecamp = field.NameCamp;  // Nome do componente visual (usado pelo PLSAG para FindComponent)
+    var sagComptype = field.CompCamp?.ToUpper()?.Trim() ?? "E";
 }
 
 @switch (componentType)
@@ -95,7 +101,11 @@
                    placeholder="@hint"
                    @(isRequired ? "required" : "")
                    @(isDisabled ? "disabled" : "")
-                   data-mask="@field.MascCamp" />
+                   data-mask="@field.MascCamp"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -118,11 +128,16 @@
                    name="@fieldName"
                    title="@hint"
                    placeholder="@hint"
-                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
-                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
-                   step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
+                   step="any"
+                   data-decimals="@field.DeciCamp"
                    @(isRequired ? "required" : "")
-                   @(isDisabled ? "disabled" : "") />
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -145,7 +160,11 @@
                    name="@fieldName"
                    title="@hint"
                    @(isRequired ? "required" : "")
-                   @(isDisabled ? "disabled" : "") />
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -162,7 +181,11 @@
                        value="1"
                        title="@hint"
                        @(isCheckedByDefault ? "checked" : "")
-                       @(isDisabled ? "disabled" : "") />
+                       @(isDisabled ? "disabled" : "")
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                       data-sag-comptype="@sagComptype" />
                 @if (hasLabel)
                 {
                     <label for="@fieldId" class="form-check-label">
@@ -191,7 +214,11 @@
                     name="@fieldName"
                     title="@hint"
                     @(isRequired ? "required" : "")
-                    @(isDisabled ? "disabled" : "")>
+                    @(isDisabled ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (!string.IsNullOrEmpty(field.VareCamp))
                 {
@@ -229,12 +256,28 @@
                     }
                 </label>
             }
+            @{
+                var hasLookupSqlCombo = !string.IsNullOrEmpty(field.SqlCamp);
+            }
             <select class="form-select @(isInfoLookup ? "form-select-info" : "")"
                     id="@fieldId"
                     name="@fieldName"
                     title="@hint"
                     @(isRequired ? "required" : "")
-                    @(isDisabled || isInfoLookup ? "disabled" : "")>
+                    @(isDisabled || isInfoLookup ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype"
+                    data-has-duplcliq="true"
+                    data-codi-camp="@field.CodiCamp"
+                    data-codi-tabe="@field.CodiTabe"
+                    @if (hasLookupSqlCombo) {
+                        <text>data-lookup-sql="@field.SqlCamp"</text>
+                    }
+                    @if (field.SqlLines != null && field.SqlLines.Length > 0) {
+                        <text>data-sql-lines='@System.Text.Json.JsonSerializer.Serialize(field.SqlLines)'</text>
+                    }>
                 <option value="">Selecione...</option>
                 @if (field.LookupOptions != null && field.LookupOptions.Count > 0)
                 {
@@ -266,9 +309,12 @@
 
     case ComponentType.LookupModal:
     case ComponentType.LookupModalInfo:
-        // L, IL - Lookup modal (botão de pesquisa ao lado)
+        // L, IL - Lookup modal (botão de pesquisa ao lado) + campo descrição automático
+        // Similar ao TDBLookNume do Delphi que mostra descrição ao lado do código
         var isInfoModal = componentType == ComponentType.LookupModalInfo;
-        <div class="field-wrapper @readonlyClass @(isInfoModal ? "field-info" : "")" style="@wrapperStyle">
+        var lookupDescId = $"{fieldId}_desc";
+        var hasLookupSql = !string.IsNullOrEmpty(field.SqlCamp);
+        <div class="field-wrapper field-lookup-container @readonlyClass @(isInfoModal ? "field-info" : "")" style="@wrapperStyle">
             @if (hasLabel)
             {
                 <label for="@fieldId" class="form-label">
@@ -279,21 +325,45 @@
                     }
                 </label>
             }
-            <div class="input-group">
+            <div class="lookup-inputs-row">
+                <div class="input-group lookup-code-group">
+                    <input type="text"
+                           class="form-control @(isInfoModal ? "form-control-info" : "") lookup-code-input"
+                           id="@fieldId"
+                           name="@fieldName"
+                           title="@hint"
+                           placeholder="@hint"
+                           @(isRequired ? "required" : "")
+                           @(isDisabled || isInfoModal ? "readonly" : "")
+                           data-sag-codicamp="@sagCodicamp"
+                           data-sag-nomecamp="@sagNomecamp"
+                           data-sag-namecamp="@sagNamecamp"
+                           data-sag-comptype="@sagComptype"
+                           data-lookup-desc-id="@lookupDescId"
+                           data-has-duplcliq="true"
+                           data-codi-camp="@field.CodiCamp"
+                           data-codi-tabe="@field.CodiTabe"
+                           @if (hasLookupSql) {
+                               <text>data-lookup-sql="@field.SqlCamp"</text>
+                           }
+                           @if (field.SqlLines != null && field.SqlLines.Length > 0) {
+                               <text>data-sql-lines='@System.Text.Json.JsonSerializer.Serialize(field.SqlLines)'</text>
+                           } />
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-lookup"
+                            title="Pesquisar"
+                            @(isDisabled ? "disabled" : "")>
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                @* Campo de descrição automática - similar ao TDBLookNume do Delphi *@
                 <input type="text"
-                       class="form-control @(isInfoModal ? "form-control-info" : "")"
-                       id="@fieldId"
-                       name="@fieldName"
-                       title="@hint"
-                       placeholder="@hint"
-                       @(isRequired ? "required" : "")
-                       @(isDisabled || isInfoModal ? "readonly" : "") />
-                <button type="button"
-                        class="btn btn-outline-secondary btn-lookup"
-                        title="Pesquisar"
-                        @(isDisabled ? "disabled" : "")>
-                    <i class="bi bi-search"></i>
-                </button>
+                       class="form-control lookup-desc-field"
+                       id="@lookupDescId"
+                       readonly
+                       tabindex="-1"
+                       placeholder="(descrição)"
+                       data-lookup-for="@fieldId" />
             </div>
         </div>
         break;
@@ -320,7 +390,11 @@
                       placeholder="@hint"
                       rows="@textareaRows"
                       @(isRequired ? "required" : "")
-                      @(isDisabled ? "disabled" : "")></textarea>
+                      @(isDisabled ? "disabled" : "")
+                      data-sag-codicamp="@sagCodicamp"
+                      data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                      data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
 
@@ -343,7 +417,11 @@
                    name="@fieldName"
                    title="@hint"
                    @(isRequired ? "required" : "")
-                   @(isDisabled ? "disabled" : "") />
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -367,7 +445,11 @@
                    title="@hint"
                    placeholder="@hint"
                    @(isDisabled ? "disabled" : "")
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -386,7 +468,11 @@
                    name="@fieldName"
                    title="@hint"
                    readonly
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -405,11 +491,16 @@
                    name="@fieldName"
                    title="@hint"
                    placeholder="@hint"
-                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
-                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
-                   step="@(field.DeciCamp > 0 ? $"0.{"".PadRight(field.DeciCamp - 1, '0')}1" : "1")"
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
+                   step="any"
+                   data-decimals="@field.DeciCamp"
                    @(isDisabled ? "disabled" : "")
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -427,10 +518,14 @@
                    id="@fieldId"
                    name="@fieldName"
                    title="@hint"
-                   @if (field.MiniCamp.HasValue) { <text>min="@field.MiniCamp.Value"</text> }
-                   @if (field.MaxiCamp.HasValue) { <text>max="@field.MaxiCamp.Value"</text> }
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
                    readonly
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -449,7 +544,11 @@
                    name="@fieldName"
                    title="@hint"
                    @(isDisabled ? "disabled" : "")
-                   data-calc="true" />
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
         </div>
         break;
 
@@ -467,7 +566,11 @@
                     name="@fieldName"
                     title="@hint"
                     @(isDisabled ? "disabled" : "")
-                    data-calc="true">
+                    data-calc="true"
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype">
                 <option value="">Selecione...</option>
                 @if (!string.IsNullOrEmpty(field.VareCamp))
                 {
@@ -504,7 +607,11 @@
                        title="@hint"
                        @(calcChecked ? "checked" : "")
                        @(isDisabled ? "disabled" : "")
-                       data-calc="true" />
+                       data-calc="true"
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                       data-sag-comptype="@sagComptype" />
                 @if (hasLabel)
                 {
                     <label for="@fieldId" class="form-check-label">
@@ -532,7 +639,11 @@
                       placeholder="@hint"
                       rows="@calcMemoRows"
                       @(isDisabled ? "disabled" : "")
-                      data-calc="true"></textarea>
+                      data-calc="true"
+                      data-sag-codicamp="@sagCodicamp"
+                      data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                      data-sag-comptype="@sagComptype"></textarea>
         </div>
         break;
 
@@ -553,7 +664,11 @@
                        title="@hint"
                        placeholder="@hint"
                        @(isDisabled ? "disabled" : "")
-                       data-calc="true" />
+                       data-calc="true"
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                       data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-file"
                         title="Selecionar arquivo"
@@ -581,7 +696,11 @@
                        title="@hint"
                        placeholder="@hint"
                        @(isDisabled ? "disabled" : "")
-                       data-calc="true" />
+                       data-calc="true"
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                       data-sag-comptype="@sagComptype" />
                 <button type="button"
                         class="btn btn-outline-secondary btn-directory"
                         title="Selecionar diretório"
@@ -594,10 +713,16 @@
 
     // ============================================================
     // TIPOS INFO (readonly, dados de outra tabela)
+    // Campos IE/IN/IM são vinculados a um lookup via VaGrCamp:
+    //   Linha 0 = coluna a exibir (ex: NOMEPROD)
+    //   Linha 1 = campo lookup (ex: CODIPROD)
     // ============================================================
 
     case ComponentType.InfoTextInput:
         // IE - Info texto readonly
+        var ieTextVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieTextSourceColumn = ieTextVaGrLines.Length >= 1 ? ieTextVaGrLines[0].Trim().ToUpper() : "";
+        var ieTextLinkedLookup = ieTextVaGrLines.Length >= 2 ? ieTextVaGrLines[1].Trim().ToUpper() : "";
         <div class="field-wrapper field-info field-readonly" style="@wrapperStyle">
             @if (hasLabel)
             {
@@ -611,12 +736,25 @@
                    name="@fieldName"
                    title="@hint"
                    readonly
-                   data-info="true" />
+                   data-info="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype"
+                   @if (!string.IsNullOrEmpty(ieTextLinkedLookup)) {
+                       <text>data-sag-linked-lookup="@ieTextLinkedLookup"</text>
+                   }
+                   @if (!string.IsNullOrEmpty(ieTextSourceColumn)) {
+                       <text>data-sag-source-column="@ieTextSourceColumn"</text>
+                   } />
         </div>
         break;
 
     case ComponentType.InfoNumberInput:
         // IN - Info número readonly
+        var ieNumVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieNumSourceColumn = ieNumVaGrLines.Length >= 1 ? ieNumVaGrLines[0].Trim().ToUpper() : "";
+        var ieNumLinkedLookup = ieNumVaGrLines.Length >= 2 ? ieNumVaGrLines[1].Trim().ToUpper() : "";
         <div class="field-wrapper field-info field-readonly" style="@wrapperStyle">
             @if (hasLabel)
             {
@@ -630,12 +768,25 @@
                    name="@fieldName"
                    title="@hint"
                    readonly
-                   data-info="true" />
+                   data-info="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype"
+                   @if (!string.IsNullOrEmpty(ieNumLinkedLookup)) {
+                       <text>data-sag-linked-lookup="@ieNumLinkedLookup"</text>
+                   }
+                   @if (!string.IsNullOrEmpty(ieNumSourceColumn)) {
+                       <text>data-sag-source-column="@ieNumSourceColumn"</text>
+                   } />
         </div>
         break;
 
     case ComponentType.InfoTextArea:
         // IM - Info memo readonly
+        var ieMemoVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieMemoSourceColumn = ieMemoVaGrLines.Length >= 1 ? ieMemoVaGrLines[0].Trim().ToUpper() : "";
+        var ieMemoLinkedLookup = ieMemoVaGrLines.Length >= 2 ? ieMemoVaGrLines[1].Trim().ToUpper() : "";
         var infoMemoRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 3;
         <div class="field-wrapper field-wrapper-full field-info field-readonly mb-3">
             @if (hasLabel)
@@ -650,12 +801,25 @@
                       title="@hint"
                       rows="@infoMemoRows"
                       readonly
-                      data-info="true"></textarea>
+                      data-info="true"
+                      data-sag-codicamp="@sagCodicamp"
+                      data-sag-nomecamp="@sagNomecamp"
+                      data-sag-namecamp="@sagNamecamp"
+                      data-sag-comptype="@sagComptype"
+                      @if (!string.IsNullOrEmpty(ieMemoLinkedLookup)) {
+                          <text>data-sag-linked-lookup="@ieMemoLinkedLookup"</text>
+                      }
+                      @if (!string.IsNullOrEmpty(ieMemoSourceColumn)) {
+                          <text>data-sag-source-column="@ieMemoSourceColumn"</text>
+                      }></textarea>
         </div>
         break;
 
     case ComponentType.InfoRichEdit:
         // IR - Info RichEdit readonly
+        var ieRichVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieRichSourceColumn = ieRichVaGrLines.Length >= 1 ? ieRichVaGrLines[0].Trim().ToUpper() : "";
+        var ieRichLinkedLookup = ieRichVaGrLines.Length >= 2 ? ieRichVaGrLines[1].Trim().ToUpper() : "";
         var infoRichRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 5;
         <div class="field-wrapper field-wrapper-full field-info field-readonly mb-3">
             @if (hasLabel)
@@ -668,7 +832,17 @@
                  id="@fieldId"
                  style="min-height: @(infoRichRows * 25)px;"
                  data-info="true"
-                 data-rich="true">
+                 data-rich="true"
+                 data-sag-codicamp="@sagCodicamp"
+                 data-sag-nomecamp="@sagNomecamp"
+                 data-sag-namecamp="@sagNamecamp"
+                 data-sag-comptype="@sagComptype"
+                 @if (!string.IsNullOrEmpty(ieRichLinkedLookup)) {
+                     <text>data-sag-linked-lookup="@ieRichLinkedLookup"</text>
+                 }
+                 @if (!string.IsNullOrEmpty(ieRichSourceColumn)) {
+                     <text>data-sag-source-column="@ieRichSourceColumn"</text>
+                 }>
             </div>
         </div>
         break;
@@ -762,13 +936,24 @@
 
     case ComponentType.Button:
         // BTN - Botão
+        // No Delphi, ExprCamp contém as instruções PLSAG a executar no OnClick
+        // O "&" no label era para shortcut no Delphi (ex: "&Promoções" = Alt+P), removemos na web
+        var btnExprCamp = field.ExprCamp ?? "";
+        var btnLabel = (label ?? "").Replace("&", "");
         <div class="field-wrapper field-button d-flex align-items-end" style="@wrapperStyle">
             <button type="button"
-                    class="btn btn-secondary"
+                    class="btn btn-primary sag-action-btn"
                     id="@fieldId"
-                    title="@hint"
-                    @(isDisabled ? "disabled" : "")>
-                @label
+                    title="@(!string.IsNullOrEmpty(hint) ? hint : btnLabel)"
+                    @(isDisabled ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype"
+                    @if (!string.IsNullOrEmpty(btnExprCamp)) {
+                        <text>data-plsag-onclick="@btnExprCamp"</text>
+                    }>
+                <i class="bi bi-lightning-charge me-1"></i>@btnLabel
             </button>
         </div>
         break;
@@ -810,7 +995,26 @@
         break;
 
     case ComponentType.Timer:
-        // TIM - Timer (não visual, não renderiza nada)
+        // TIM - Timer (não visual, mas precisa de data-attribute para JavaScript inicializar)
+        // PadrCamp = intervalo em segundos
+        // ExprCamp = instruções PLSAG a executar
+        var timerInterval = field.PadrCamp ?? 0;
+        var timerInstructions = field.ExprCamp ?? "";
+        if (timerInterval > 0)
+        {
+            <script type="application/json"
+                    class="sag-timer-config"
+                    data-timer-name="@field.NomeCamp"
+                    data-timer-interval="@(timerInterval * 1000)"
+                    data-timer-enabled="true">
+            {
+                "name": "@field.NomeCamp",
+                "interval": @(timerInterval * 1000),
+                "instructions": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(timerInstructions)),
+                "enabled": true
+            }
+            </script>
+        }
         break;
 
     case ComponentType.CheckList:

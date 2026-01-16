@@ -3,7 +3,7 @@
    =========================================== */
 
 .consulta-container {
-    padding: var(--spacing-sm, 8px) 0;
+    padding: 0;
 }
 
 /* Grid Table */
@@ -152,11 +152,56 @@
     padding-bottom: var(--spacing-sm, 8px) !important;
 }
 
-/* Grid info text */
-#gridInfo {
-    font-family: var(--font-family, inherit);
-    font-size: var(--font-size-sm, 14px);
-    color: var(--neutral-600, #525252);
+/* ===========================================
+   Toolbar Compacto
+   =========================================== */
+
+.consulta-toolbar {
+    padding: var(--spacing-xs, 4px) 0;
+}
+
+/* Botões da toolbar com ícones SVG centralizados */
+.consulta-toolbar .btn-outline-secondary {
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.consulta-toolbar .btn-outline-secondary svg {
+    flex-shrink: 0;
+}
+
+/* Badge no botão de filtros */
+#btnToggleFilters {
+    width: auto !important;
+    padding: 0 8px !important;
+}
+
+#btnToggleFilters .badge {
+    font-size: 0.65rem;
+    padding: 2px 5px;
+    vertical-align: middle;
+}
+
+/* Collapse transition suave */
+#filterCollapse {
+    transition: height 0.2s ease-out;
+}
+
+#filterCollapse .card {
+    border-radius: var(--radius-sm, 6px);
+}
+
+/* ===========================================
+   AG Grid Altura Flexível
+   =========================================== */
+
+#consultaAgGrid {
+    height: calc(100vh - 200px);
+    min-height: 300px;
 }
 
 /* Loading spinner */
@@ -170,40 +215,15 @@
 #btnIncluir,
 #btnAlterar,
 #btnExcluir {
-    min-width: 100px;
+    min-width: auto;
 }
 
-#btnIncluir {
-    background-color: var(--primary-300, #447BDA);
-    border-color: var(--primary-300, #447BDA);
-    color: var(--neutral-white, #FFFFFF);
-}
-
-#btnIncluir:hover {
-    background-color: var(--primary-400, #2D5CB8);
-    border-color: var(--primary-400, #2D5CB8);
-}
-
-#btnAlterar {
-    background-color: var(--neutral-white, #FFFFFF);
-    border-color: var(--neutral-300, #D4D4D4);
-    color: var(--neutral-800, #262626);
-}
-
-#btnAlterar:hover {
-    background-color: var(--neutral-100, #F5F5F5);
-    border-color: var(--neutral-400, #A3A3A3);
-}
-
-#btnExcluir {
-    background-color: var(--neutral-white, #FFFFFF);
-    border-color: var(--feedback-error-100, #EA4335);
-    color: var(--feedback-error-100, #EA4335);
-}
-
-#btnExcluir:hover {
-    background-color: var(--feedback-error-bg, #FEE2E2);
-    border-color: var(--feedback-error-100, #EA4335);
+/* Botões usam classes Bootstrap (btn-success, btn-primary, btn-danger)
+   apenas ajustamos estado disabled */
+#btnAlterar:disabled,
+#btnExcluir:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Bevel groups - estilos definidos em form-renderer.css */
@@ -238,4 +258,68 @@
 .consulta-container .form-control:focus {
     border-color: var(--primary-300, #447BDA);
     box-shadow: 0 0 0 3px var(--primary-100, rgba(68, 123, 218, 0.15));
+}
+
+/* ===========================================
+   Tab Overlay - Controle de Navegação
+   =========================================== */
+
+/* Tab pane precisa position relative para o overlay absolute funcionar */
+.tab-content > .tab-pane {
+    position: relative;
+}
+
+/* Apenas tabs de dados/movimentos precisam de min-height (para overlay) */
+.tab-content > .tab-pane:not(#tab-consulta) {
+    min-height: 350px;
+}
+
+/* Overlay para tabs sem registro selecionado */
+.tab-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.97);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity var(--transition-normal, 200ms ease), visibility var(--transition-normal, 200ms ease);
+    backdrop-filter: blur(2px);
+}
+
+.tab-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.tab-overlay .overlay-content {
+    text-align: center;
+    padding: var(--spacing-xl, 32px);
+    max-width: 400px;
+}
+
+.tab-overlay .overlay-content .overlay-icon {
+    font-size: 3rem;
+    color: var(--neutral-400, #A3A3A3);
+    margin-bottom: var(--spacing-md, 16px);
+}
+
+.tab-overlay .overlay-content h5 {
+    color: var(--neutral-700, #404040);
+    font-weight: var(--font-weight-semibold, 600);
+    margin-bottom: var(--spacing-sm, 8px);
+}
+
+.tab-overlay .overlay-content p {
+    color: var(--neutral-600, #525252);
+    font-size: var(--font-size-sm, 14px);
+    margin-bottom: var(--spacing-lg, 24px);
+}
+
+.tab-overlay .overlay-content .btn {
+    min-width: 180px;
 }

@@ -10,22 +10,176 @@
         <div class="col-md-8 col-lg-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Selecione um formulário</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Selecione um formulário</h5>
+                        <span id="countLabel" class="badge bg-secondary">@Model.Count itens</span>
+                    </div>
+
+                    <!-- Seletor de Módulo -->
+                    <div class="mt-2">
+                        <label for="moduleSelect" class="form-label small text-muted mb-1">Módulo</label>
+                        <select id="moduleSelect" class="form-select form-select-sm">
+                            <option value="">Todos os formulários</option>
+                        </select>
+                    </div>
+
+                    <div class="mt-2">
+                        <input type="text" id="filterInput" class="form-control"
+                               placeholder="Filtrar por código ou nome (ex: 715, contrato...)"
+                               autofocus>
+                    </div>
                 </div>
-                <ul class="list-group list-group-flush">
-                    @foreach (var table in Model.OrderBy(t => t.Key))
-                    {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>
-                                <strong>@table.Key</strong> - @table.Value
-                            </span>
-                            <a asp-action="Render" asp-route-id="@table.Key" class="btn btn-primary btn-sm">
-                                Abrir
-                            </a>
-                        </li>
-                    }
-                </ul>
+
+                <!-- Lista de janelas do módulo (carregado via JS) -->
+                <div id="moduleWindowsContainer" style="display: none;">
+                    <div class="card-body border-bottom bg-light py-2">
+                        <small class="text-muted" id="moduleWindowsTitle">Janelas do módulo</small>
+                    </div>
+                    <ul class="list-group list-group-flush" id="moduleWindowsList" style="max-height: 40vh; overflow-y: auto;">
+                    </ul>
+                </div>
+
+                <!-- Lista original de formulários -->
+                <div id="allFormsContainer">
+                    <ul class="list-group list-group-flush" id="formList" style="max-height: 60vh; overflow-y: auto;">
+                        @foreach (var table in Model.OrderBy(t => t.Key))
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center form-item"
+                                data-code="@table.Key" data-name="@table.Value.ToLower()">
+                                <span>
+                                    <strong>@table.Key</strong> - @table.Value
+                                </span>
+                                <a asp-action="Render" asp-route-id="@table.Key" class="btn btn-primary btn-sm">
+                                    Abrir
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterInput = document.getElementById('filterInput');
+    const formItems = document.querySelectorAll('.form-item');
+    const countLabel = document.getElementById('countLabel');
+    const totalCount = formItems.length;
+    const moduleSelect = document.getElementById('moduleSelect');
+    const moduleWindowsContainer = document.getElementById('moduleWindowsContainer');
+    const moduleWindowsList = document.getElementById('moduleWindowsList');
+    const moduleWindowsTitle = document.getElementById('moduleWindowsTitle');
+    const allFormsContainer = document.getElementById('allFormsContainer');
+
+    // Carrega módulos disponíveis
+    async function loadModules() {
+        try {
+            const response = await fetch('/api/modules');
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                data.data.forEach(module => {
+                    const option = document.createElement('option');
+                    option.value = module.moduleId;
+                    option.textContent = `${module.name} (${module.sigla || module.moduleId})`;
+                    moduleSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao carregar módulos:', error);
+        }
+    }
+
+    // Carrega janelas de um módulo
+    async function loadModuleWindows(moduleId) {
+        if (!moduleId) {
+            moduleWindowsContainer.style.display = 'none';
+            allFormsContainer.style.display = 'block';
+            countLabel.textContent = `${totalCount} itens`;
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/modules/${moduleId}/windows`);
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                moduleWindowsList.innerHTML = '';
+                let windowCount = 0;
+
+                data.data.forEach(menuGroup => {
+                    // Adiciona cabeçalho do grupo
+                    const groupHeader = document.createElement('li');
+                    groupHeader.className = 'list-group-item bg-light fw-bold small text-uppercase';
+                    groupHeader.textContent = menuGroup.caption;
+                    moduleWindowsList.appendChild(groupHeader);
+
+                    // Adiciona janelas do grupo
+                    menuGroup.windows.forEach(window => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.innerHTML = `
+                            <span>
+                                <strong>${window.tableId}</strong> - ${window.name}
+                            </span>
+                            <a href="/Form/Render/${window.tableId}" class="btn btn-primary btn-sm">
+                                Abrir
+                            </a>
+                        `;
+                        moduleWindowsList.appendChild(li);
+                        windowCount++;
+                    });
+                });
+
+                moduleWindowsTitle.textContent = `${windowCount} janelas no módulo`;
+                countLabel.textContent = `${windowCount} janelas`;
+                moduleWindowsContainer.style.display = 'block';
+                allFormsContainer.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Erro ao carregar janelas:', error);
+        }
+    }
+
+    // Event: seleção de módulo
+    moduleSelect.addEventListener('change', function() {
+        loadModuleWindows(this.value);
+    });
+
+    // Event: filtro de texto
+    filterInput.addEventListener('input', function() {
+        const filter = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        formItems.forEach(function(item) {
+            const code = item.dataset.code;
+            const name = item.dataset.name;
+
+            // Filtra por código (início) ou nome (contém)
+            const matches = code.startsWith(filter) ||
+                           code.includes(filter) ||
+                           name.includes(filter);
+
+            item.style.display = matches ? '' : 'none';
+            if (matches) visibleCount++;
+        });
+
+        countLabel.textContent = filter ? `${visibleCount} de ${totalCount}` : `${totalCount} itens`;
+    });
+
+    // Enter no filtro abre o primeiro item visível
+    filterInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const firstVisible = document.querySelector('.form-item:not([style*="display: none"]) a');
+            if (firstVisible) {
+                firstVisible.click();
+            }
+        }
+    });
+
+    // Inicializa
+    loadModules();
+});
+</script>

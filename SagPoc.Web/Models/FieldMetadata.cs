@@ -12,6 +12,7 @@ public class FieldMetadata
 
     // Dados do campo
     public string NomeCamp { get; set; } = string.Empty;  // Nome do campo no banco (ex: NOMETPDO)
+    public string NameCamp { get; set; } = string.Empty;  // Nome do componente visual (usado pelo PLSAG para FindComponent)
     public string LabeCamp { get; set; } = string.Empty;  // Label exibido (ex: "Nome")
     public string HintCamp { get; set; } = string.Empty;  // Tooltip/hint
     public string CompCamp { get; set; } = string.Empty;  // Tipo de componente (E, N, C, S, BVL, etc.)
@@ -31,6 +32,9 @@ public class FieldMetadata
     public int DesaCamp { get; set; }      // Campo desabilitado (1=sim)
     public int InicCamp { get; set; }      // Inicialmente desabilitado
     public int LbcxCamp { get; set; }      // Label Box - Mostra caption em Bevel (1=sim)
+    public int TagQCamp { get; set; }      // Flag para numeração sequencial (1=gerar sequência)
+    public int ExisCamp { get; set; }      // Flag campo já existe (0=novo, permite gerar sequência)
+    public int InteCamp { get; set; }      // Flag integridade (0=validar modificação/protegido, 1=pode modificar livremente)
 
     // Formatação
     public string MascCamp { get; set; } = string.Empty;  // Máscara de entrada
@@ -43,6 +47,13 @@ public class FieldMetadata
     public string? SqlCamp { get; set; }   // Query para lookup
     public string? VareCamp { get; set; }  // Valores do combo (texto exibido, separado por |)
     public string? VaGrCamp { get; set; }  // Valores de gravação do combo (separado por |, usado como value)
+
+    /// <summary>
+    /// SQL_CAMP dividido em linhas para suportar injeção dinâmica via comando QY.
+    /// No Delphi, a linha 4 (índice 4) é reservada para injeção de filtros dinâmicos.
+    /// Populado automaticamente pelo MetadataService via split por '\n'.
+    /// </summary>
+    public string[]? SqlLines { get; set; }
 
     // Visual
     public string? CfonCamp { get; set; }  // Fonte do campo
@@ -68,10 +79,33 @@ public class FieldMetadata
     public bool IsRequired => ObriCamp == 1;
 
     /// <summary>
+    /// Indica se o campo requer geração de número sequencial.
+    /// Condições: InicCamp=1 AND TagQCamp=1 AND CompCamp IN ('N','EN') AND ExisCamp=0
+    /// </summary>
+    public bool RequiresSequence =>
+        InicCamp == 1 &&
+        TagQCamp == 1 &&
+        ExisCamp == 0 &&
+        (CompCamp == "N" || CompCamp == "EN");
+
+    /// <summary>
     /// Indica se o campo está desabilitado permanentemente.
     /// Nota: InicCamp é ignorado na POC (no Delphi, é controlado por expressões em runtime).
     /// </summary>
     public bool IsDisabled => DesaCamp == 1;
+
+    /// <summary>
+    /// Indica se o campo é protegido contra modificação manual.
+    /// Campos protegidos: InteCamp=0 (campos gerados/calculados) OU campos que começam com "ApAt".
+    /// Baseado na lógica BtnConf_CampModi do Delphi (POHeCam6.pas).
+    /// </summary>
+    public bool IsProtected => InteCamp == 0 || NomeCamp?.StartsWith("ApAt", StringComparison.OrdinalIgnoreCase) == true;
+
+    /// <summary>
+    /// Indica se o campo deve ter sua modificação validada.
+    /// InteCamp=0 significa que o campo deve ser validado (não pode ser modificado se protegido).
+    /// </summary>
+    public bool RequiresModificationValidation => InteCamp == 0;
 
     /// <summary>
     /// Indica se é campo "Informada" (IT, IL, etc.) - somente leitura/informativo.
@@ -198,7 +232,7 @@ public class FieldMetadata
             "FF" => ComponentType.ImageFixed,         // TImgLbl - Imagem fixa
 
             // === Campos especiais que devem ser ocultos ===
-            "DEPOSHOW" or "ATUAGRID" => ComponentType.Hidden,
+            "DEPOSHOW" or "ATUAGRID" or "ANTEREMO" => ComponentType.Hidden,
 
             _ => ComponentType.TextInput              // Fallback para input texto
         };
@@ -206,15 +240,23 @@ public class FieldMetadata
 
     /// <summary>
     /// Indica se o campo deve ser oculto (não renderizado visualmente).
-    /// Campos ocultos: DEPOSHOW, ATUAGRID, OrdeCamp=9999
+    /// Campos ocultos: eventos, configuração (GuiaCamp=999), OrdeCamp=9999, etc.
     /// </summary>
     public bool IsHidden
     {
         get
         {
-            // Campos especiais pelo nome
+            // Campos especiais pelo nome (eventos e configuração)
             var nome = NomeCamp?.ToUpper()?.Trim() ?? "";
-            if (nome == "DEPOSHOW" || nome == "ATUAGRID")
+            if (nome == "DEPOSHOW" || nome == "ATUAGRID" ||
+                nome.StartsWith("ANTEIAE_") || nome.StartsWith("DEPOINCL_") ||
+                nome.StartsWith("ANTECRIA") || nome.StartsWith("DEPOCRIA") ||
+                nome == "GUIARESU" || nome == "ANTEREMO")
+                return true;
+
+            // GuiaCamp=999 é RESERVADO para campos de configuração/eventos no SAG
+            // Esses campos NÃO devem criar guias visuais - são apenas metadados
+            if (GuiaCamp == 999)
                 return true;
 
             // Campos com OrdeCamp = 9999 não recebem foco no Delphi

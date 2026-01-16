@@ -1,0 +1,1220 @@
+/**
+ * MovementManager - Gerenciador de movimentos (registros filhos) para SAG Web
+ * Versão 2.0 - Migrado para AG Grid Enterprise
+ *
+ * Responsável por:
+ * - Carregar dados dos grids de movimento via AG Grid
+ * - Gerenciar seleção de linhas
+ * - Abrir modal para inserir/editar
+ * - Executar operações CRUD via API
+ * - Integrar com sistema de eventos PLSAG
+ */
+var MovementManager = (function() {
+    'use strict';
+
+    // Estado do gerenciador
+    var state = {
+        parentTableId: null,
+        parentRecordId: null,
+        movements: {},        // Metadados indexados por CodiTabe
+        selectedRows: {},     // Linhas selecionadas por CodiTabe
+        gridApis: {},         // AG Grid APIs por CodiTabe
+        currentPage: {},      // Página atual por CodiTabe
+        pageSize: 50,
+        modalInstance: null,
+        deleteModalInstance: null
+    };
+
+    /**
+     * Inicializa o gerenciador de movimentos
+     * @param {number} parentTableId - ID da tabela pai (cabeçalho)
+     * @param {number|null} parentRecordId - ID do registro pai (null se novo)
+     * @param {Array} movementMetadata - Array de metadados dos movimentos
+     */
+    function init(parentTableId, parentRecordId, movementMetadata) {
+        console.log('[MovementManager] Inicializando...', { parentTableId, parentRecordId, movements: movementMetadata?.length });
+
+        state.parentTableId = parentTableId;
+        state.parentRecordId = parentRecordId;
+
+        // Indexa metadados por CodiTabe
+        if (movementMetadata && Array.isArray(movementMetadata)) {
+            movementMetadata.forEach(function(m) {
+                state.movements[m.codiTabe] = m;
+                state.currentPage[m.codiTabe] = 1;
+                state.selectedRows[m.codiTabe] = null;
+            });
+
+            // Carrega eventos PLSAG de cada movimento
+            loadAllMovementEvents();
+
+            // Inicializa AG Grids para cada movimento
+            initAllAgGrids();
+        }
+
+        // Inicializa modais Bootstrap
+        initModals();
+
+        // Configura event listeners
+        setupEventListeners();
+
+        // Carrega dados se há registro pai
+        if (parentRecordId) {
+            loadAllMovements();
+        }
+
+        console.log('[MovementManager] Inicialização completa');
+    }
+
+    /**
+     * Inicializa AG Grids para todos os movimentos
+     */
+    function initAllAgGrids() {
+        if (typeof agGrid === 'undefined') {
+            console.error('[MovementManager] AG Grid não disponível');
+            return;
+        }
+
+        Object.keys(state.movements).forEach(function(movementId) {
+            initMovementAgGrid(parseInt(movementId));
+        });
+    }
+
+    /**
+     * Inicializa AG Grid para um movimento específico
+     * @param {number} movementId - ID da tabela de movimento
+     */
+    function initMovementAgGrid(movementId) {
+        var gridContainer = document.getElementById('movement-ag-grid-' + movementId);
+        if (!gridContainer) {
+            console.warn('[MovementManager] Container AG Grid não encontrado para movimento', movementId);
+            return;
+        }
+
+        // Obtém colunas do container ou metadata
+        var container = document.getElementById('movement-grid-' + movementId);
+        var columnsData = [];
+        var pkColumn = 'id';
+
+        if (container) {
+            try {
+                columnsData = JSON.parse(container.dataset.columns || '[]');
+                pkColumn = container.dataset.pkColumn || 'id';
+            } catch (e) {
+                console.warn('[MovementManager] Erro ao parsear colunas:', e);
+            }
+        }
+
+        // Cria definições de colunas para AG Grid
+        var columnDefs = [];
+
+        // Coluna de ações como PRIMEIRA coluna (pinned left) - Padrão Edata
+        columnDefs.push({
+            headerName: 'Ações',
+            field: '__actions__',
+            colId: 'actions',
+            cellRenderer: ActionCellRenderer,
+            cellRendererParams: {
+                onEdit: function(data) {
+                    onActionEdit(movementId, data, pkColumn);
+                },
+                onDelete: function(data) {
+                    onActionDelete(movementId, data, pkColumn);
+                },
+                showEdit: true,
+                showDelete: true
+            },
+            width: 90,
+            minWidth: 90,
+            maxWidth: 90,
+            pinned: 'left',
+            sortable: false,
+            filter: false,
+            resizable: false,
+            suppressHeaderMenuButton: true,
+            suppressMovable: true,
+            lockPosition: true,
+            lockVisible: true,
+            suppressColumnsToolPanel: true
+        });
+
+        // Colunas de dados
+        columnsData.forEach(function(col) {
+            columnDefs.push({
+                field: col.fieldName || col.displayName,
+                headerName: col.displayName,
+                width: col.width || 100,
+                sortable: true,
+                resizable: true
+            });
+        });
+
+        // Se não há colunas de dados configuradas, adiciona placeholder
+        if (columnsData.length === 0) {
+            columnDefs.push({ field: '_placeholder', headerName: 'Carregando...', flex: 1 });
+        }
+
+        var gridOptions = {
+            columnDefs: columnDefs,
+            rowData: [],
+            rowSelection: 'single',
+            animateRows: true,
+            enableCellTextSelection: true,
+            suppressCopyRowsToClipboard: true,
+
+            // Alturas padrão Edata/Vision
+            rowHeight: 48,
+            headerHeight: 40,
+
+            // === ENTERPRISE FEATURES (igual ao Vision) ===
+            columnMenu: 'new',
+
+            // Painel lateral de colunas (igual ao consulta-grid)
+            sideBar: {
+                toolPanels: [
+                    {
+                        id: 'columns',
+                        labelDefault: 'Colunas',
+                        labelKey: 'columns',
+                        iconKey: 'columns',
+                        toolPanel: 'agColumnsToolPanel',
+                        toolPanelParams: {
+                            suppressRowGroups: false,
+                            suppressValues: true,
+                            suppressPivots: true,
+                            suppressPivotMode: true,
+                        }
+                    }
+                ],
+                defaultToolPanel: '',
+            },
+
+            // Barra de agrupamento no topo
+            rowGroupPanelShow: 'always',
+            suppressDragLeaveHidesColumns: true,
+
+            // Overlay de loading
+            overlayLoadingTemplate: '<div class="ag-overlay-loading-center"><div class="spinner-border spinner-border-sm me-2"></div> Carregando...</div>',
+            overlayNoRowsTemplate: '<div class="ag-overlay-no-rows-center"><i class="bi bi-inbox fs-4 d-block mb-2"></i>Nenhum registro<br><small class="text-muted">Clique em "Novo" para adicionar</small></div>',
+
+            // Default column definition (igual ao Vision)
+            defaultColDef: {
+                sortable: true,
+                resizable: true,
+                filter: true,
+                minWidth: 80,
+                menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab']
+            },
+
+            // Identificador de linha
+            getRowId: function(params) {
+                var pk = params.data[pkColumn] || params.data[pkColumn.toUpperCase()] || params.data.id;
+                return String(pk ?? params.node.rowIndex);
+            },
+
+            // Callbacks de eventos
+            onRowSelected: function(event) {
+                if (event.node.isSelected()) {
+                    onAgGridRowSelected(movementId, event.data, pkColumn);
+                }
+            },
+            onRowDoubleClicked: function(event) {
+                onAgGridRowDoubleClicked(movementId, event.data, pkColumn);
+            },
+            onGridReady: function(event) {
+                console.log('[MovementManager] AG Grid ready para movimento', movementId);
+            }
+        };
+
+        // Cria o grid
+        var gridApi = agGrid.createGrid(gridContainer, gridOptions);
+        state.gridApis[movementId] = gridApi;
+
+        console.log('[MovementManager] AG Grid inicializado para movimento', movementId);
+    }
+
+    /**
+     * Callback quando linha é selecionada no AG Grid
+     */
+    function onAgGridRowSelected(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+
+        // Habilita botões de editar/excluir
+        var btnGroup = document.getElementById('btn-group-' + movementId);
+        if (btnGroup) {
+            var editBtn = btnGroup.querySelector('.btn-movement-edit');
+            var deleteBtn = btnGroup.querySelector('.btn-movement-delete');
+            if (editBtn) editBtn.disabled = false;
+            if (deleteBtn) deleteBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Callback quando linha é clicada duas vezes no AG Grid
+     */
+    function onAgGridRowDoubleClicked(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+        openEditMovement(movementId);
+    }
+
+    /**
+     * Handler para ação de editar inline (chamado pelo ActionCellRenderer)
+     */
+    function onActionEdit(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+        openEditMovement(movementId);
+    }
+
+    /**
+     * Handler para ação de excluir inline (chamado pelo ActionCellRenderer)
+     */
+    function onActionDelete(movementId, rowData, pkColumn) {
+        var recordId = rowData[pkColumn] || rowData[pkColumn.toUpperCase()] || rowData.id;
+        state.selectedRows[movementId] = parseInt(recordId);
+        openDeleteConfirm(movementId);
+    }
+
+    /**
+     * Inicializa as instâncias dos modais Bootstrap
+     */
+    function initModals() {
+        var movementModalEl = document.getElementById('movementModal');
+        var deleteModalEl = document.getElementById('movementDeleteModal');
+
+        if (movementModalEl) {
+            state.modalInstance = new bootstrap.Modal(movementModalEl, {
+                backdrop: false, // Non-blocking
+                keyboard: true
+            });
+        }
+
+        if (deleteModalEl) {
+            state.deleteModalInstance = new bootstrap.Modal(deleteModalEl);
+        }
+    }
+
+    /**
+     * Configura os event listeners para botões (AG Grid já tem seus próprios listeners)
+     */
+    function setupEventListeners() {
+        // Botões Novo
+        document.querySelectorAll('.btn-movement-new').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var movementId = parseInt(this.dataset.movement);
+                openNewMovement(movementId);
+            });
+        });
+
+        // Botões Editar
+        document.querySelectorAll('.btn-movement-edit').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var movementId = parseInt(this.dataset.movement);
+                openEditMovement(movementId);
+            });
+        });
+
+        // Botões Excluir
+        document.querySelectorAll('.btn-movement-delete').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var movementId = parseInt(this.dataset.movement);
+                openDeleteConfirm(movementId);
+            });
+        });
+
+        // Botão Salvar do Modal
+        var btnSave = document.getElementById('btnMovementSave');
+        if (btnSave) {
+            btnSave.addEventListener('click', saveMovement);
+        }
+
+        // Botão Confirmar Exclusão
+        var btnDelete = document.getElementById('btnMovementConfirmDelete');
+        if (btnDelete) {
+            btnDelete.addEventListener('click', confirmDelete);
+        }
+
+        // Nota: Eventos de seleção e double-click agora são tratados pelo AG Grid
+        // via onRowSelected e onRowDoubleClicked em initMovementAgGrid()
+    }
+
+    /**
+     * Carrega dados de todos os movimentos
+     */
+    function loadAllMovements() {
+        Object.keys(state.movements).forEach(function(movementId) {
+            loadMovementData(parseInt(movementId));
+        });
+    }
+
+    /**
+     * Carrega eventos PLSAG de todos os movimentos
+     */
+    function loadAllMovementEvents() {
+        if (!window.SagEvents) {
+            console.log('[MovementManager] SagEvents não disponível, eventos não carregados');
+            return;
+        }
+
+        Object.keys(state.movements).forEach(function(movementId) {
+            SagEvents.loadMovementEvents(state.parentTableId, parseInt(movementId))
+                .then(function(events) {
+                    if (events && events.hasEvents) {
+                        console.log('[MovementManager] Eventos carregados para movimento', movementId);
+                    }
+                })
+                .catch(function(error) {
+                    console.warn('[MovementManager] Erro ao carregar eventos do movimento', movementId, error);
+                });
+        });
+    }
+
+    /**
+     * Carrega dados de um movimento específico
+     * @param {number} movementId - ID da tabela de movimento (CodiTabe)
+     * @param {number} page - Página a carregar (default: 1)
+     * @returns {Promise<void>} Promise que resolve quando os dados são carregados
+     */
+    function loadMovementData(movementId, page) {
+        page = page || state.currentPage[movementId] || 1;
+
+        if (!state.parentRecordId) {
+            console.log('[MovementManager] Sem registro pai, não carrega dados');
+            return Promise.resolve();
+        }
+
+        var gridApi = state.gridApis[movementId];
+        if (gridApi) {
+            gridApi.showLoadingOverlay();
+        }
+
+        var url = '/api/movement/' + state.parentRecordId + '/' + movementId + '/data?page=' + page + '&pageSize=' + state.pageSize;
+
+        return fetch(url)
+            .then(function(response) {
+                if (!response.ok) throw new Error('Erro ao carregar dados');
+                return response.json();
+            })
+            .then(function(data) {
+                renderGrid(movementId, data);
+                state.currentPage[movementId] = page;
+            })
+            .catch(function(error) {
+                console.error('[MovementManager] Erro ao carregar movimento:', error);
+                if (gridApi) {
+                    gridApi.showNoRowsOverlay();
+                }
+                showError('Erro ao carregar dados: ' + error.message);
+            });
+    }
+
+    /**
+     * Renderiza o grid com os dados recebidos via AG Grid
+     * @param {number} movementId - ID do movimento
+     * @param {object} apiData - Dados retornados pela API
+     */
+    function renderGrid(movementId, apiData) {
+        var gridApi = state.gridApis[movementId];
+        var metadata = state.movements[movementId];
+
+        if (!gridApi || !metadata) {
+            console.warn('[MovementManager] Grid API ou metadata não encontrado para movimento', movementId);
+            return;
+        }
+
+        // API retorna 'data' (camelCase de 'Data'), não 'records'
+        var records = apiData.data || apiData.records || [];
+        var columns = apiData.columns || metadata.columns || [];
+        var pkColumn = apiData.pkColumnName || metadata.pkColumnName || 'id';
+
+        // Atualiza colunas se vieram da API
+        if (columns.length > 0) {
+            var columnDefs = [];
+
+            // Coluna de ações como PRIMEIRA coluna (pinned left) - Padrão Edata
+            columnDefs.push({
+                headerName: 'Ações',
+                field: '__actions__',
+                colId: 'actions',
+                cellRenderer: ActionCellRenderer,
+                cellRendererParams: {
+                    onEdit: function(data) {
+                        onActionEdit(movementId, data, pkColumn);
+                    },
+                    onDelete: function(data) {
+                        onActionDelete(movementId, data, pkColumn);
+                    },
+                    showEdit: true,
+                    showDelete: true
+                },
+                width: 90,
+                minWidth: 90,
+                maxWidth: 90,
+                pinned: 'left',
+                sortable: false,
+                filter: false,
+                resizable: false,
+                suppressHeaderMenuButton: true,
+                suppressMovable: true,
+                lockPosition: true,
+                lockVisible: true,
+                suppressColumnsToolPanel: true
+            });
+
+            // Colunas de dados
+            columns.forEach(function(col) {
+                columnDefs.push({
+                    field: col.fieldName || col.FieldName || col.displayName,
+                    headerName: col.displayName || col.DisplayName,
+                    width: col.width || col.Width || 100,
+                    sortable: true,
+                    resizable: true,
+                    valueFormatter: function(params) {
+                        return formatValue(params.value, col);
+                    }
+                });
+            });
+
+            gridApi.setGridOption('columnDefs', columnDefs);
+        }
+
+        // Atualiza dados
+        if (records.length > 0) {
+            gridApi.setGridOption('rowData', records);
+
+            // Auto-dimensiona colunas após carregar dados (igual Vision)
+            setTimeout(function() {
+                gridApi.autoSizeAllColumns();
+            }, 100);
+        } else {
+            gridApi.setGridOption('rowData', []);
+            gridApi.showNoRowsOverlay();
+        }
+
+        // Limpa seleção
+        state.selectedRows[movementId] = null;
+        var btnGroup = document.getElementById('btn-group-' + movementId);
+        if (btnGroup) {
+            var editBtn = btnGroup.querySelector('.btn-movement-edit');
+            var deleteBtn = btnGroup.querySelector('.btn-movement-delete');
+            if (editBtn) editBtn.disabled = true;
+            if (deleteBtn) deleteBtn.disabled = true;
+        }
+
+        // Atualiza info de registros
+        var infoEl = document.getElementById('movement-info-' + movementId);
+        if (infoEl) {
+            var total = apiData.totalRecords || records.length;
+            infoEl.textContent = total > 0 ? total + ' registro(s)' : 'Nenhum registro';
+        }
+
+        // Atualiza contagem
+        var summaryCount = document.getElementById('summary-count-' + movementId);
+        if (summaryCount) {
+            summaryCount.textContent = apiData.totalRecords || records.length;
+        }
+        var summary = document.getElementById('summary-' + movementId);
+        if (summary && records.length > 0) {
+            summary.style.display = 'block';
+        }
+
+        // Atualiza campos de totais (TOQTMVCT, TOVLMVCT, etc.)
+        updateTotalsFields(apiData.totals || {});
+    }
+
+    /**
+     * Atualiza os campos de totais no formulário do cabeçalho
+     * @param {object} totals - Objeto com nome do campo e valor calculado
+     */
+    function updateTotalsFields(totals) {
+        if (!totals || Object.keys(totals).length === 0) {
+            return;
+        }
+
+        console.log('[MovementManager] Atualizando totais:', totals);
+
+        Object.keys(totals).forEach(function(fieldName) {
+            var value = totals[fieldName];
+
+            // Busca o campo pelo name ou data-sag-nomecamp
+            var field = document.querySelector('input[name="' + fieldName + '"]') ||
+                        document.querySelector('input[data-sag-nomecamp="' + fieldName + '"]') ||
+                        document.querySelector('[name="' + fieldName.toUpperCase() + '"]') ||
+                        document.querySelector('[name="' + fieldName.toLowerCase() + '"]');
+
+            if (field) {
+                // Formata o valor (números com decimais)
+                var formattedValue = value;
+                if (typeof value === 'number') {
+                    formattedValue = value.toFixed(2);
+                } else if (value !== null && value !== undefined) {
+                    formattedValue = String(value);
+                } else {
+                    formattedValue = '0';
+                }
+
+                field.value = formattedValue;
+                console.log('[MovementManager] Campo ' + fieldName + ' atualizado para:', formattedValue);
+            } else {
+                console.log('[MovementManager] Campo ' + fieldName + ' não encontrado no DOM');
+            }
+        });
+    }
+
+    /**
+     * Formata valor para exibição no grid
+     * @param {*} value - Valor a formatar
+     * @param {object} col - Configuração da coluna
+     */
+    function formatValue(value, col) {
+        if (value === null || value === undefined) return '';
+
+        // TODO: Adicionar formatação baseada no tipo da coluna
+        // Por enquanto, apenas converte para string
+        return String(value);
+    }
+
+    // Nota: Funções updatePagination, changePage e selectRow removidas
+    // AG Grid gerencia paginação e seleção internamente
+
+    /**
+     * Abre modal para novo registro
+     * @param {number} movementId - ID do movimento
+     */
+    function openNewMovement(movementId) {
+        if (!state.parentRecordId) {
+            showError('Salve o registro principal antes de adicionar movimentos.');
+            return;
+        }
+
+        var metadata = state.movements[movementId];
+        if (!metadata) return;
+
+        // Configura modal
+        document.getElementById('movementModalTitle').textContent = 'Novo ' + metadata.tabName;
+        document.getElementById('movementModalTableId').value = movementId;
+        document.getElementById('movementModalRecordId').value = '';
+        document.getElementById('movementModalParentId').value = state.parentRecordId;
+        document.getElementById('movementModalMode').value = 'insert';
+        document.getElementById('movementModalInfo').textContent = '';
+
+        // Carrega campos do formulário
+        loadMovementForm(movementId, null);
+
+        // Abre modal
+        if (state.modalInstance) {
+            state.modalInstance.show();
+        }
+    }
+
+    /**
+     * Abre modal para editar registro selecionado
+     * @param {number} movementId - ID do movimento
+     */
+    function openEditMovement(movementId) {
+        var recordId = state.selectedRows[movementId];
+        if (!recordId) {
+            showError('Selecione um registro para editar.');
+            return;
+        }
+
+        var metadata = state.movements[movementId];
+        if (!metadata) return;
+
+        // Configura modal
+        document.getElementById('movementModalTitle').textContent = 'Editar ' + metadata.tabName;
+        document.getElementById('movementModalTableId').value = movementId;
+        document.getElementById('movementModalRecordId').value = recordId;
+        document.getElementById('movementModalParentId').value = state.parentRecordId;
+        document.getElementById('movementModalMode').value = 'edit';
+        document.getElementById('movementModalInfo').textContent = 'Registro #' + recordId;
+
+        // Carrega campos e dados
+        loadMovementForm(movementId, recordId);
+
+        // Abre modal
+        if (state.modalInstance) {
+            state.modalInstance.show();
+        }
+    }
+
+    /**
+     * Carrega o formulário de movimento via server-side rendering
+     * @param {number} movementId - ID do movimento
+     * @param {number|null} recordId - ID do registro (null para novo)
+     */
+    function loadMovementForm(movementId, recordId) {
+        var formContent = document.getElementById('movementFormContent');
+        var loading = document.getElementById('movementModalLoading');
+
+        if (loading) loading.classList.remove('d-none');
+        if (formContent) formContent.innerHTML = '';
+
+        // Usa endpoint server-side que retorna HTML renderizado
+        var url = '/Form/MovementFormHtml/' + movementId;
+        if (recordId) {
+            url += '?recordId=' + recordId;
+        }
+
+        // Carrega eventos de campo de movimento em paralelo
+        var fieldEventsPromise = null;
+        if (window.SagEvents && typeof SagEvents.loadMovementFieldEvents === 'function') {
+            fieldEventsPromise = SagEvents.loadMovementFieldEvents(movementId);
+        }
+
+        fetch(url)
+            .then(function(response) {
+                if (!response.ok) throw new Error('Erro ao carregar formulário');
+                return response.text(); // Retorna HTML, não JSON
+            })
+            .then(async function(html) {
+                // Aguarda eventos de campo carregarem
+                if (fieldEventsPromise) {
+                    await fieldEventsPromise;
+                }
+
+                if (loading) loading.classList.add('d-none');
+                if (formContent) {
+                    formContent.innerHTML = html;
+
+                    // Define contexto de movimento ativo para eventos PLSAG
+                    if (window.SagEvents) {
+                        SagEvents.setActiveMovementContext({
+                            parentTableId: state.parentTableId,
+                            movementTableId: movementId,
+                            parentRecordId: state.parentRecordId,
+                            recordId: recordId,
+                            formData: {}
+                        });
+                    }
+
+                    // Inicializa componentes após inserir HTML
+                    initFormComponents(formContent, movementId);
+
+                    // Se é edição, preenche descrições de campos lookup existentes
+                    if (recordId && window.SagEvents && typeof SagEvents.populateLookupDescriptions === 'function') {
+                        await SagEvents.populateLookupDescriptions(formContent);
+                    }
+
+                    // Executa evento DepoShow do movimento após carregar formulário.
+                    // Este evento contém comandos QY para injeção de filtros em lookups.
+                    // Ex: QY-CODIPROD-AND EXISTS(...) para filtrar produtos por tabela de preço.
+                    if (window.SagEvents && typeof SagEvents.triggerMovementEvent === 'function') {
+                        console.log('[MovementManager] Executando DepoShow para movimento', movementId);
+                        await SagEvents.triggerMovementEvent('depoShow', movementId, recordId, {
+                            formData: {},
+                            isNewRecord: !recordId
+                        });
+                    }
+                }
+            })
+            .catch(function(error) {
+                console.error('[MovementManager] Erro ao carregar formulário:', error);
+                if (loading) loading.classList.add('d-none');
+                if (formContent) {
+                    formContent.innerHTML = '<div class="alert alert-danger">' +
+                        '<i class="bi bi-exclamation-triangle me-2"></i>' +
+                        'Erro ao carregar formulário: ' + error.message +
+                        '</div>';
+                }
+            });
+    }
+
+    /**
+     * Inicializa componentes do formulário após renderização
+     * @param {HTMLElement} container - Container do formulário
+     * @param {number} movementTableId - ID da tabela de movimento (para contexto OnExit)
+     */
+    function initFormComponents(container, movementTableId) {
+        // Inicializa botões de lookup via SagEvents
+        if (window.SagEvents && typeof SagEvents.bindLookupButtons === 'function') {
+            SagEvents.bindLookupButtons(container);
+        }
+
+        // Inicializa auto-fetch de lookup (busca descrição ao digitar código)
+        if (window.SagEvents && typeof SagEvents.bindLookupAutoFetch === 'function') {
+            SagEvents.bindLookupAutoFetch(container);
+        }
+
+        // Inicializa arredondamento de campos numéricos (baseado em DeciCamp)
+        if (window.SagEvents && typeof SagEvents.bindNumericRounding === 'function') {
+            SagEvents.bindNumericRounding(container);
+        }
+
+        // Inicializa máscaras se disponível
+        if (window.IMask) {
+            container.querySelectorAll('[data-mask]').forEach(function(input) {
+                var mask = input.dataset.mask;
+                if (mask) {
+                    IMask(input, { mask: mask });
+                }
+            });
+        }
+
+        // Registra campos para eventos OnExit (com contexto de movimento)
+        container.querySelectorAll('[data-sag-codicamp]').forEach(function(field) {
+            // Evita duplo bind
+            if (field.dataset.exitBound) return;
+            field.dataset.exitBound = 'true';
+
+            field.addEventListener('blur', function() {
+                if (window.SagEvents) {
+                    // Passa movementTableId para resolver eventos de campo de movimento
+                    SagEvents.onFieldExit(this.dataset.sagCodicamp, this.value, movementTableId);
+                }
+            });
+
+            // Para select/combo, também trigger no change
+            if (field.tagName === 'SELECT') {
+                field.addEventListener('change', function() {
+                    if (window.SagEvents) {
+                        SagEvents.onFieldExit(this.dataset.sagCodicamp, this.value, movementTableId);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Escapa HTML para prevenir XSS
+     * @param {string} str - String a escapar
+     * @returns {string} String escapada
+     */
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    /**
+     * Salva o registro de movimento
+     */
+    async function saveMovement() {
+        var form = document.getElementById('movementForm');
+        if (!form) return;
+
+        // Valida formulário
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        var tableId = parseInt(document.getElementById('movementModalTableId').value);
+        var recordId = document.getElementById('movementModalRecordId').value;
+        var parentId = parseInt(document.getElementById('movementModalParentId').value);
+        var mode = document.getElementById('movementModalMode').value;
+
+        // Coleta campos
+        var formData = new FormData(form);
+        var fields = {};
+        formData.forEach(function(value, key) {
+            if (!key.startsWith('_')) { // Ignora campos hidden do form
+                fields[key] = value;
+            }
+        });
+
+        // Garante checkboxes não marcados
+        form.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+            if (!cb.checked && cb.name) {
+                fields[cb.name] = '0';
+            }
+        });
+
+        // Executa eventos PLSAG antes de salvar
+        if (window.SagEvents) {
+            var operation = mode === 'insert' ? 'insert' : 'update';
+            var beforeResult = await SagEvents.beforeMovementOperation(
+                operation,
+                tableId,
+                recordId ? parseInt(recordId) : null,
+                fields
+            );
+
+            if (!beforeResult.canProceed) {
+                console.log('[MovementManager] Operação bloqueada por evento:', beforeResult.reason);
+                return; // Evento bloqueou a operação
+            }
+        }
+
+        var url, method, body;
+
+        if (mode === 'insert') {
+            url = '/api/movement/' + tableId;
+            method = 'POST';
+            body = JSON.stringify({
+                parentId: parentId,
+                fields: fields
+            });
+        } else {
+            url = '/api/movement/' + tableId + '/' + recordId;
+            method = 'PUT';
+            body = JSON.stringify({
+                fields: fields
+            });
+        }
+
+        // Desabilita botão enquanto salva
+        var btnSave = document.getElementById('btnMovementSave');
+        if (btnSave) {
+            btnSave.disabled = true;
+            btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+        }
+
+        try {
+            var response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: body
+            });
+
+            var result = await response.json();
+
+            if (result.success) {
+                // Fecha modal
+                if (state.modalInstance) {
+                    state.modalInstance.hide();
+                }
+
+                // Recarrega grid e AGUARDA completar antes de disparar eventos
+                // Isso garante que templates QY-DAD leiam dados atualizados
+                await loadMovementData(tableId);
+
+                // Dispara eventos PLSAG após salvar (inclui ATUAGRID via onGridRefresh)
+                if (window.SagEvents) {
+                    var savedRecordId = mode === 'insert' ? result.recordId : parseInt(recordId);
+                    await SagEvents.afterMovementOperation(
+                        mode === 'insert' ? 'insert' : 'update',
+                        tableId,
+                        savedRecordId,
+                        fields
+                    );
+                }
+            } else {
+                showError(result.message || 'Erro ao salvar registro');
+            }
+        } catch (error) {
+            console.error('[MovementManager] Erro ao salvar:', error);
+            showError('Erro ao salvar: ' + error.message);
+        } finally {
+            if (btnSave) {
+                btnSave.disabled = false;
+                btnSave.innerHTML = '<i class="bi bi-check-lg"></i> Confirmar';
+            }
+        }
+    }
+
+    /**
+     * Abre confirmação de exclusão
+     * @param {number} movementId - ID do movimento
+     */
+    function openDeleteConfirm(movementId) {
+        var recordId = state.selectedRows[movementId];
+        if (!recordId) {
+            showError('Selecione um registro para excluir.');
+            return;
+        }
+
+        document.getElementById('deleteModalTableId').value = movementId;
+        document.getElementById('deleteModalRecordId').value = recordId;
+
+        var metadata = state.movements[movementId];
+        var info = document.getElementById('deleteModalInfo');
+        if (info && metadata) {
+            info.textContent = metadata.tabName + ' - Registro #' + recordId;
+        }
+
+        if (state.deleteModalInstance) {
+            state.deleteModalInstance.show();
+        }
+    }
+
+    /**
+     * Confirma e executa a exclusão
+     */
+    async function confirmDelete() {
+        var tableId = parseInt(document.getElementById('deleteModalTableId').value);
+        var recordId = parseInt(document.getElementById('deleteModalRecordId').value);
+
+        // Executa eventos PLSAG antes de excluir
+        if (window.SagEvents) {
+            var beforeResult = await SagEvents.beforeMovementOperation('delete', tableId, recordId, {});
+
+            if (!beforeResult.canProceed) {
+                console.log('[MovementManager] Exclusão bloqueada por evento:', beforeResult.reason);
+                // Fecha modal de confirmação já que foi bloqueado
+                if (state.deleteModalInstance) {
+                    state.deleteModalInstance.hide();
+                }
+                return;
+            }
+        }
+
+        var btnDelete = document.getElementById('btnMovementConfirmDelete');
+        if (btnDelete) {
+            btnDelete.disabled = true;
+            btnDelete.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Excluindo...';
+        }
+
+        try {
+            var response = await fetch('/api/movement/' + tableId + '/' + recordId, {
+                method: 'DELETE'
+            });
+
+            var result = await response.json();
+
+            if (result.success) {
+                // Fecha modal
+                if (state.deleteModalInstance) {
+                    state.deleteModalInstance.hide();
+                }
+
+                // Limpa seleção
+                state.selectedRows[tableId] = null;
+                var btnGroup = document.getElementById('btn-group-' + tableId);
+                if (btnGroup) {
+                    var editBtn = btnGroup.querySelector('.btn-movement-edit');
+                    var deleteBtn = btnGroup.querySelector('.btn-movement-delete');
+                    if (editBtn) editBtn.disabled = true;
+                    if (deleteBtn) deleteBtn.disabled = true;
+                }
+
+                // Recarrega grid e AGUARDA completar antes de disparar eventos
+                // Isso garante que templates QY-DAD leiam dados atualizados
+                console.log('[MovementManager] Recarregando grid após exclusão...');
+                await loadMovementData(tableId);
+                console.log('[MovementManager] Grid recarregado após exclusão');
+
+                // Dispara eventos PLSAG após excluir (inclui ATUAGRID via onGridRefresh)
+                if (window.SagEvents) {
+                    await SagEvents.afterMovementOperation('delete', tableId, recordId, {});
+                }
+            } else {
+                showError(result.message || 'Erro ao excluir registro');
+            }
+        } catch (error) {
+            console.error('[MovementManager] Erro ao excluir:', error);
+            showError('Erro ao excluir: ' + error.message);
+        } finally {
+            if (btnDelete) {
+                btnDelete.disabled = false;
+                btnDelete.innerHTML = '<i class="bi bi-trash"></i> Excluir';
+            }
+        }
+    }
+
+    /**
+     * Exibe mensagem de erro
+     * @param {string} message - Mensagem de erro
+     */
+    function showError(message) {
+        alert(message); // TODO: Usar toast ou notificação mais elegante
+    }
+
+    /**
+     * Atualiza o ID do registro pai (chamado após salvar o cabeçalho)
+     * @param {number} newParentId - Novo ID do registro pai
+     */
+    function setParentRecordId(newParentId) {
+        state.parentRecordId = newParentId;
+        // Após definir o pai, carrega os movimentos
+        if (newParentId) {
+            loadAllMovements();
+        }
+    }
+
+    /**
+     * Obtém o ID do registro pai atual
+     * @returns {number|null} ID do registro pai
+     */
+    function getParentRecordId() {
+        return state.parentRecordId;
+    }
+
+    /**
+     * Recarrega um movimento específico
+     * @param {number} movementId - ID do movimento
+     */
+    function refreshMovement(movementId) {
+        loadMovementData(movementId);
+    }
+
+    /**
+     * Recarrega todos os movimentos
+     */
+    function refreshAll() {
+        loadAllMovements();
+    }
+
+    /**
+     * Sincroniza estado do cabeçalho com movimentos
+     * Chamado quando o registro do cabeçalho muda (navegação, load, save)
+     * @param {string} action - Tipo de ação: 'navigate', 'load', 'save', 'new', 'clear'
+     * @param {object} headerData - Dados do cabeçalho (opcional)
+     */
+    function syncWithHeader(action, headerData) {
+        console.log('[MovementManager] syncWithHeader:', action, headerData?.recordId || 'no record');
+
+        switch (action) {
+            case 'navigate':
+            case 'load':
+                // Registro do cabeçalho mudou - atualiza e recarrega movimentos
+                if (headerData && headerData.recordId) {
+                    if (state.parentRecordId !== headerData.recordId) {
+                        state.parentRecordId = headerData.recordId;
+                        // Limpa seleções anteriores
+                        Object.keys(state.selectedRows).forEach(function(key) {
+                            state.selectedRows[key] = null;
+                        });
+                        // Desabilita botões de editar/excluir
+                        document.querySelectorAll('.btn-movement-edit, .btn-movement-delete').forEach(function(btn) {
+                            btn.disabled = true;
+                        });
+                        // Recarrega movimentos
+                        loadAllMovements();
+                    }
+                } else {
+                    // Sem registro pai - limpa movimentos
+                    clearAllMovements();
+                }
+                break;
+
+            case 'save':
+                // Após salvar cabeçalho - atualiza parentRecordId se era novo
+                if (headerData && headerData.recordId && !state.parentRecordId) {
+                    state.parentRecordId = headerData.recordId;
+                    console.log('[MovementManager] Parent ID definido após save:', state.parentRecordId);
+                    // Habilita área de movimentos (botões Novo)
+                    document.querySelectorAll('.btn-movement-new').forEach(function(btn) {
+                        btn.disabled = false;
+                    });
+                }
+                break;
+
+            case 'new':
+            case 'clear':
+                // Novo registro ou limpar - desabilita movimentos
+                clearAllMovements();
+                state.parentRecordId = null;
+                // Desabilita todos os botões de movimento
+                document.querySelectorAll('.movement-toolbar button').forEach(function(btn) {
+                    btn.disabled = true;
+                });
+                break;
+
+            default:
+                console.warn('[MovementManager] Ação desconhecida:', action);
+        }
+    }
+
+    /**
+     * Limpa todos os grids de movimento via AG Grid
+     */
+    function clearAllMovements() {
+        Object.keys(state.movements).forEach(function(movementId) {
+            var gridApi = state.gridApis[movementId];
+
+            if (gridApi) {
+                gridApi.setGridOption('rowData', []);
+                gridApi.showNoRowsOverlay();
+            }
+
+            // Limpa seleção
+            state.selectedRows[movementId] = null;
+
+            // Atualiza info
+            var infoEl = document.getElementById('movement-info-' + movementId);
+            if (infoEl) {
+                infoEl.textContent = 'Nenhum registro';
+            }
+
+            // Oculta resumo
+            var summary = document.getElementById('summary-' + movementId);
+            if (summary) summary.style.display = 'none';
+        });
+
+        // Desabilita botões de editar/excluir
+        document.querySelectorAll('.btn-movement-edit, .btn-movement-delete').forEach(function(btn) {
+            btn.disabled = true;
+        });
+    }
+
+    /**
+     * Obtém estado atual
+     * @returns {object} Estado do gerenciador
+     */
+    function getState() {
+        return {
+            parentTableId: state.parentTableId,
+            parentRecordId: state.parentRecordId,
+            movements: Object.keys(state.movements),
+            selectedRows: { ...state.selectedRows }
+        };
+    }
+
+    /**
+     * Obtém AG Grid API de um movimento específico
+     * Usado pelo PlsagInterpreter para templates QY-DAD
+     * @param {number|string} movementId - ID da tabela de movimento
+     * @returns {Object|null} AG Grid API ou null
+     */
+    function getGridApi(movementId) {
+        var id = typeof movementId === 'string' ? parseInt(movementId) : movementId;
+        return state.gridApis[id] || null;
+    }
+
+    /**
+     * Dispara evento ATUAGRID após operações CRUD no grid de movimento.
+     * O evento ATUAGRID_{CodiTabe} recalcula totais usando templates QY-DAD.
+     *
+     * NOTA: Este método é um wrapper que usa o mecanismo existente de SagEvents.
+     * O evento ATUAGRID já é disparado automaticamente via afterMovementOperation(),
+     * mas este método pode ser usado para disparo manual se necessário.
+     *
+     * @param {number} movementId - ID da tabela de movimento
+     * @param {string} operation - Tipo de operação: 'insert', 'update', 'delete'
+     */
+    async function fireAtuaGridEvent(movementId, operation) {
+        if (!window.SagEvents) {
+            console.log('[MovementManager] SagEvents não disponível, ATUAGRID não disparado');
+            return;
+        }
+
+        console.log(`[MovementManager] Disparando ATUAGRID_${movementId} após ${operation}`);
+
+        try {
+            // Usa o mecanismo existente de triggerMovementEvent
+            // que já busca e executa as instruções do ATUAGRID
+            await SagEvents.triggerMovementEvent('onGridRefresh', movementId, null, {
+                operation: operation,
+                parentTableId: state.parentTableId,
+                parentRecordId: state.parentRecordId
+            });
+        } catch (error) {
+            console.error(`[MovementManager] Erro ao executar ATUAGRID_${movementId}:`, error);
+        }
+    }
+
+    // API pública
+    return {
+        init: init,
+        loadMovementData: loadMovementData,
+        refreshMovement: refreshMovement,
+        refreshAll: refreshAll,
+        setParentRecordId: setParentRecordId,
+        getParentRecordId: getParentRecordId,
+        openNewMovement: openNewMovement,
+        openEditMovement: openEditMovement,
+        syncWithHeader: syncWithHeader,
+        clearAllMovements: clearAllMovements,
+        getState: getState,
+        getGridApi: getGridApi,
+        fireAtuaGridEvent: fireAtuaGridEvent
+    };
+
+})();

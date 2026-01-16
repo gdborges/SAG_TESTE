@@ -1,3 +1,5 @@
+using SagPoc.Web.Services.Context;
+
 namespace SagPoc.Web.Models;
 
 /// <summary>
@@ -5,6 +7,11 @@ namespace SagPoc.Web.Models;
 /// </summary>
 public class FormRenderViewModel
 {
+    /// <summary>
+    /// Contexto de sessão SAG (usuário, empresa, módulo)
+    /// </summary>
+    public SagContext? SagContext { get; set; }
+
     /// <summary>
     /// Metadados do formulário (campos)
     /// </summary>
@@ -19,6 +26,16 @@ public class FormRenderViewModel
     /// Lista de consultas disponíveis (SISTCONS)
     /// </summary>
     public List<ConsultaMetadata> Consultas { get; set; } = new();
+
+    /// <summary>
+    /// Eventos do formulário (ciclo de vida PLSAG)
+    /// </summary>
+    public FormEventData? FormEvents { get; set; }
+
+    /// <summary>
+    /// Eventos dos campos (PLSAG)
+    /// </summary>
+    public Dictionary<int, FieldEventData> FieldEvents { get; set; } = new();
 
     /// <summary>
     /// Indica se existem consultas configuradas para esta tabela

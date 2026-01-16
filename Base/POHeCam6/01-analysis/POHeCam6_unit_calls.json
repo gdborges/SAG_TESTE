@@ -1,0 +1,3171 @@
+{
+  "form": "POHeCam6",
+  "analysis_date": "2025-12-23T12:35:27.822726",
+  "analysis_config": {
+    "mode": "focused",
+    "max_depth": 10,
+    "recursive": true,
+    "filter_component_calls": true,
+    "analyzed_files": 2
+  },
+  "direct_calls": [
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "DtmPoul",
+      "target_method": "Campos_Busc",
+      "call_type": "External",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "ListPrin",
+      "target_method": "Add",
+      "call_type": "External",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "Pai_Tabe",
+      "target_method": "Assign",
+      "call_type": "External",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "DtmPoul",
+      "target_method": "Campos_Busc",
+      "call_type": "External",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "DtmPoul",
+      "target_method": "Campos_Busc",
+      "call_type": "External",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AtuaGrid",
+      "source_line": 369,
+      "target_unit": "FraMovi",
+      "target_method": "AtuaGridMovi",
+      "call_type": "External",
+      "context": "POHeCam6.AtuaGrid",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "New",
+      "target_method": "getPropTableValue",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "Old",
+      "target_method": "getPropTableValue",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FindField",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FindField",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "New",
+      "target_method": "getPropTableValue",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "Old",
+      "target_method": "getPropTableValue",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "DataSet",
+      "target_method": "FindField",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "DataSet",
+      "target_method": "FindField",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "DataSet",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "TsgLeitSeri",
+      "target_method": "Create_Owner",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "ListLeitSeri",
+      "target_method": "Add",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "DtmPoul",
+      "target_method": "Campos_Cds",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "Func",
+      "target_method": "PegaMaqu",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "TsgLeitSeri",
+      "target_method": "Create_Owner",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "TEdtLbl",
+      "target_method": "Create",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "cds",
+      "target_method": "FieldByName",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "ListLeitSeri",
+      "target_method": "Add",
+      "call_type": "External",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "CriaTbs",
+      "source_line": 125,
+      "target_unit": "TsgTbs",
+      "target_method": "Create",
+      "call_type": "External",
+      "context": "POHeCam6.CriaTbs",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "TsgConn",
+      "target_method": "Create",
+      "call_type": "External",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "TFraCaMv",
+      "target_method": "Create",
+      "call_type": "External",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "ListMovi",
+      "target_method": "Add",
+      "call_type": "External",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "GetPgcMovi",
+      "source_line": 112,
+      "target_unit": "TsgPgc",
+      "target_method": "Create",
+      "call_type": "External",
+      "context": "POHeCam6.GetPgcMovi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "Grav",
+      "source_line": 1218,
+      "target_unit": "Func",
+      "target_method": "GravLog_Mens",
+      "call_type": "External",
+      "context": "POHeCam6.Grav",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LePeso",
+      "source_line": 1228,
+      "target_unit": "Func",
+      "target_method": "GravLog_Mens",
+      "call_type": "External",
+      "context": "POHeCam6.LePeso",
+      "depth": 1
+    }
+  ],
+  "indirect_calls": [
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersExecDireStri",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "MontCampPers",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "msgRaiseTratada",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPers_TratNome",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "TsgTbs",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "FindComponent",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "TsgTbs",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "FindComponent",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPers_TratNome",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "Trim",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "StrToInt",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "RetoZero",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "Inc",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "SeInte",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "PopAtuaClick",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersExecDireStri",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "AfterCreate",
+      "source_line": 1065,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.AfterCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "BtnConf_CampModi",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Trim",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "WHERE",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "AND",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "IN",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "AND",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersCompAtuaGetProp",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersCompAtua",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersAcao",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "EspaDire",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "sgMessageDlg",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "SubsPala",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "BtnConf_Ante",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "msgAviso",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Compras",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "msgAviso",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Diretoria",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Perform",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "ConfGrav",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersInicGravPara",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "RecaDadoGera",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "VeriEnviConf",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPers_TratExec",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPers_TratExec",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersValiExecLinh",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Copy",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "BuscPareWin",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Copy",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Inc",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Inc",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "InicCampSequ",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "GravSemC",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "msgOk",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "VeriEnviConf",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPers_TratExec",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "FormShow",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "VeriEnviConf",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPers_TratExec",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "to",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "TDbLcbLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "FindComponent",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Copy",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "TsgQuery",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "TsgQuery",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConfClick",
+      "source_line": 436,
+      "target_unit": "POHeCam6",
+      "target_method": "BtnConf_Depo",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConfClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "Trim",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "WHERE",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "AND",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "IN",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "AND",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersCompAtuaGetProp",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersCompAtua",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersAcao",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "EspaDire",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "sgMessageDlg",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BtnConf_CampModi",
+      "source_line": 442,
+      "target_unit": "POHeCam6",
+      "target_method": "SubsPala",
+      "call_type": "Local",
+      "context": "POHeCam6.BtnConf_CampModi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "AnsiUpperCase",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "Copy",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "StrIn",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "BuscaComponente",
+      "source_line": 138,
+      "target_unit": "POHeCam6",
+      "target_method": "BuscaComponente",
+      "call_type": "Local",
+      "context": "POHeCam6.BuscaComponente",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "Pos",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "ExibMensHint",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "or",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "sgPos",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "Pos",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "TEdtLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "BuscaComponente",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ConfPortSeri",
+      "source_line": 292,
+      "target_unit": "POHeCam6",
+      "target_method": "FreeAndNil",
+      "call_type": "Local",
+      "context": "POHeCam6.ConfPortSeri",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "DuplClic",
+      "source_line": 388,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersDuplCliq",
+      "call_type": "Local",
+      "context": "POHeCam6.DuplClic",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormClose",
+      "source_line": 740,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.FormClose",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormClose",
+      "source_line": 740,
+      "target_unit": "POHeCam6",
+      "target_method": "not",
+      "call_type": "Local",
+      "context": "POHeCam6.FormClose",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormClose",
+      "source_line": 740,
+      "target_unit": "POHeCam6",
+      "target_method": "ExecSQL_",
+      "call_type": "Local",
+      "context": "POHeCam6.FormClose",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormClose",
+      "source_line": 740,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.FormClose",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormClose",
+      "source_line": 740,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.FormClose",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormClose",
+      "source_line": 740,
+      "target_unit": "POHeCam6",
+      "target_method": "SetPsgTrans",
+      "call_type": "Local",
+      "context": "POHeCam6.FormClose",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormClose",
+      "source_line": 740,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.FormClose",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "ConfConnectionString",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "TsgTransaction",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "Create",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "not",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "sgStrToInt",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "CriaTbs",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "CriaTbs",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "IntToStr",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "FormInteBras",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPers_TratNome",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "TradSQL_Cons",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormCreate",
+      "source_line": 627,
+      "target_unit": "POHeCam6",
+      "target_method": "TradSQL_Cons",
+      "call_type": "Local",
+      "context": "POHeCam6.FormCreate",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "SetPsgTrans",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "FreeAndNil",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "FreeAndNil",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "FormDestroy",
+      "source_line": 780,
+      "target_unit": "POHeCam6",
+      "target_method": "FreeAndNil",
+      "call_type": "Local",
+      "context": "POHeCam6.FormDestroy",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "GetPgcMovi",
+      "source_line": 112,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.GetPgcMovi",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "Grav",
+      "source_line": 1218,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.Grav",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "Grav",
+      "source_line": 1218,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.Grav",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "Grav",
+      "source_line": 1218,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.Grav",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "Grav",
+      "source_line": 1218,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersExecListInst",
+      "call_type": "Local",
+      "context": "POHeCam6.Grav",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LePeso",
+      "source_line": 1228,
+      "target_unit": "POHeCam6",
+      "target_method": "NumeroInRange",
+      "call_type": "Local",
+      "context": "POHeCam6.LePeso",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LePeso",
+      "source_line": 1228,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.LePeso",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LePeso",
+      "source_line": 1228,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.LePeso",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LePeso",
+      "source_line": 1228,
+      "target_unit": "POHeCam6",
+      "target_method": "FormRealBras",
+      "call_type": "Local",
+      "context": "POHeCam6.LePeso",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LePeso",
+      "source_line": 1228,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersExecListInst",
+      "call_type": "Local",
+      "context": "POHeCam6.LePeso",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "ListChecColumnClick",
+      "source_line": 394,
+      "target_unit": "POHeCam6",
+      "target_method": "CampPersListChecColumnClick",
+      "call_type": "Local",
+      "context": "POHeCam6.ListChecColumnClick",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "to",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "Assigned",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "CarregaDados",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "LoadCompleted",
+      "source_line": 402,
+      "target_unit": "POHeCam6",
+      "target_method": "TLstLbl",
+      "call_type": "Local",
+      "context": "POHeCam6.LoadCompleted",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "MudaTabe2_BuscTbs_Index",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "AnsiUpperCase",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "AnsiUpperCase",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "TsgTbs",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "MudaTabe2_BuscTbs_Index",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "TWinControl",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "MudaTabe2_BuscTbs_Index",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "and",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "not",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "UltiConf",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "UltiConf",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTab2",
+      "source_line": 227,
+      "target_unit": "POHeCam6",
+      "target_method": "Perform",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTab2",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTabe2_BuscTbs_Index",
+      "source_line": 234,
+      "target_unit": "POHeCam6",
+      "target_method": "AnsiUpperCase",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTabe2_BuscTbs_Index",
+      "source_line": 234,
+      "target_unit": "POHeCam6",
+      "target_method": "AnsiUpperCase",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTabe2_BuscTbs_Index",
+      "source_line": 234,
+      "target_unit": "POHeCam6",
+      "target_method": "TsgTbs",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTabe2_BuscTbs_Index",
+      "source_line": 234,
+      "target_unit": "POHeCam6",
+      "target_method": "MudaTabe2_BuscTbs_Index",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "MudaTabe2_BuscTbs_Index",
+      "source_line": 234,
+      "target_unit": "POHeCam6",
+      "target_method": "TWinControl",
+      "call_type": "Local",
+      "context": "POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 1
+    },
+    {
+      "source_unit": "POHeCam6",
+      "source_method": "QryTabeConfBeforeOpen",
+      "source_line": 285,
+      "target_unit": "POHeCam6",
+      "target_method": "isMobi_POCaCamp_Sele",
+      "call_type": "Local",
+      "context": "POHeCam6.QryTabeConfBeforeOpen",
+      "depth": 1
+    }
+  ],
+  "call_chains": [
+    {
+      "chain": "POHeCam6.BuscaComponente → POHeCam6.BuscaComponente",
+      "depth": 2,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.MudaTabe2_BuscTbs_Index → POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 2,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.MudaTab2 → POHeCam6.MudaTabe2_BuscTbs_Index → POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 3,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTab2",
+          "line": 227
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.MudaTab2 → POHeCam6.MudaTabe2_BuscTbs_Index → POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 3,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTab2",
+          "line": 227
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.MudaTab2 → POHeCam6.MudaTabe2_BuscTbs_Index → POHeCam6.MudaTabe2_BuscTbs_Index",
+      "depth": 3,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTab2",
+          "line": 227
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "MudaTabe2_BuscTbs_Index",
+          "line": 234
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.ConfPortSeri → POHeCam6.BuscaComponente → POHeCam6.BuscaComponente",
+      "depth": 3,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "ConfPortSeri",
+          "line": 292
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.BtnConfClick → POHeCam6.FormShow → POHeCam6.ConfPortSeri → POHeCam6.BuscaComponente → POHeCam6.BuscaComponente",
+      "depth": 5,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "BtnConfClick",
+          "line": 436
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "FormShow",
+          "line": 883
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "ConfPortSeri",
+          "line": 292
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.FormShow → POHeCam6.ConfPortSeri → POHeCam6.BuscaComponente → POHeCam6.BuscaComponente",
+      "depth": 4,
+      "is_circular": true,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "FormShow",
+          "line": 883
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "ConfPortSeri",
+          "line": 292
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        },
+        {
+          "unit": "POHeCam6",
+          "method": "BuscaComponente",
+          "line": 138
+        }
+      ]
+    },
+    {
+      "chain": "POHeCam6.IsWeb",
+      "depth": 1,
+      "is_circular": false,
+      "has_business_logic": false,
+      "has_sql": false,
+      "nodes": [
+        {
+          "unit": "POHeCam6",
+          "method": "IsWeb",
+          "line": 1056
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "total_methods": 20,
+    "total_calls": 292,
+    "external_calls": 46,
+    "local_calls": 246,
+    "event_handlers": 1,
+    "units_analyzed": 2,
+    "max_depth_reached": 5,
+    "total_chains": 9,
+    "circular_chains": 8,
+    "circular_dependencies": 1,
+    "entry_methods": 20,
+    "critical_methods": 20,
+    "relevant_methods": 0,
+    "omitted_methods": 0,
+    "sql_methods": 1,
+    "validation_methods": 0,
+    "business_methods": 0,
+    "infrastructure_methods": 19,
+    "business_units_count": 0,
+    "infrastructure_units_count": 1,
+    "external_units_used": 17
+  }
+}

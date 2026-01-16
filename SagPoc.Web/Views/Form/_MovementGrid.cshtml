@@ -1,0 +1,39 @@
+@model SagPoc.Web.Models.MovementMetadata
+@using SagPoc.Web.Models
+@{
+    var gridId = $"movement-grid-{Model.CodiTabe}";
+    var agGridId = $"movement-ag-grid-{Model.CodiTabe}";
+    var columns = Model.GetGridColumns();
+
+    // Serializa colunas para JSON (usado pelo JS)
+    var columnsJson = System.Text.Json.JsonSerializer.Serialize(columns.Select(c => new {
+        fieldName = c.FieldName,
+        displayName = c.DisplayName,
+        width = c.Width
+    }));
+}
+
+<div class="movement-grid-container" id="@gridId"
+     data-movement="@Model.CodiTabe"
+     data-columns='@Html.Raw(columnsJson)'
+     data-pk-column="@Model.PkColumnName">
+
+    @* AG Grid Container *@
+    <div id="@agGridId"
+         class="ag-theme-quartz movement-ag-grid"
+         style="height: 280px; width: 100%;"
+         data-movement-table="@Model.CodiTabe"
+         data-sag-component="DBG@(Model.CodiTabe)"></div>
+
+    @* Info de registros (abaixo do AG Grid) *@
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <div class="text-muted small" id="movement-info-@Model.CodiTabe">
+            Nenhum registro
+        </div>
+        <div id="summary-@Model.CodiTabe" style="display: none;">
+            <span class="badge bg-secondary">
+                Total: <span id="summary-count-@Model.CodiTabe">0</span>
+            </span>
+        </div>
+    </div>
+</div>

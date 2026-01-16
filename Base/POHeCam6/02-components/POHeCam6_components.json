@@ -1,0 +1,12 @@
+[
+  {
+    "name": "DtsTabeConf",
+    "type": "TDataSource",
+    "properties": {
+      "DataSet": "QryTabeConf",
+      "Left": "631",
+      "Top": "251"
+    },
+    "indent": 2
+  }
+]

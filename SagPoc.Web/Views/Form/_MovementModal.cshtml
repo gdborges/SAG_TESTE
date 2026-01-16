@@ -1,0 +1,92 @@
+@* Modal de edição de movimento - renderizado uma vez e reutilizado *@
+
+<div class="modal fade" id="movementModal" tabindex="-1" aria-labelledby="movementModalLabel" aria-hidden="true"
+     data-bs-backdrop="false" data-bs-keyboard="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="movementModalLabel">
+                    <span id="movementModalTitle">Novo Registro</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                @* Loading state *@
+                <div class="movement-modal-loading d-none" id="movementModalLoading">
+                    <div class="d-flex justify-content-center align-items-center py-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* Form content - preenchido dinamicamente via JS *@
+                <form id="movementForm" class="needs-validation" novalidate>
+                    <input type="hidden" id="movementModalTableId" name="tableId" value="" />
+                    <input type="hidden" id="movementModalRecordId" name="recordId" value="" />
+                    <input type="hidden" id="movementModalParentId" name="parentId" value="" />
+                    <input type="hidden" id="movementModalMode" name="mode" value="insert" />
+
+                    <div id="movementFormContent">
+                        @* Campos serão renderizados aqui via JavaScript *@
+                        <p class="text-muted text-center py-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Carregando campos...
+                        </p>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <div class="d-flex justify-content-between w-100">
+                    <div id="movementModalInfo" class="text-muted small">
+                        @* Info adicional do registro *@
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-lg"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btnMovementSave">
+                            <i class="bi bi-check-lg"></i> Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Confirmação de exclusão *@
+<div class="modal fade" id="movementDeleteModal" tabindex="-1" aria-labelledby="movementDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="movementDeleteModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="deleteModalTableId" value="" />
+                <input type="hidden" id="deleteModalRecordId" value="" />
+
+                <p>Tem certeza que deseja excluir este registro?</p>
+                <p class="text-muted small" id="deleteModalInfo">
+                    @* Info do registro a ser excluído *@
+                </p>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-exclamation-circle me-2"></i>
+                    Esta ação não pode ser desfeita.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnMovementConfirmDelete">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

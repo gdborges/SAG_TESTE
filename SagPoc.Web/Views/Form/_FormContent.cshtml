@@ -2,10 +2,12 @@
 @using SagPoc.Web.Models
 
 <form id="dynamicForm" class="needs-validation" novalidate>
-    <input type="hidden" id="editingRecordId" name="editingRecordId" value="" />
+    <input type="hidden" id="editingRecordId" name="editingRecordId" value="" data-pk-field="@Model.PkColumnName" />
 
     @{
-        var bevelGroups = Model.GetBevelGroups();
+        // Usa apenas campos da primeira aba (GuiaCamp = 0 ou 1)
+        // Campos com GuiaCamp=2 são renderizados na aba "Dados Adicionais" separadamente
+        var bevelGroups = Model.GetBevelGroupsForFirstTab();
     }
 
     @foreach (var group in bevelGroups)
@@ -42,22 +44,13 @@
             </div>
         }
     }
-
-    <hr class="my-4" />
-
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-lg"></i> Salvar
-        </button>
-        <button type="button" class="btn btn-outline-secondary" id="btnCancelar">
-            <i class="bi bi-x-lg"></i> Cancelar
-        </button>
-    </div>
 </form>
 
-<script>
-    document.getElementById('btnCancelar')?.addEventListener('click', function() {
-        // Volta para a tab Consulta
-        document.getElementById('tab-consulta-tab')?.click();
-    });
-</script>
+<div class="d-flex justify-content-end gap-2 mt-4">
+    <button type="submit" form="dynamicForm" class="btn btn-primary">
+        <i class="bi bi-check-lg"></i> Salvar
+    </button>
+    <button type="button" class="btn btn-outline-secondary" id="btnCancelar">
+        <i class="bi bi-x-lg"></i> Cancelar
+    </button>
+</div>

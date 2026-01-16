@@ -51,3 +51,43 @@ public class SaveRecordResponse
     /// </summary>
     public Dictionary<string, string> ValidationErrors { get; set; } = new();
 }
+
+/// <summary>
+/// Request para executar query de lookup.
+/// </summary>
+public class LookupQueryRequest
+{
+    /// <summary>
+    /// SQL do lookup (SELECT com 2 colunas: Key, Value)
+    /// </summary>
+    public string Sql { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Filtro opcional para busca
+    /// </summary>
+    public string? Filter { get; set; }
+
+    /// <summary>
+    /// Condição dinâmica a injetar no SQL (via comando QY).
+    /// Exemplo: "AND EXISTS(SELECT 1 FROM VDCAMVTP WHERE CODITBPR = 1682 AND CODIPROD = POCAPROD.CODIPROD)"
+    /// A condição é injetada na linha 4 do SQL conforme padrão Delphi.
+    /// </summary>
+    public string? DynamicCondition { get; set; }
+}
+
+/// <summary>
+/// Request para buscar registro de lookup por código digitado.
+/// Usado quando o usuário digita diretamente no campo lookup (comportamento TDBLookNume).
+/// </summary>
+public class LookupByCodeRequest
+{
+    /// <summary>
+    /// SQL do lookup (SQL_CAMP do campo)
+    /// </summary>
+    public string Sql { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Código digitado pelo usuário
+    /// </summary>
+    public string Code { get; set; } = string.Empty;
+}

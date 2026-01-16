@@ -1,0 +1,2022 @@
+{
+  "form": "POHeCam6",
+  "analysis_date": "2025-12-23T12:35:27.827726",
+  "procedures": [
+    {
+      "name": "AfterCreate",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 1065,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 1073,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1080,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 1083,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersExecDireStri",
+          "line": 1084,
+          "is_external": false
+        },
+        {
+          "target_unit": "DtmPoul",
+          "target_method": "Campos_Busc",
+          "line": 1084,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 1091,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "MontCampPers",
+          "line": 1094,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "msgRaiseTratada",
+          "line": 1100,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPers_TratNome",
+          "line": 1103,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1104,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TsgTbs",
+          "line": 1104,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FindComponent",
+          "line": 1104,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TsgTbs",
+          "line": 1105,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FindComponent",
+          "line": 1105,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPers_TratNome",
+          "line": 1105,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1108,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Trim",
+          "line": 1113,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1117,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1117,
+          "is_external": false
+        },
+        {
+          "target_unit": "ListPrin",
+          "target_method": "Add",
+          "line": 1118,
+          "is_external": true
+        },
+        {
+          "target_unit": "Pai_Tabe",
+          "target_method": "Assign",
+          "line": 1124,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrToInt",
+          "line": 1128,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "RetoZero",
+          "line": 1128,
+          "is_external": false
+        },
+        {
+          "target_unit": "DtmPoul",
+          "target_method": "Campos_Busc",
+          "line": 1128,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 1128,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Inc",
+          "line": 1146,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 1166,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "SeInte",
+          "line": 1178,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 1196,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "PopAtuaClick",
+          "line": 1197,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 1199,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersExecDireStri",
+          "line": 1200,
+          "is_external": false
+        },
+        {
+          "target_unit": "DtmPoul",
+          "target_method": "Campos_Busc",
+          "line": 1200,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 1201,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "AtuaGrid",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 369,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "FraMovi",
+          "target_method": "AtuaGridMovi",
+          "line": 379,
+          "is_external": true
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "BtnConfClick",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 436,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "BtnConf_CampModi",
+          "line": 442,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 447,
+          "is_external": false
+        },
+        {
+          "target_unit": "New",
+          "target_method": "getPropTableValue",
+          "line": 450,
+          "is_external": true
+        },
+        {
+          "target_unit": "Old",
+          "target_method": "getPropTableValue",
+          "line": 450,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 454,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 456,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 457,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FindField",
+          "line": 457,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 458,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FindField",
+          "line": 458,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Trim",
+          "line": 460,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 460,
+          "is_external": true
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 461,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "WHERE",
+          "line": 468,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 468,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AND",
+          "line": 469,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IN",
+          "line": 469,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AND",
+          "line": 470,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 473,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersCompAtuaGetProp",
+          "line": 475,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersCompAtua",
+          "line": 475,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersAcao",
+          "line": 478,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "EspaDire",
+          "line": 478,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "sgMessageDlg",
+          "line": 479,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "SubsPala",
+          "line": 479,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 491,
+          "is_external": true
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 491,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 506,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "BtnConf_Ante",
+          "line": 509,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "msgAviso",
+          "line": 512,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Compras",
+          "line": 512,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "msgAviso",
+          "line": 514,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Diretoria",
+          "line": 514,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 517,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Perform",
+          "line": 521,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ConfGrav",
+          "line": 522,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 524,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersInicGravPara",
+          "line": 526,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "RecaDadoGera",
+          "line": 527,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "VeriEnviConf",
+          "line": 528,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPers_TratExec",
+          "line": 528,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPers_TratExec",
+          "line": 537,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersValiExecLinh",
+          "line": 542,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Copy",
+          "line": 544,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "BuscPareWin",
+          "line": 548,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Copy",
+          "line": 553,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Inc",
+          "line": 554,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Inc",
+          "line": 556,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "InicCampSequ",
+          "line": 563,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 568,
+          "is_external": true
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 569,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "GravSemC",
+          "line": 571,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "msgOk",
+          "line": 577,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "VeriEnviConf",
+          "line": 581,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPers_TratExec",
+          "line": 581,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FormShow",
+          "line": 583,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 586,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "VeriEnviConf",
+          "line": 592,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPers_TratExec",
+          "line": 592,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "to",
+          "line": 594,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 596,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TDbLcbLbl",
+          "line": 598,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FindComponent",
+          "line": 598,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Copy",
+          "line": 598,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 599,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TsgQuery",
+          "line": 602,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TsgQuery",
+          "line": 604,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 618,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "BtnConf_Depo",
+          "line": 622,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": true,
+      "has_business_logic": true
+    },
+    {
+      "name": "BtnConf_CampModi",
+      "type": "function",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 442,
+      "called_from": [
+        {
+          "method": "POHeCam6.BtnConfClick",
+          "line": 442
+        }
+      ],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 447,
+          "is_external": false
+        },
+        {
+          "target_unit": "New",
+          "target_method": "getPropTableValue",
+          "line": 450,
+          "is_external": true
+        },
+        {
+          "target_unit": "Old",
+          "target_method": "getPropTableValue",
+          "line": 450,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 454,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 456,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 457,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FindField",
+          "line": 457,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 458,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FindField",
+          "line": 458,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Trim",
+          "line": 460,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 460,
+          "is_external": true
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 461,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "WHERE",
+          "line": 468,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 468,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AND",
+          "line": 469,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IN",
+          "line": 469,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AND",
+          "line": 470,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 473,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersCompAtuaGetProp",
+          "line": 475,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersCompAtua",
+          "line": 475,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersAcao",
+          "line": 478,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "EspaDire",
+          "line": 478,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "sgMessageDlg",
+          "line": 479,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "SubsPala",
+          "line": 479,
+          "is_external": false
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 491,
+          "is_external": true
+        },
+        {
+          "target_unit": "DataSet",
+          "target_method": "FieldByName",
+          "line": 491,
+          "is_external": true
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "BuscaComponente",
+      "type": "function",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 138,
+      "called_from": [
+        {
+          "method": "POHeCam6.BuscaComponente",
+          "line": 223
+        },
+        {
+          "method": "POHeCam6.ConfPortSeri",
+          "line": 343
+        }
+      ],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AnsiUpperCase",
+          "line": 143,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 148,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 148,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 160,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 160,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 168,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Copy",
+          "line": 168,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 172,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 172,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 172,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 172,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 172,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 172,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 177,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 177,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 177,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 177,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 177,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 177,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 179,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 182,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 182,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 182,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 182,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 182,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 182,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 184,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 186,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 186,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 186,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 186,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 186,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 186,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 191,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 191,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 191,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 191,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 192,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 193,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 193,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 193,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 194,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 199,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 199,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 199,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 199,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 199,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 204,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 204,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 204,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 204,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 204,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "StrIn",
+          "line": 209,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 209,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 209,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 222,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "BuscaComponente",
+          "line": 223,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "ConfPortSeri",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 292,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Pos",
+          "line": 307,
+          "is_external": false
+        },
+        {
+          "target_unit": "TsgLeitSeri",
+          "target_method": "Create_Owner",
+          "line": 309,
+          "is_external": true
+        },
+        {
+          "target_unit": "ListLeitSeri",
+          "target_method": "Add",
+          "line": 316,
+          "is_external": true
+        },
+        {
+          "target_unit": "DtmPoul",
+          "target_method": "Campos_Cds",
+          "line": 323,
+          "is_external": true
+        },
+        {
+          "target_unit": "Func",
+          "target_method": "PegaMaqu",
+          "line": 326,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExibMensHint",
+          "line": 327,
+          "is_external": false
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 330,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "or",
+          "line": 330,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "sgPos",
+          "line": 330,
+          "is_external": false
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 330,
+          "is_external": true
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 332,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Pos",
+          "line": 333,
+          "is_external": false
+        },
+        {
+          "target_unit": "TsgLeitSeri",
+          "target_method": "Create_Owner",
+          "line": 335,
+          "is_external": true
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 340,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TEdtLbl",
+          "line": 343,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "BuscaComponente",
+          "line": 343,
+          "is_external": false
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 343,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 344,
+          "is_external": false
+        },
+        {
+          "target_unit": "TEdtLbl",
+          "target_method": "Create",
+          "line": 346,
+          "is_external": true
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 347,
+          "is_external": true
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 351,
+          "is_external": true
+        },
+        {
+          "target_unit": "cds",
+          "target_method": "FieldByName",
+          "line": 352,
+          "is_external": true
+        },
+        {
+          "target_unit": "ListLeitSeri",
+          "target_method": "Add",
+          "line": 355,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FreeAndNil",
+          "line": 361,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "CriaTbs",
+      "type": "function",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 125,
+      "called_from": [
+        {
+          "method": "POHeCam6.FormCreate",
+          "line": 673
+        },
+        {
+          "method": "POHeCam6.FormCreate",
+          "line": 675
+        }
+      ],
+      "calls_made": [
+        {
+          "target_unit": "TsgTbs",
+          "target_method": "Create",
+          "line": 127,
+          "is_external": true
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "DuplClic",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 388,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersDuplCliq",
+          "line": 390,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "FormClose",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 740,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 752,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "not",
+          "line": 752,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ExecSQL_",
+          "line": 753,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 753,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 755,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "SetPsgTrans",
+          "line": 760,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 773,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "FormCreate",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 627,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 636,
+          "is_external": false
+        },
+        {
+          "target_unit": "TsgConn",
+          "target_method": "Create",
+          "line": 638,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "ConfConnectionString",
+          "line": 642,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TsgTransaction",
+          "line": 643,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Create",
+          "line": 652,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "not",
+          "line": 654,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 660,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "sgStrToInt",
+          "line": 669,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CriaTbs",
+          "line": 673,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 673,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CriaTbs",
+          "line": 675,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 675,
+          "is_external": false
+        },
+        {
+          "target_unit": "TFraCaMv",
+          "target_method": "Create",
+          "line": 677,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "IntToStr",
+          "line": 679,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FormInteBras",
+          "line": 681,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPers_TratNome",
+          "line": 709,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TradSQL_Cons",
+          "line": 714,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TradSQL_Cons",
+          "line": 715,
+          "is_external": false
+        },
+        {
+          "target_unit": "ListMovi",
+          "target_method": "Add",
+          "line": 719,
+          "is_external": true
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "FormDestroy",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 780,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 786,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "SetPsgTrans",
+          "line": 791,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FreeAndNil",
+          "line": 793,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 797,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 800,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FreeAndNil",
+          "line": 802,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 805,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FreeAndNil",
+          "line": 813,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "GetPgcMovi",
+      "type": "function",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 112,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 114,
+          "is_external": false
+        },
+        {
+          "target_unit": "TsgPgc",
+          "target_method": "Create",
+          "line": 116,
+          "is_external": true
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "Grav",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 1218,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1220,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1220,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 1220,
+          "is_external": false
+        },
+        {
+          "target_unit": "Func",
+          "target_method": "GravLog_Mens",
+          "line": 1222,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersExecListInst",
+          "line": 1224,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "IsWeb",
+      "type": "function",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 1056,
+      "called_from": [],
+      "calls_made": [],
+      "is_event_handler": false,
+      "has_business_logic": false
+    },
+    {
+      "name": "LePeso",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 1228,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "NumeroInRange",
+          "line": 1230,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 1232,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 1232,
+          "is_external": false
+        },
+        {
+          "target_unit": "Func",
+          "target_method": "GravLog_Mens",
+          "line": 1234,
+          "is_external": true
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "FormRealBras",
+          "line": 1234,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersExecListInst",
+          "line": 1236,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "ListChecColumnClick",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 394,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CampPersListChecColumnClick",
+          "line": 396,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "LoadCompleted",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 402,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "to",
+          "line": 408,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Assigned",
+          "line": 412,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 412,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 412,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 412,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 414,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 415,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 417,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 419,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 420,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 423,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "CarregaDados",
+          "line": 423,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TLstLbl",
+          "line": 424,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "MudaTab2",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 227,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "MudaTabe2_BuscTbs_Index",
+          "line": 234,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AnsiUpperCase",
+          "line": 238,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AnsiUpperCase",
+          "line": 238,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TsgTbs",
+          "line": 239,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "MudaTabe2_BuscTbs_Index",
+          "line": 241,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TWinControl",
+          "line": 241,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "MudaTabe2_BuscTbs_Index",
+          "line": 254,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "and",
+          "line": 255,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "not",
+          "line": 255,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "UltiConf",
+          "line": 258,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "UltiConf",
+          "line": 271,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "Perform",
+          "line": 276,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "MudaTabe2_BuscTbs_Index",
+      "type": "function",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 234,
+      "called_from": [
+        {
+          "method": "POHeCam6.MudaTab2",
+          "line": 234
+        },
+        {
+          "method": "POHeCam6.MudaTab2",
+          "line": 241
+        },
+        {
+          "method": "POHeCam6.MudaTab2",
+          "line": 254
+        },
+        {
+          "method": "POHeCam6.MudaTabe2_BuscTbs_Index",
+          "line": 241
+        }
+      ],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AnsiUpperCase",
+          "line": 238,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "AnsiUpperCase",
+          "line": 238,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TsgTbs",
+          "line": 239,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "MudaTabe2_BuscTbs_Index",
+          "line": 241,
+          "is_external": false
+        },
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "TWinControl",
+          "line": 241,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    },
+    {
+      "name": "QryTabeConfBeforeOpen",
+      "type": "procedure",
+      "source_file": "C:/Trabalho/Edata/GIT/MIMS_V7/SAG/POHeCam6.pas",
+      "source_line": 285,
+      "called_from": [],
+      "calls_made": [
+        {
+          "target_unit": "POHeCam6",
+          "target_method": "isMobi_POCaCamp_Sele",
+          "line": 288,
+          "is_external": false
+        }
+      ],
+      "is_event_handler": false,
+      "has_business_logic": true
+    }
+  ],
+  "statistics": {
+    "total_procedures": 20,
+    "event_handlers": 1,
+    "with_business_logic": 19
+  }
+}

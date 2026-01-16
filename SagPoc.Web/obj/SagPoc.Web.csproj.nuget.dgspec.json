@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\geraldo.borges\\CascadeProjects\\sag\\poc-web\\SagPoc.Web\\SagPoc.Web.csproj": {}
+    "C:\\Users\\geraldo.borges\\CascadeProjects\\SAG\\SagPoc.Web\\SagPoc.Web.csproj": {}
   },
   "projects": {
-    "C:\\Users\\geraldo.borges\\CascadeProjects\\sag\\poc-web\\SagPoc.Web\\SagPoc.Web.csproj": {
+    "C:\\Users\\geraldo.borges\\CascadeProjects\\SAG\\SagPoc.Web\\SagPoc.Web.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\geraldo.borges\\CascadeProjects\\sag\\poc-web\\SagPoc.Web\\SagPoc.Web.csproj",
+        "projectUniqueName": "C:\\Users\\geraldo.borges\\CascadeProjects\\SAG\\SagPoc.Web\\SagPoc.Web.csproj",
         "projectName": "SagPoc.Web",
-        "projectPath": "C:\\Users\\geraldo.borges\\CascadeProjects\\sag\\poc-web\\SagPoc.Web\\SagPoc.Web.csproj",
+        "projectPath": "C:\\Users\\geraldo.borges\\CascadeProjects\\SAG\\SagPoc.Web\\SagPoc.Web.csproj",
         "packagesPath": "C:\\Users\\geraldo.borges\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\geraldo.borges\\CascadeProjects\\sag\\poc-web\\SagPoc.Web\\obj\\",
+        "outputPath": "C:\\Users\\geraldo.borges\\CascadeProjects\\SAG\\SagPoc.Web\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\geraldo.borges\\AppData\\Roaming\\NuGet\\NuGet.Config"

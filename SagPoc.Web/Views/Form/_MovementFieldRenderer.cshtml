@@ -1,0 +1,539 @@
+@model SagPoc.Web.Models.MovementFieldContext
+@using SagPoc.Web.Models
+
+@{
+    var field = Model.Field;
+    var value = Model.Value;
+    var isSingleInRow = Model.IsSingleInRow;
+    var isEditMode = Model.IsEditMode;
+
+    // Campos ocultos nao sao renderizados
+    if (field.IsHidden)
+    {
+        return;
+    }
+
+    var componentType = field.GetComponentType();
+    var fieldId = $"mv_field_{field.CodiCamp}";
+    var fieldName = field.NomeCamp;
+    var label = field.LabeCamp;
+    var hasLabel = !string.IsNullOrEmpty(label);
+    var isRequired = field.IsRequired;
+    var isDisabled = field.IsDisabled || field.IsReadonly;
+    var hint = field.HintCamp;
+
+    // Estilo baseado em TamaCamp
+    var wrapperStyle = "";
+    if (field.TamaCamp > 0)
+    {
+        var isFixedWidth = componentType == ComponentType.Checkbox
+                        || componentType == ComponentType.CalcCheckbox
+                        || componentType == ComponentType.Button;
+
+        if (isSingleInRow)
+        {
+            wrapperStyle = $"flex: 1 1 {field.TamaCamp}px;";
+        }
+        else if (isFixedWidth)
+        {
+            wrapperStyle = $"flex: 0 0 auto;";
+        }
+        else
+        {
+            wrapperStyle = $"flex: {field.TamaCamp} 1 {field.TamaCamp}px; min-width: {Math.Min(field.TamaCamp, 120)}px;";
+        }
+    }
+
+    var readonlyClass = field.IsReadonly ? "field-readonly" : "";
+
+    // Atributos data-sag-* para sistema de eventos PLSAG
+    var sagCodicamp = field.CodiCamp.ToString();
+    var sagNomecamp = field.NomeCamp;
+    var sagNamecamp = field.NameCamp;
+    var sagComptype = field.CompCamp?.ToUpper()?.Trim() ?? "E";
+
+    // Valor formatado
+    var stringValue = Model.GetValueAsString();
+    var isChecked = Model.IsChecked();
+}
+
+@switch (componentType)
+{
+    case ComponentType.TextInput:
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired) { <span class="text-danger">*</span> }
+                </label>
+            }
+            <input type="text"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   placeholder="@hint"
+                   @(isRequired ? "required" : "")
+                   @(isDisabled ? "disabled" : "")
+                   data-mask="@field.MascCamp"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
+        </div>
+        break;
+
+    case ComponentType.NumberInput:
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired) { <span class="text-danger">*</span> }
+                </label>
+            }
+            <input type="number"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   placeholder="@hint"
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
+                   step="any"
+                   data-decimals="@field.DeciCamp"
+                   @(isRequired ? "required" : "")
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
+        </div>
+        break;
+
+    case ComponentType.DateInput:
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired) { <span class="text-danger">*</span> }
+                </label>
+            }
+            <input type="date"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   @(isRequired ? "required" : "")
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
+        </div>
+        break;
+
+    case ComponentType.Checkbox:
+        var isCheckedByDefault = isEditMode ? isChecked : (field.PadrCamp.HasValue && field.PadrCamp.Value == 1);
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
+            <div class="form-check">
+                <input type="hidden" name="@fieldName" value="0" />
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="@fieldId"
+                       name="@fieldName"
+                       value="1"
+                       title="@hint"
+                       @(isCheckedByDefault ? "checked" : "")
+                       @(isDisabled ? "disabled" : "")
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                       data-sag-namecamp="@sagNamecamp"
+                       data-sag-comptype="@sagComptype" />
+                @if (hasLabel)
+                {
+                    <label for="@fieldId" class="form-check-label">@label</label>
+                }
+            </div>
+        </div>
+        break;
+
+    case ComponentType.ComboBox:
+        <div class="field-wrapper @readonlyClass" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired) { <span class="text-danger">*</span> }
+                </label>
+            }
+            <select class="form-select"
+                    id="@fieldId"
+                    name="@fieldName"
+                    title="@hint"
+                    @(isRequired ? "required" : "")
+                    @(isDisabled ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype">
+                <option value="">Selecione...</option>
+                @if (!string.IsNullOrEmpty(field.VareCamp))
+                {
+                    var displayOptions = field.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    var valueOptions = !string.IsNullOrEmpty(field.VaGrCamp)
+                        ? field.VaGrCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                        : null;
+
+                    for (var i = 0; i < displayOptions.Length; i++)
+                    {
+                        var displayText = displayOptions[i].Trim();
+                        var optValue = (valueOptions != null && i < valueOptions.Length)
+                            ? valueOptions[i].Trim()
+                            : displayText;
+                        var isSelected = stringValue == optValue;
+                        if (isSelected)
+                        {
+                            <option value="@optValue" selected="selected">@displayText</option>
+                        }
+                        else
+                        {
+                            <option value="@optValue">@displayText</option>
+                        }
+                    }
+                }
+            </select>
+        </div>
+        break;
+
+    case ComponentType.LookupCombo:
+    case ComponentType.LookupComboInfo:
+        var isInfoLookup = componentType == ComponentType.LookupComboInfo;
+        <div class="field-wrapper @readonlyClass @(isInfoLookup ? "field-info" : "")" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired) { <span class="text-danger">*</span> }
+                </label>
+            }
+            <select class="form-select @(isInfoLookup ? "form-select-info" : "")"
+                    id="@fieldId"
+                    name="@fieldName"
+                    title="@hint"
+                    @(isRequired ? "required" : "")
+                    @(isDisabled || isInfoLookup ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype">
+                <option value="">Selecione...</option>
+                @if (field.LookupOptions != null && field.LookupOptions.Count > 0)
+                {
+                    foreach (var opt in field.LookupOptions)
+                    {
+                        var isOptSelected = stringValue == opt.Key;
+                        if (isOptSelected)
+                        {
+                            <option value="@opt.Key" selected="selected">@opt.Value</option>
+                        }
+                        else
+                        {
+                            <option value="@opt.Key">@opt.Value</option>
+                        }
+                    }
+                }
+                else if (!string.IsNullOrEmpty(field.VareCamp))
+                {
+                    var fbDisplayOptions = field.VareCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    var fbValueOptions = !string.IsNullOrEmpty(field.VaGrCamp)
+                        ? field.VaGrCamp.Split(new[] { '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                        : null;
+
+                    for (var i = 0; i < fbDisplayOptions.Length; i++)
+                    {
+                        var displayText = fbDisplayOptions[i].Trim();
+                        var optValue = (fbValueOptions != null && i < fbValueOptions.Length)
+                            ? fbValueOptions[i].Trim()
+                            : displayText;
+                        var isFbSelected = stringValue == optValue;
+                        if (isFbSelected)
+                        {
+                            <option value="@optValue" selected="selected">@displayText</option>
+                        }
+                        else
+                        {
+                            <option value="@optValue">@displayText</option>
+                        }
+                    }
+                }
+            </select>
+        </div>
+        break;
+
+    case ComponentType.LookupModal:
+    case ComponentType.LookupModalInfo:
+        var isInfoModal = componentType == ComponentType.LookupModalInfo;
+        // TDBLookNume: Campo de código + botão de pesquisa + descrição automática
+        // Similar ao comportamento Delphi onde a descrição aparece ao lado do código
+        var lookupDescId = $"{fieldId}_desc";
+        var hasSqlCamp = !string.IsNullOrEmpty(field.SqlCamp);
+        <div class="field-wrapper field-lookup-container @readonlyClass @(isInfoModal ? "field-info" : "")" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired) { <span class="text-danger">*</span> }
+                </label>
+            }
+            <div class="lookup-inputs-row">
+                <div class="input-group lookup-code-group">
+                    <input type="text"
+                           class="form-control @(isInfoModal ? "form-control-info" : "") lookup-code-input"
+                           id="@fieldId"
+                           name="@fieldName"
+                           value="@stringValue"
+                           title="@hint"
+                           placeholder="@hint"
+                           @(isRequired ? "required" : "")
+                           @(isDisabled || isInfoModal ? "readonly" : "")
+                           data-sag-codicamp="@sagCodicamp"
+                           data-sag-nomecamp="@sagNomecamp"
+                           data-sag-namecamp="@sagNamecamp"
+                           data-sag-comptype="@sagComptype"
+                           data-lookup-desc-id="@lookupDescId"
+                           @if (hasSqlCamp) {
+                               <text>data-lookup-sql="@field.SqlCamp"</text>
+                           } />
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-lookup"
+                            title="Pesquisar"
+                            @(isDisabled ? "disabled" : "")>
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                @* Campo de descrição automática - similar ao TDBLookNume do Delphi *@
+                <input type="text"
+                       class="form-control lookup-desc-field"
+                       id="@lookupDescId"
+                       readonly
+                       tabindex="-1"
+                       placeholder="(descrição)"
+                       data-lookup-for="@fieldId" />
+            </div>
+        </div>
+        break;
+
+    case ComponentType.TextArea:
+    case ComponentType.TextAreaBlob:
+        var textareaRows = field.AltuCamp > 50 ? field.AltuCamp / 25 : 3;
+        <div class="field-wrapper field-wrapper-full mb-3 @readonlyClass">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">
+                    @label
+                    @if (isRequired) { <span class="text-danger">*</span> }
+                </label>
+            }
+            <textarea class="form-control"
+                      id="@fieldId"
+                      name="@fieldName"
+                      title="@hint"
+                      placeholder="@hint"
+                      rows="@textareaRows"
+                      @(isRequired ? "required" : "")
+                      @(isDisabled ? "disabled" : "")
+                      data-sag-codicamp="@sagCodicamp"
+                      data-sag-nomecamp="@sagNomecamp"
+                      data-sag-namecamp="@sagNamecamp"
+                      data-sag-comptype="@sagComptype">@stringValue</textarea>
+        </div>
+        break;
+
+    case ComponentType.CalcTextInput:
+    case ComponentType.CalcTextReadonly:
+        var isCalcReadonly = componentType == ComponentType.CalcTextReadonly;
+        <div class="field-wrapper field-calc @(isCalcReadonly ? "field-readonly" : "")" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">@label</label>
+            }
+            <input type="text"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   placeholder="@hint"
+                   @(isCalcReadonly ? "readonly" : "")
+                   @(isDisabled ? "disabled" : "")
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
+        </div>
+        break;
+
+    case ComponentType.CalcNumberInput:
+    case ComponentType.CalcNumberReadonly:
+        var isCalcNumReadonly = componentType == ComponentType.CalcNumberReadonly;
+        <div class="field-wrapper field-calc @(isCalcNumReadonly ? "field-readonly" : "")" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">@label</label>
+            }
+            <input type="number"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   @if (field.MiniCamp.HasValue && field.MiniCamp.Value != 0) { <text>min="@field.MiniCamp.Value"</text> }
+                   @if (field.MaxiCamp.HasValue && field.MaxiCamp.Value != 0) { <text>max="@field.MaxiCamp.Value"</text> }
+                   step="any"
+                   data-decimals="@field.DeciCamp"
+                   @(isCalcNumReadonly ? "readonly" : "")
+                   @(isDisabled ? "disabled" : "")
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
+        </div>
+        break;
+
+    case ComponentType.CalcDateInput:
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">@label</label>
+            }
+            <input type="date"
+                   class="form-control form-control-calc"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   @(isDisabled ? "disabled" : "")
+                   data-calc="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
+        </div>
+        break;
+
+    case ComponentType.CalcCheckbox:
+        var calcCheckedVal = isEditMode ? isChecked : (field.PadrCamp.HasValue && field.PadrCamp.Value == 1);
+        <div class="field-wrapper field-calc" style="@wrapperStyle">
+            <div class="form-check">
+                <input type="hidden" name="@fieldName" value="0" />
+                <input type="checkbox"
+                       class="form-check-input form-check-calc"
+                       id="@fieldId"
+                       name="@fieldName"
+                       value="1"
+                       title="@hint"
+                       @(calcCheckedVal ? "checked" : "")
+                       @(isDisabled ? "disabled" : "")
+                       data-calc="true"
+                       data-sag-codicamp="@sagCodicamp"
+                       data-sag-nomecamp="@sagNomecamp"
+                       data-sag-namecamp="@sagNamecamp"
+                       data-sag-comptype="@sagComptype" />
+                @if (hasLabel)
+                {
+                    <label for="@fieldId" class="form-check-label">@label</label>
+                }
+            </div>
+        </div>
+        break;
+
+    case ComponentType.InfoTextInput:
+    case ComponentType.InfoNumberInput:
+        // Campos IE (Informação-Editor) são readonly e vinculados a um lookup
+        // VaGrCamp contém: Linha 0 = coluna a exibir (ex: NOMEPROD), Linha 1 = campo lookup (ex: CODIPROD)
+        var isInfoNumber = componentType == ComponentType.InfoNumberInput;
+        var ieVaGrLines = (field.VaGrCamp ?? "").Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+        var ieSourceColumn = ieVaGrLines.Length >= 1 ? ieVaGrLines[0].Trim().ToUpper() : "";
+        var ieLinkedLookup = ieVaGrLines.Length >= 2 ? ieVaGrLines[1].Trim().ToUpper() : "";
+
+        <div class="field-wrapper field-info field-readonly" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">@label</label>
+            }
+            <input type="@(isInfoNumber ? "number" : "text")"
+                   class="form-control form-control-info"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   readonly
+                   data-info="true"
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype"
+                   @if (!string.IsNullOrEmpty(ieLinkedLookup)) {
+                       <text>data-sag-linked-lookup="@ieLinkedLookup"</text>
+                   }
+                   @if (!string.IsNullOrEmpty(ieSourceColumn)) {
+                       <text>data-sag-source-column="@ieSourceColumn"</text>
+                   } />
+        </div>
+        break;
+
+    case ComponentType.Label:
+        <div class="field-wrapper field-label" style="@wrapperStyle">
+            <span class="field-static-label" title="@hint">@label</span>
+        </div>
+        break;
+
+    case ComponentType.Button:
+        <div class="field-wrapper field-button d-flex align-items-end" style="@wrapperStyle">
+            <button type="button"
+                    class="btn btn-secondary"
+                    id="@fieldId"
+                    title="@hint"
+                    @(isDisabled ? "disabled" : "")
+                    data-sag-codicamp="@sagCodicamp"
+                    data-sag-nomecamp="@sagNomecamp"
+                    data-sag-namecamp="@sagNamecamp"
+                    data-sag-comptype="@sagComptype">
+                @label
+            </button>
+        </div>
+        break;
+
+    case ComponentType.Bevel:
+    case ComponentType.Hidden:
+    case ComponentType.Timer:
+        break;
+
+    default:
+        <div class="field-wrapper" style="@wrapperStyle">
+            @if (hasLabel)
+            {
+                <label for="@fieldId" class="form-label">@label</label>
+            }
+            <input type="text"
+                   class="form-control"
+                   id="@fieldId"
+                   name="@fieldName"
+                   value="@stringValue"
+                   title="@hint"
+                   @(isDisabled ? "disabled" : "")
+                   data-sag-codicamp="@sagCodicamp"
+                   data-sag-nomecamp="@sagNomecamp"
+                   data-sag-namecamp="@sagNamecamp"
+                   data-sag-comptype="@sagComptype" />
+        </div>
+        break;
+}

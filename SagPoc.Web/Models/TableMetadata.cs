@@ -76,6 +76,29 @@ public class TableMetadata
     public string SiglTabe { get; set; } = string.Empty;
 
     /// <summary>
+    /// Código da tabela cabecalho/pai (CABETABE).
+    /// Se > 0, esta tabela é um movimento filho do cabecalho indicado.
+    /// </summary>
+    public int? CabeTabe { get; set; }
+
+    /// <summary>
+    /// Posição/série do movimento (SERITABE).
+    /// > 50: movimento exibido na mesma guia do cabeçalho
+    /// <= 50: movimento exibido em guia separada
+    /// </summary>
+    public int SeriTabe { get; set; }
+
+    /// <summary>
+    /// Código alternativo de referência (GETATABE).
+    /// </summary>
+    public int? GeTaTabe { get; set; }
+
+    /// <summary>
+    /// Indica se esta tabela é um movimento (tem cabeçalho pai).
+    /// </summary>
+    public bool IsMovement => CabeTabe.HasValue && CabeTabe > 0;
+
+    /// <summary>
     /// Parâmetros parseados do JSON
     /// </summary>
     public TableParameters? Parameters => ParseParameters();

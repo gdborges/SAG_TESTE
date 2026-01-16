@@ -38,3 +38,11 @@ docs.zip
 
 # Malformed filenames
 C:Users*
+
+# Legacy folder (to be deleted)
+poc-web/
+
+# Documents (local)
+Doc*.docx
+Doc*.pdf
+*.zip
