@@ -88,6 +88,7 @@ public class DashboardService : IDashboardService
                 "incubatorio" => await GetIncubatorioDashboardAsync(connection, config),
                 "frango_corte" => await GetFrangoCorteDashboardAsync(connection, config),
                 "racao_insumo" => await GetRacaoInsumoDashboardAsync(connection, config),
+                "poedeiras" => await GetPoedeirasDashboardAsync(connection, config),
                 _ => throw new NotImplementedException($"Dashboard '{config.DashboardKey}' nao implementado")
             };
         }
@@ -948,6 +949,221 @@ public class DashboardService : IDashboardService
         {
             topCustoRanking,
             topVolumeRanking
+        };
+
+        return dashboard;
+    }
+
+    /// <summary>
+    /// Dashboard especifico para Poedeiras Comerciais
+    /// </summary>
+    private async Task<DashboardData> GetPoedeirasDashboardAsync(
+        System.Data.IDbConnection connection,
+        DashboardConfigDto config)
+    {
+        var dashboard = new DashboardData
+        {
+            ModuleId = config.ModuleId,
+            ModuleName = config.ModuleName
+        };
+
+        // ===== METRICAS =====
+        var metricsSql = @"
+            SELECT
+                ROUND(SUM(NATUR_OVOS_SEM) / 360, 0) AS CaixasProduzidas,
+                SUM(SALDO_FEMEA) AS SaldoAves,
+                SUM(QTD_MORTE) AS Mortalidade,
+                SUM(DIF_OVOS) AS DiferencaOvos
+            FROM POCWEB_DASH_POEDEIRAS";
+
+        var metrics = await connection.QueryFirstAsync<dynamic>(metricsSql);
+
+        dashboard.Metrics = new List<DashboardMetric>
+        {
+            new()
+            {
+                Id = "caixas_produzidas",
+                Label = "Caixas Produzidas",
+                Value = (decimal)(metrics.CAIXASPRODUZIDAS ?? 0),
+                Icon = "Package",
+                Color = "primary"
+            },
+            new()
+            {
+                Id = "saldo_aves",
+                Label = "Saldo de Aves",
+                Value = (decimal)(metrics.SALDOAVES ?? 0),
+                Icon = "Bird",
+                Color = "success"
+            },
+            new()
+            {
+                Id = "mortalidade",
+                Label = "Mortalidade",
+                Value = (decimal)(metrics.MORTALIDADE ?? 0),
+                Icon = "TrendingDown",
+                Color = "error"
+            },
+            new()
+            {
+                Id = "diferenca_ovos",
+                Label = "Diferenca de Ovos",
+                Value = (decimal)(metrics.DIFERENCAOVOS ?? 0),
+                Icon = "Activity",
+                Color = "action"
+            }
+        };
+
+        // ===== DISTRIBUICOES =====
+        // Producao por Granja
+        var producaoGranjaSql = @"
+            SELECT
+                'Granja ' || GRANJA AS Category,
+                SUM(NATUR_OVOS_SEM) AS Value
+            FROM POCWEB_DASH_POEDEIRAS
+            GROUP BY GRANJA
+            ORDER BY SUM(NATUR_OVOS_SEM) DESC";
+
+        var producaoGranja = (await connection.QueryAsync<dynamic>(producaoGranjaSql)).ToList();
+
+        var producaoGranjaDistribution = new DashboardDistribution
+        {
+            Id = "producao_granja",
+            Title = "Producao por Granja",
+            Subtitle = "ovos",
+            Items = producaoGranja.Select((g, i) => new DashboardDistributionItem
+            {
+                Category = (string)(g.CATEGORY ?? ""),
+                Value = (decimal)(g.VALUE ?? 0),
+                Color = i switch
+                {
+                    0 => COLOR_PRIMARY,
+                    1 => COLOR_SUCCESS,
+                    2 => COLOR_WARNING,
+                    _ => COLOR_ACTION
+                }
+            }).ToList()
+        };
+
+        // Postura Media por Linhagem
+        var posturaLinhagemSql = @"
+            SELECT
+                TRIM(LINHAGEM) AS Category,
+                ROUND(AVG(POSTURA_OBTIDA_SEM), 2) AS Value
+            FROM POCWEB_DASH_POEDEIRAS
+            GROUP BY LINHAGEM
+            ORDER BY AVG(POSTURA_OBTIDA_SEM) DESC";
+
+        var posturaLinhagem = (await connection.QueryAsync<dynamic>(posturaLinhagemSql)).ToList();
+
+        var posturaLinhagemDistribution = new DashboardDistribution
+        {
+            Id = "postura_linhagem",
+            Title = "Postura Media por Linhagem",
+            Subtitle = "%",
+            Items = posturaLinhagem.Select((l, i) => new DashboardDistributionItem
+            {
+                Category = (string)(l.CATEGORY ?? ""),
+                Value = (decimal)(l.VALUE ?? 0),
+                Color = i switch
+                {
+                    0 => COLOR_SUCCESS,
+                    1 => COLOR_PRIMARY,
+                    2 => COLOR_WARNING,
+                    _ => COLOR_ACTION
+                }
+            }).ToList()
+        };
+
+        dashboard.Distributions = new List<DashboardDistribution>
+        {
+            producaoGranjaDistribution,
+            posturaLinhagemDistribution
+        };
+
+        // ===== TRENDS (dados estaticos para POC) =====
+        dashboard.Trends = new List<DashboardTrend>
+        {
+            new()
+            {
+                Id = "producao_semanal",
+                Title = "Producao Semanal",
+                Type = "line",
+                XKey = "dia",
+                Series = new List<DashboardTrendSeries>
+                {
+                    new() { YKey = "real", Label = "Producao Real", Color = COLOR_PRIMARY },
+                    new() { YKey = "padrao", Label = "Producao Padrao", Color = COLOR_SUCCESS }
+                },
+                Data = new List<Dictionary<string, object>>
+                {
+                    new() { { "dia", "Seg" }, { "real", 91.5 }, { "padrao", 90.0 } },
+                    new() { { "dia", "Ter" }, { "real", 92.3 }, { "padrao", 90.0 } },
+                    new() { { "dia", "Qua" }, { "real", 89.8 }, { "padrao", 90.0 } },
+                    new() { { "dia", "Qui" }, { "real", 93.1 }, { "padrao", 90.0 } },
+                    new() { { "dia", "Sex" }, { "real", 90.7 }, { "padrao", 90.0 } },
+                    new() { { "dia", "Sab" }, { "real", 88.5 }, { "padrao", 90.0 } },
+                    new() { { "dia", "Dom" }, { "real", 87.2 }, { "padrao", 90.0 } }
+                }
+            }
+        };
+
+        // ===== RANKINGS =====
+        // Top Postura por Galinheiro
+        var topPosturaSql = @"
+            SELECT
+                'Lote ' || NRO_LOTE || ' / Gal ' || COD_GALINHEIRO AS Category,
+                POSTURA_OBTIDA_SEM AS Value
+            FROM POCWEB_DASH_POEDEIRAS
+            ORDER BY POSTURA_OBTIDA_SEM DESC
+            FETCH FIRST 5 ROWS ONLY";
+
+        var topPostura = (await connection.QueryAsync<dynamic>(topPosturaSql)).ToList();
+
+        var topPosturaRanking = new DashboardRanking
+        {
+            Id = "top_postura",
+            Title = "Top Postura",
+            MaxItems = 5,
+            Items = topPostura.Select(p => new DashboardRankingItem
+            {
+                Category = (string)(p.CATEGORY ?? ""),
+                Value = (decimal)(p.VALUE ?? 0),
+                Color = (decimal)(p.VALUE ?? 0) >= 95 ? COLOR_SUCCESS :
+                        (decimal)(p.VALUE ?? 0) >= 90 ? COLOR_WARNING : COLOR_ERROR
+            }).ToList()
+        };
+
+        // Galinheiros com maior deficit de producao
+        var deficitSql = @"
+            SELECT
+                'Lote ' || NRO_LOTE || ' / Gal ' || COD_GALINHEIRO AS Category,
+                DIF_OVOS AS Value
+            FROM POCWEB_DASH_POEDEIRAS
+            WHERE DIF_OVOS < 0
+            ORDER BY DIF_OVOS ASC
+            FETCH FIRST 5 ROWS ONLY";
+
+        var deficit = (await connection.QueryAsync<dynamic>(deficitSql)).ToList();
+
+        var deficitRanking = new DashboardRanking
+        {
+            Id = "deficit_producao",
+            Title = "Deficit de Producao",
+            MaxItems = 5,
+            Items = deficit.Select(d => new DashboardRankingItem
+            {
+                Category = (string)(d.CATEGORY ?? ""),
+                Value = (decimal)(d.VALUE ?? 0),
+                Color = (decimal)(d.VALUE ?? 0) < -300 ? COLOR_ERROR :
+                        (decimal)(d.VALUE ?? 0) < -100 ? COLOR_WARNING : COLOR_SUCCESS
+            }).ToList()
+        };
+
+        dashboard.Rankings = new List<DashboardRanking>
+        {
+            topPosturaRanking,
+            deficitRanking
         };
 
         return dashboard;
